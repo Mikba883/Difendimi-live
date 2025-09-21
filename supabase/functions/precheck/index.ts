@@ -1,28 +1,37 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// Force redeployment: 2025-01-21
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
+  console.log('Precheck function called:', req.method);
+  
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { caseText, caseType = 'general', previousContext = null } = await req.json();
+    const body = await req.json();
+    console.log('Request body:', body);
+    
+    const { caseText, caseType = 'general', previousContext = null } = body;
     
     if (!caseText) {
+      console.error('Case text is missing');
       throw new Error('Case text is required');
     }
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
+      console.error('OpenAI API key not found in environment');
       throw new Error('OpenAI API key not configured');
     }
+
+    console.log('Analyzing case with OpenAI...');
 
     // Prompt system per analisi legale
     const systemPrompt = `Sei un assistente legale AI esperto nel diritto italiano. Il tuo compito è analizzare un caso legale e:
@@ -41,7 +50,7 @@ Devi rispondere SEMPRE in formato JSON con questa struttura:
   "nextQuestion": {
     "text": "domanda specifica",
     "type": "text|date|choice|multiselect",
-    "options": ["opzione1", "opzione2"] // solo se type è choice o multiselect
+    "options": ["opzione1", "opzione2"]
   },
   "analysis": {
     "keyFacts": ["fatto1", "fatto2"],
@@ -56,6 +65,8 @@ Devi rispondere SEMPRE in formato JSON con questa struttura:
       ? `Caso precedente: ${previousContext}\n\nNuove informazioni: ${caseText}\n\nTipo di caso: ${caseType}`
       : `Analizza questo caso legale:\n${caseText}\n\nTipo di caso: ${caseType}`;
 
+    console.log('Sending request to OpenAI API...');
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -69,31 +80,44 @@ Devi rispondere SEMPRE in formato JSON con questa struttura:
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.3,
+        max_tokens: 1500,
         response_format: { type: "json_object" }
       }),
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error('OpenAI API error:', error);
-      throw new Error('Failed to analyze case');
+      const errorText = await response.text();
+      console.error('OpenAI API error response:', errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
-    const analysis = JSON.parse(data.choices[0].message.content);
+    console.log('OpenAI response received');
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error('Invalid OpenAI response structure:', data);
+      throw new Error('Invalid response from OpenAI');
+    }
 
-    console.log('Case analysis completed:', analysis.completeness.status);
+    const analysis = JSON.parse(data.choices[0].message.content);
+    console.log('Case analysis completed:', analysis.completeness?.status);
 
     return new Response(
       JSON.stringify(analysis),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
       }
     );
   } catch (error) {
-    console.error('Error in precheck function:', error);
+    console.error('Error in precheck function:', error.message);
+    console.error('Error stack:', error.stack);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: 'Check the edge function logs for more information'
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
