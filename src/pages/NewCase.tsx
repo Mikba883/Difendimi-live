@@ -1,29 +1,53 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Mic, MicOff, Volume2, Send, ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Volume2 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { MessageBubble } from "@/components/chat/MessageBubble";
+import { ChatInput } from "@/components/chat/ChatInput";
+import { TypingIndicator } from "@/components/chat/TypingIndicator";
+
+interface Message {
+  id: string;
+  text: string;
+  sender: 'user' | 'assistant';
+  timestamp: Date;
+}
 
 export default function NewCase() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [caseText, setCaseText] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [completeness, setCompleteness] = useState(0);
   const [analysis, setAnalysis] = useState<any>(null);
-  const [conversation, setConversation] = useState<string[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [currentText, setCurrentText] = useState("");
 
   useEffect(() => {
     checkAuth();
+    // Add welcome message
+    setMessages([{
+      id: '1',
+      text: "Ciao! Sono il tuo assistente legale AI. Descrivimi il tuo caso e ti guiderò con domande mirate per raccogliere tutte le informazioni necessarie.",
+      sender: 'assistant',
+      timestamp: new Date()
+    }]);
   }, []);
+
+  useEffect(() => {
+    // Auto-scroll to bottom when new messages arrive
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -81,8 +105,14 @@ export default function NewCase() {
         if (error) throw error;
         
         if (data?.text) {
-          setCaseText(prev => prev + " " + data.text);
-          setConversation(prev => [...prev, `Tu: ${data.text}`]);
+          const newMessage: Message = {
+            id: Date.now().toString(),
+            text: data.text,
+            sender: 'user',
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, newMessage]);
+          setCurrentText(prev => prev + " " + data.text);
         }
       };
       reader.readAsDataURL(audioBlob);
@@ -96,8 +126,25 @@ export default function NewCase() {
     }
   };
 
-  const analyzeCase = async () => {
-    if (!caseText.trim()) {
+  const handleSendMessage = async (text: string) => {
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text,
+      sender: 'user',
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setCurrentText(prev => prev + " " + text);
+    
+    // Analyze the case
+    await analyzeCase(text);
+  };
+
+  const analyzeCase = async (newText?: string) => {
+    const textToAnalyze = newText ? currentText + " " + newText : currentText;
+    
+    if (!textToAnalyze.trim()) {
       toast({
         title: "Attenzione",
         description: "Inserisci o detta le informazioni del caso",
@@ -108,11 +155,15 @@ export default function NewCase() {
 
     setIsAnalyzing(true);
     try {
+      const conversationContext = messages
+        .map(m => `${m.sender === 'user' ? 'Tu' : 'Assistente'}: ${m.text}`)
+        .join('\n');
+
       const { data, error } = await supabase.functions.invoke('precheck', {
         body: { 
-          caseText,
+          caseText: textToAnalyze,
           caseType: 'general',
-          previousContext: conversation.join('\n')
+          previousContext: conversationContext
         }
       });
 
@@ -121,14 +172,27 @@ export default function NewCase() {
       setAnalysis(data);
       setCompleteness(data.completeness.score);
 
-      // Se ci sono domande successive, pronunciale
+      // Add assistant response
       if (data.nextQuestion?.text) {
-        setConversation(prev => [...prev, `Assistente: ${data.nextQuestion.text}`]);
+        const assistantMessage: Message = {
+          id: Date.now().toString(),
+          text: data.nextQuestion.text,
+          sender: 'assistant',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, assistantMessage]);
         await speakText(data.nextQuestion.text);
       }
 
       // Se il caso è sufficientemente completo, salva
       if (data.completeness.status === 'complete' || data.completeness.status === 'sufficient') {
+        const completionMessage: Message = {
+          id: Date.now().toString(),
+          text: "Perfetto! Ho raccolto tutte le informazioni necessarie. Il tuo caso è stato salvato e analizzato con successo.",
+          sender: 'assistant',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, completionMessage]);
         await saveCase(data);
       }
 
@@ -188,8 +252,12 @@ export default function NewCase() {
           user_id: user.id,
           title: `Caso del ${new Date().toLocaleDateString('it-IT')}`,
           cards_json: {
-            originalText: caseText,
-            conversation,
+            originalText: currentText,
+            conversation: messages.map(m => ({
+              text: m.text,
+              sender: m.sender,
+              timestamp: m.timestamp.toISOString()
+            })),
             analysis: analysisData.analysis,
             completeness: analysisData.completeness
           },
@@ -220,122 +288,64 @@ export default function NewCase() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/dashboard')}
-          className="mb-6"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Torna alla Dashboard
-        </Button>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Nuovo Caso Legale</CardTitle>
-            <CardDescription>
-              Descrivi o detta il tuo caso. L'assistente AI ti guiderà con domande mirate.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Progress bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Completezza informazioni</span>
-                <span>{completeness}%</span>
-              </div>
-              <Progress value={completeness} className="h-2" />
+    <div className="flex flex-col h-screen bg-background">
+      {/* Header */}
+      <div className="border-b border-border px-4 py-3">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/dashboard')}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Dashboard
+            </Button>
+            <div>
+              <h1 className="text-lg font-semibold">Nuovo Caso Legale</h1>
+              <p className="text-xs text-muted-foreground">Assistente AI Legale</p>
             </div>
-
-            {/* Text area */}
-            <div className="space-y-2">
-              <Textarea
-                placeholder="Descrivi il tuo caso legale qui..."
-                value={caseText}
-                onChange={(e) => setCaseText(e.target.value)}
-                className="min-h-[200px]"
-              />
+          </div>
+          {completeness > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Completezza</span>
+              <Progress value={completeness} className="h-2 w-24" />
+              <span className="text-sm font-medium">{completeness}%</span>
             </div>
-
-            {/* Conversation history */}
-            {conversation.length > 0 && (
-              <Card className="bg-muted/50">
-                <CardContent className="pt-4">
-                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                    {conversation.map((msg, idx) => (
-                      <p key={idx} className={msg.startsWith('Tu:') ? 'text-primary' : 'text-muted-foreground'}>
-                        {msg}
-                      </p>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Analysis results */}
-            {analysis && analysis.completeness.missingElements?.length > 0 && (
-              <Card className="border-warning">
-                <CardContent className="pt-4">
-                  <p className="text-sm font-medium mb-2">Informazioni mancanti:</p>
-                  <ul className="list-disc list-inside text-sm text-muted-foreground">
-                    {analysis.completeness.missingElements.map((element: string, idx: number) => (
-                      <li key={idx}>{element}</li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Action buttons */}
-            <div className="flex gap-4 justify-center">
-              <Button
-                variant={isRecording ? "destructive" : "outline"}
-                size="lg"
-                onClick={isRecording ? stopRecording : startRecording}
-                disabled={isAnalyzing || isSpeaking}
-              >
-                {isRecording ? (
-                  <>
-                    <MicOff className="mr-2 h-5 w-5" />
-                    Stop Registrazione
-                  </>
-                ) : (
-                  <>
-                    <Mic className="mr-2 h-5 w-5" />
-                    Registra Audio
-                  </>
-                )}
-              </Button>
-
-              <Button
-                size="lg"
-                onClick={analyzeCase}
-                disabled={isAnalyzing || isRecording || !caseText.trim()}
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Analisi in corso...
-                  </>
-                ) : (
-                  <>
-                    <Send className="mr-2 h-5 w-5" />
-                    Analizza Caso
-                  </>
-                )}
-              </Button>
-
-              {isSpeaking && (
-                <Button variant="ghost" size="lg" disabled>
-                  <Volume2 className="mr-2 h-5 w-5 animate-pulse" />
-                  Ascolto risposta...
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+          )}
+        </div>
       </div>
+
+      {/* Chat area */}
+      <ScrollArea className="flex-1 px-4">
+        <div 
+          ref={scrollAreaRef}
+          className="max-w-4xl mx-auto py-4 space-y-4"
+        >
+          {messages.map((message) => (
+            <MessageBubble key={message.id} message={message} />
+          ))}
+          
+          {isAnalyzing && <TypingIndicator />}
+          
+          {isSpeaking && (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <Volume2 className="h-4 w-4 animate-pulse" />
+              <span>Riproduzione audio in corso...</span>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+
+      {/* Input area */}
+      <ChatInput
+        onSendMessage={handleSendMessage}
+        onStartRecording={startRecording}
+        onStopRecording={stopRecording}
+        isRecording={isRecording}
+        isDisabled={isAnalyzing || isSpeaking}
+        placeholder="Descrivi il tuo caso legale..."
+      />
     </div>
   );
 }
