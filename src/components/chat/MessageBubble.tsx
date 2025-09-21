@@ -21,13 +21,16 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     >
       <div
         className={cn(
-          "max-w-[70%] rounded-2xl px-4 py-2 shadow-sm",
+          "max-w-[75%] rounded-2xl px-6 py-3.5 shadow-sm transition-all",
           isUser 
-            ? "bg-primary text-primary-foreground rounded-br-sm" 
-            : "bg-muted rounded-bl-sm"
+            ? "bg-primary text-primary-foreground rounded-br-md ml-12" 
+            : "bg-card border border-border rounded-bl-md mr-12"
         )}
       >
-        <p className="text-sm whitespace-pre-wrap break-words">
+        <p className={cn(
+          "whitespace-pre-wrap break-words leading-relaxed",
+          isUser ? "text-sm" : "text-[15px]"
+        )}>
           {message.text}
         </p>
       </div>

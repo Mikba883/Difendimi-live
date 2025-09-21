@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Volume2 } from "lucide-react";
+import { ArrowLeft, Volume2, MessageCircle, Mic, FileText } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -287,65 +287,116 @@ export default function NewCase() {
     }
   };
 
+  const hasMessages = messages.filter(m => m.sender === 'user').length > 0;
+
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border px-4 py-3">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/dashboard')}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Dashboard
-            </Button>
-            <div>
-              <h1 className="text-lg font-semibold">Nuovo Caso Legale</h1>
-              <p className="text-xs text-muted-foreground">Assistente AI Legale</p>
+    <div className="flex flex-col h-screen bg-gradient-to-b from-background to-muted/5">
+      {/* Header - solo se ci sono messaggi */}
+      {hasMessages && (
+        <div className="border-b bg-background/95 backdrop-blur-sm px-4 py-3 animate-fade-in">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/dashboard')}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Dashboard
+              </Button>
+              <div>
+                <h1 className="text-lg font-semibold">Nuovo Caso Legale</h1>
+                <p className="text-xs text-muted-foreground">Assistente AI Legale</p>
+              </div>
+            </div>
+            {completeness > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Completezza</span>
+                <Progress value={completeness} className="h-2 w-24" />
+                <span className="text-sm font-medium">{completeness}%</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Vista iniziale centrata o Chat Area */}
+      {!hasMessages ? (
+        <div className="flex-1 flex flex-col items-center justify-center px-4 animate-fade-in">
+          <div className="max-w-2xl w-full text-center space-y-12">
+            <div className="space-y-4">
+              <h1 className="text-6xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                Assistente Legale AI
+              </h1>
+              <p className="text-xl text-muted-foreground">
+                Sono qui per aiutarti ad analizzare il tuo caso legale
+              </p>
+            </div>
+            
+            <div className="w-full bg-card/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
+              <ChatInput
+                onSendMessage={handleSendMessage}
+                onStartRecording={startRecording}
+                onStopRecording={stopRecording}
+                isRecording={isRecording}
+                isDisabled={isAnalyzing}
+                placeholder="Inizia a descrivere il tuo caso..."
+              />
+            </div>
+            
+            <div className="flex justify-center gap-8 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 hover:text-foreground transition-colors">
+                <MessageCircle className="h-4 w-4" />
+                <span>Chat interattiva</span>
+              </div>
+              <div className="flex items-center gap-2 hover:text-foreground transition-colors">
+                <Mic className="h-4 w-4" />
+                <span>Input vocale</span>
+              </div>
+              <div className="flex items-center gap-2 hover:text-foreground transition-colors">
+                <FileText className="h-4 w-4" />
+                <span>Analisi completa</span>
+              </div>
             </div>
           </div>
-          {completeness > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Completezza</span>
-              <Progress value={completeness} className="h-2 w-24" />
-              <span className="text-sm font-medium">{completeness}%</span>
-            </div>
-          )}
         </div>
-      </div>
-
-      {/* Chat area */}
-      <ScrollArea className="flex-1 px-4">
-        <div 
-          ref={scrollAreaRef}
-          className="max-w-4xl mx-auto py-4 space-y-4"
-        >
-          {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))}
-          
-          {isAnalyzing && <TypingIndicator />}
-          
-          {isSpeaking && (
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Volume2 className="h-4 w-4 animate-pulse" />
-              <span>Riproduzione audio in corso...</span>
+      ) : (
+        <>
+          <ScrollArea className="flex-1 px-4">
+            <div 
+              ref={scrollAreaRef}
+              className="max-w-3xl mx-auto py-6 space-y-5"
+            >
+              {messages.map((message) => (
+                <MessageBubble key={message.id} message={message} />
+              ))}
+              
+              {isAnalyzing && <TypingIndicator />}
+              
+              {isSpeaking && (
+                <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm animate-fade-in">
+                  <Volume2 className="h-4 w-4 animate-pulse" />
+                  <span>Riproduzione audio in corso...</span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </ScrollArea>
+          </ScrollArea>
 
-      {/* Input area */}
-      <ChatInput
-        onSendMessage={handleSendMessage}
-        onStartRecording={startRecording}
-        onStopRecording={stopRecording}
-        isRecording={isRecording}
-        isDisabled={isAnalyzing || isSpeaking}
-        placeholder="Descrivi il tuo caso legale..."
-      />
+          {/* Input area - solo quando ci sono messaggi */}
+          <div className="border-t bg-background/95 backdrop-blur-sm px-4 py-4">
+            <div className="max-w-3xl mx-auto">
+              <ChatInput
+                onSendMessage={handleSendMessage}
+                onStartRecording={startRecording}
+                onStopRecording={stopRecording}
+                isRecording={isRecording}
+                isDisabled={isAnalyzing || isSpeaking}
+                placeholder="Continua a descrivere il tuo caso..."
+              />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
