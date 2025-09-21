@@ -53,11 +53,16 @@ const Login = () => {
     e.preventDefault();
     
     if (!privacyConsent) {
-      toast({
-        title: "Consenso richiesto",
-        description: "Devi accettare i termini e le condizioni per procedere.",
-        variant: "destructive",
-      });
+      // Don't show toast, just update the UI state
+      const privacyLabel = document.getElementById('privacy-label');
+      if (privacyLabel) {
+        privacyLabel.classList.add('text-destructive');
+      }
+      const privacyError = document.getElementById('privacy-error');
+      if (privacyError) {
+        privacyError.classList.remove('hidden');
+      }
+      setLoading(false);
       return;
     }
 
@@ -211,29 +216,48 @@ const Login = () => {
                       Ti invieremo un codice OTP e genereremo una password sicura per te
                     </p>
                   </div>
-                  <div className="flex items-start space-x-2">
-                    <Checkbox
-                      id="privacy"
-                      checked={privacyConsent}
-                      onCheckedChange={(checked) => setPrivacyConsent(checked as boolean)}
-                    />
-                    <label
-                      htmlFor="privacy"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      Ho letto e accetto la{" "}
-                      <Link to="/privacy" className="text-primary hover:underline">
-                        Privacy Policy
-                      </Link>
-                      , i{" "}
-                      <Link to="/terms" className="text-primary hover:underline">
-                        Termini e Condizioni
-                      </Link>
-                      {" "}e il{" "}
-                      <Link to="/disclaimer" className="text-primary hover:underline">
-                        Disclaimer Legale
-                      </Link>
-                    </label>
+                  <div className="space-y-2">
+                    <div className="flex items-start space-x-2">
+                      <Checkbox
+                        id="privacy"
+                        checked={privacyConsent}
+                        onCheckedChange={(checked) => {
+                          setPrivacyConsent(checked as boolean);
+                          // Reset error state when checkbox is checked
+                          if (checked) {
+                            const privacyLabel = document.getElementById('privacy-label');
+                            if (privacyLabel) {
+                              privacyLabel.classList.remove('text-destructive');
+                            }
+                            const privacyError = document.getElementById('privacy-error');
+                            if (privacyError) {
+                              privacyError.classList.add('hidden');
+                            }
+                          }
+                        }}
+                      />
+                      <label
+                        id="privacy-label"
+                        htmlFor="privacy"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 transition-colors"
+                      >
+                        Ho letto e accetto la{" "}
+                        <Link to="/privacy" className="text-primary hover:underline">
+                          Privacy Policy
+                        </Link>
+                        , i{" "}
+                        <Link to="/terms" className="text-primary hover:underline">
+                          Termini e Condizioni
+                        </Link>
+                        {" "}e il{" "}
+                        <Link to="/disclaimer" className="text-primary hover:underline">
+                          Disclaimer Legale
+                        </Link>
+                      </label>
+                    </div>
+                    <p id="privacy-error" className="text-sm text-destructive hidden">
+                      Devi accettare i termini e le condizioni per procedere
+                    </p>
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? (

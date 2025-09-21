@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, FileText, Trash2, LogOut, Shield } from "lucide-react";
+import { Plus, FileText, Trash2, LogOut, Shield, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
@@ -113,14 +113,13 @@ const Dashboard = () => {
       <header className="border-b bg-background/95 backdrop-blur sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Shield className="h-6 w-6 text-primary" />
+            <div>
               <h1 className="text-xl font-semibold">Difendimi.AI</h1>
             </div>
             <div className="flex items-center gap-4">
               <Button variant="outline" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                {userEmail} - Esci
+                <User className="h-4 w-4 mr-2" />
+                {userEmail}
               </Button>
             </div>
           </div>
@@ -130,15 +129,13 @@ const Dashboard = () => {
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
-          {/* Title and New Case Button */}
-          <div className="mb-8">
-            <div>
-              <h2 className="text-3xl font-bold">I tuoi casi</h2>
-              <p className="text-muted-foreground mt-1">
-                Gestisci i tuoi casi in completa privacy
-              </p>
-            </div>
-            <Button onClick={() => navigate("/case/new")} size="lg" className="mt-4">
+          {/* Title and New Case Button - Centered */}
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold mb-2">I tuoi casi</h2>
+            <p className="text-muted-foreground mb-6">
+              Gestisci i tuoi casi in completa privacy
+            </p>
+            <Button onClick={() => navigate("/case/new")} size="lg">
               <Plus className="h-5 w-5 mr-2" />
               Nuovo Caso
             </Button>
