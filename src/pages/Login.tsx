@@ -179,13 +179,6 @@ const Login = () => {
     <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
-            <img 
-              src={logoShield} 
-              alt="Difendimi.AI" 
-              className="h-16 w-16 drop-shadow-lg"
-            />
-          </div>
           <CardTitle className="text-2xl text-center">Difendimi.AI</CardTitle>
           <CardDescription className="text-center">
             Accedi per gestire i tuoi casi in completa privacy
@@ -242,7 +235,7 @@ const Login = () => {
                       </Link>
                     </label>
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading || !privacyConsent}>
+                  <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -251,7 +244,7 @@ const Login = () => {
                     ) : (
                       <>
                         <Mail className="mr-2 h-4 w-4" />
-                        Registrati con Email
+                        Registrati
                       </>
                     )}
                   </Button>

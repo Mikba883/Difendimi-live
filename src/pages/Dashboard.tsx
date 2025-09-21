@@ -118,10 +118,9 @@ const Dashboard = () => {
               <h1 className="text-xl font-semibold">Difendimi.AI</h1>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">{userEmail}</span>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
-                Esci
+                {userEmail} - Esci
               </Button>
             </div>
           </div>
@@ -132,14 +131,14 @@ const Dashboard = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           {/* Title and New Case Button */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="mb-8">
             <div>
               <h2 className="text-3xl font-bold">I tuoi casi</h2>
               <p className="text-muted-foreground mt-1">
-                Gestisci i tuoi casi legali in completa privacy
+                Gestisci i tuoi casi in completa privacy
               </p>
             </div>
-            <Button onClick={() => navigate("/case/new")} size="lg">
+            <Button onClick={() => navigate("/case/new")} size="lg" className="mt-4">
               <Plus className="h-5 w-5 mr-2" />
               Nuovo Caso
             </Button>
@@ -156,7 +155,7 @@ const Dashboard = () => {
                 <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">Nessun caso presente</h3>
                 <p className="text-muted-foreground mb-6">
-                  Inizia creando il tuo primo caso legale
+                  Inizia creando il tuo primo caso
                 </p>
                 <Button onClick={() => navigate("/case/new")}>
                   <Plus className="h-4 w-4 mr-2" />

@@ -98,7 +98,6 @@ const Index = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <Shield className="h-7 w-7 text-primary" />
               <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
                 Difendimi.AI
               </h1>
@@ -110,7 +109,6 @@ const Index = () => {
               {isInstalled ? (
                 <>
                   Apri App
-                  <ArrowRight className="h-4 w-4 ml-2" />
                 </>
               ) : installPrompt ? (
                 <>
@@ -120,7 +118,6 @@ const Index = () => {
               ) : (
                 <>
                   Accedi
-                  <ArrowRight className="h-4 w-4 ml-2" />
                 </>
               )}
             </Button>
@@ -150,16 +147,8 @@ const Index = () => {
                 onClick={handleMainButtonClick}
                 className="bg-gradient-primary hover:opacity-90 text-white shadow-elegant px-8"
               >
-                Inizia Ora
+                {isInstalled ? 'Accedi all\'App' : (installPrompt ? 'Scarica App' : 'Accedi all\'App')}
                 <ArrowRight className="h-5 w-5 ml-2" />
-              </Button>
-              <Button 
-                size="lg"
-                variant="outline"
-                className="border-primary/20 hover:bg-primary/5"
-              >
-                Scopri di Più
-                <ChevronRight className="h-5 w-5 ml-2" />
               </Button>
             </div>
             <div className="flex items-center justify-center gap-8 mt-12 text-sm text-muted-foreground">
