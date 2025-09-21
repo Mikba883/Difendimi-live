@@ -1,1 +1,10 @@
 project_id = "fxiymiaexmxvacnbyhrq"
+
+[functions.stt]
+verify_jwt = true
+
+[functions.tts]
+verify_jwt = true
+
+[functions.precheck]
+verify_jwt = true
