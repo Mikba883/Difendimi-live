@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { InstallPWA } from "@/components/InstallPWA";
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import logoShield from "@/assets/logo-shield.png";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -17,6 +19,17 @@ const Index = () => {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
+    // Check auth status first
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate("/dashboard");
+        return;
+      }
+    };
+    
+    checkAuth();
+
     // Check if running on iOS
     const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(isIOSDevice);
@@ -43,7 +56,7 @@ const Index = () => {
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
-  }, []);
+  }, [navigate]);
 
   const handleMainButtonClick = async () => {
     // Se l'app è già installata o siamo in modalità standalone, vai al login
@@ -84,10 +97,12 @@ const Index = () => {
       {/* Hero Section */}
       <div className="container mx-auto px-4 pt-20 pb-16">
         <div className="text-center max-w-4xl mx-auto animate-fadeIn">
-          <div className="flex justify-center mb-6">
-            <div className="p-4 rounded-2xl bg-gradient-primary shadow-glow animate-pulse-glow">
-              <Shield className="h-16 w-16 text-primary-foreground" />
-            </div>
+          <div className="flex justify-center mb-8">
+            <img 
+              src={logoShield} 
+              alt="Difendimi.AI Logo" 
+              className="h-32 w-32 md:h-40 md:w-40 drop-shadow-2xl animate-pulse-glow"
+            />
           </div>
           <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-primary bg-clip-text text-transparent">
             Difendimi.AI
@@ -96,8 +111,8 @@ const Index = () => {
             Scopri cosa dice la legge, senza attese né parcelle
           </p>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Un assistente intelligente che analizza il tuo caso legale, cerca le normative pertinenti
-            e ti fornisce informazioni educative chiare e comprensibili.
+            Un assistente intelligente che analizza il tuo caso, cerca le normative pertinenti
+            e ti fornisce informazioni chiare e comprensibili.
           </p>
           <Button 
             size="lg" 
@@ -206,16 +221,16 @@ const Index = () => {
 
       {/* Disclaimer Section */}
       <div className="container mx-auto px-4 py-16">
-        <Card className="max-w-3xl mx-auto bg-muted/50">
-          <CardContent className="p-8">
-            <h3 className="text-xl font-semibold mb-4">Nota Importante</h3>
-            <p className="text-muted-foreground">
-              Difendimi.AI fornisce esclusivamente informazioni educative e non costituisce consulenza legale.
-              Per questioni legali specifiche, consulta sempre un avvocato qualificato.
-              Il servizio è progettato per aiutarti a comprendere meglio le normative applicabili al tuo caso.
-            </p>
-          </CardContent>
-        </Card>
+          <Card className="max-w-3xl mx-auto bg-muted/50">
+            <CardContent className="p-8">
+              <h3 className="text-xl font-semibold mb-4">Nota Importante</h3>
+              <p className="text-muted-foreground">
+                Difendimi.AI fornisce esclusivamente informazioni educative.
+                Per questioni legali specifiche, consulta sempre un professionista qualificato.
+                Il servizio è progettato per aiutarti a comprendere meglio le normative applicabili.
+              </p>
+            </CardContent>
+          </Card>
       </div>
 
       {/* Footer */}
