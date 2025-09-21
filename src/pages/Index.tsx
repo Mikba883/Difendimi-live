@@ -94,19 +94,41 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
-      {/* Hero Section */}
-      <div className="container mx-auto px-4 pt-20 pb-16">
-        <div className="text-center max-w-4xl mx-auto animate-fadeIn">
-          <div className="flex justify-center mb-8">
-            <img 
-              src={logoShield} 
-              alt="Difendimi.AI Logo" 
-              className="h-32 w-32 md:h-40 md:w-40 drop-shadow-2xl animate-pulse-glow"
-            />
+      {/* Header Banner */}
+      <header className="bg-background border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl md:text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+              Difendimi.AI
+            </h1>
+            <Button 
+              onClick={handleMainButtonClick}
+              className="gap-2"
+            >
+              {isInstalled ? (
+                <>
+                  Apri App
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              ) : installPrompt ? (
+                <>
+                  <Download className="h-4 w-4" />
+                  Installa
+                </>
+              ) : (
+                <>
+                  Login
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </Button>
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-primary bg-clip-text text-transparent">
-            Difendimi.AI
-          </h1>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <div className="container mx-auto px-4 pt-16 pb-16">
+        <div className="text-center max-w-4xl mx-auto animate-fadeIn">
           <p className="text-xl md:text-2xl text-muted-foreground mb-8">
             Scopri cosa dice la legge, senza attese né parcelle
           </p>
@@ -114,28 +136,6 @@ const Index = () => {
             Un assistente intelligente che analizza il tuo caso, cerca le normative pertinenti
             e ti fornisce informazioni chiare e comprensibili.
           </p>
-          <Button 
-            size="lg" 
-            onClick={handleMainButtonClick}
-            className="gap-2"
-          >
-            {isInstalled ? (
-              <>
-                Apri App
-                <ArrowRight className="h-5 w-5" />
-              </>
-            ) : installPrompt ? (
-              <>
-                <Download className="h-5 w-5" />
-                Installa App
-              </>
-            ) : (
-              <>
-                Apri App (PWA)
-                <ArrowRight className="h-5 w-5" />
-              </>
-            )}
-          </Button>
         </div>
       </div>
 
