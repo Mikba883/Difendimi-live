@@ -1,11 +1,83 @@
-import { Shield, ArrowRight, CheckCircle, Lock, Scale, Clock } from "lucide-react";
+import { Shield, ArrowRight, CheckCircle, Lock, Scale, Clock, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { InstallPWA } from "@/components/InstallPWA";
+import { useState, useEffect } from "react";
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 
 const Index = () => {
   const navigate = useNavigate();
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+
+  useEffect(() => {
+    // Check if running on iOS
+    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    setIsIOS(isIOSDevice);
+
+    // Check if app is already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+    }
+
+    // Listen for the beforeinstallprompt event
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as BeforeInstallPromptEvent);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Check if app was installed
+    window.addEventListener('appinstalled', () => {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+    });
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleMainButtonClick = async () => {
+    // Se l'app è già installata o siamo in modalità standalone, vai al login
+    if (isInstalled || window.matchMedia('(display-mode: standalone)').matches) {
+      navigate("/login");
+      return;
+    }
+
+    // Se c'è il prompt di installazione disponibile, installala
+    if (installPrompt) {
+      try {
+        await installPrompt.prompt();
+        const { outcome } = await installPrompt.userChoice;
+        
+        if (outcome === 'accepted') {
+          setInstallPrompt(null);
+          // Dopo l'installazione, naviga al login
+          setTimeout(() => navigate("/login"), 500);
+        }
+      } catch (error) {
+        console.error('Error installing PWA:', error);
+        // Se c'è un errore, vai comunque al login
+        navigate("/login");
+      }
+    } else if (isIOS) {
+      // Su iOS mostra un alert con le istruzioni
+      alert("Per installare l'app:\n1. Tocca il pulsante Condividi ⬆️\n2. Scorri e tocca 'Aggiungi a Home'\n3. Tocca 'Aggiungi'");
+      // Poi vai al login
+      navigate("/login");
+    } else {
+      // Se non c'è modo di installare, vai direttamente al login
+      navigate("/login");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -29,11 +101,25 @@ const Index = () => {
           </p>
           <Button 
             size="lg" 
-            onClick={() => navigate("/login")}
+            onClick={handleMainButtonClick}
             className="gap-2"
           >
-            Apri App (PWA)
-            <ArrowRight className="h-5 w-5" />
+            {isInstalled ? (
+              <>
+                Apri App
+                <ArrowRight className="h-5 w-5" />
+              </>
+            ) : installPrompt ? (
+              <>
+                <Download className="h-5 w-5" />
+                Installa App
+              </>
+            ) : (
+              <>
+                Apri App (PWA)
+                <ArrowRight className="h-5 w-5" />
+              </>
+            )}
           </Button>
         </div>
       </div>
