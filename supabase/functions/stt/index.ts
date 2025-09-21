@@ -1,5 +1,5 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { GoogleAuth } from "https://deno.land/x/google_auth@v1.0.0/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,54 +18,39 @@ serve(async (req) => {
       throw new Error('Audio data is required');
     }
 
-    // Decode base64 audio
-    const audioBytes = Uint8Array.from(atob(audio), c => c.charCodeAt(0));
+    console.log('Received audio data, preparing for Whisper API');
 
-    // Google Cloud credentials
-    const googleAuth = new GoogleAuth({
-      credentials: {
-        client_email: Deno.env.get('GOOGLE_CLIENT_EMAIL'),
-        private_key: Deno.env.get('GOOGLE_PRIVATE_KEY')?.replace(/\\n/g, '\n'),
+    // Decode base64 audio to binary
+    const binaryString = atob(audio);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // Create form data for Whisper API
+    const formData = new FormData();
+    const blob = new Blob([bytes], { type: 'audio/webm' });
+    formData.append('file', blob, 'audio.webm');
+    formData.append('model', 'whisper-1');
+    formData.append('language', 'it'); // Italian language
+
+    // Call OpenAI Whisper API
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
       },
-      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+      body: formData,
     });
-
-    const accessToken = await googleAuth.getAccessToken();
-
-    // Call Google Speech-to-Text API
-    const response = await fetch(
-      'https://speech.googleapis.com/v1/speech:recognize',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          config: {
-            encoding: 'WEBM_OPUS',
-            sampleRateHertz: 48000,
-            languageCode: 'it-IT',
-            model: 'latest_long',
-            enableAutomaticPunctuation: true,
-          },
-          audio: {
-            content: audio,
-          },
-        }),
-      }
-    );
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('Google STT error:', error);
+      console.error('Whisper API error:', error);
       throw new Error('Failed to transcribe audio');
     }
 
     const result = await response.json();
-    const transcript = result.results
-      ?.map((r: any) => r.alternatives?.[0]?.transcript)
-      .join(' ') || '';
+    const transcript = result.text || '';
 
     console.log('Transcription successful:', transcript);
 
