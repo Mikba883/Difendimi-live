@@ -2,6 +2,7 @@ import { Shield, ArrowRight, CheckCircle, Lock, Scale, Clock } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
+import { InstallPWA } from "@/components/InstallPWA";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -147,6 +148,9 @@ const Index = () => {
           </div>
         </div>
       </footer>
+      
+      {/* Install PWA Component */}
+      <InstallPWA />
     </div>
   );
 };
