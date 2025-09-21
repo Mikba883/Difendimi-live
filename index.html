@@ -1,24 +1,41 @@
 <!doctype html>
-<html lang="en">
+<html lang="it">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Difendimi.AI - La tua difesa intelligente</title>
-    <meta name="description" content="Difendimi.AI - Soluzioni intelligenti per la tua protezione digitale" />
+    <title>Difendimi.AI - Assistente Legale Intelligente</title>
+    <meta name="description" content="Scopri cosa dice la legge, senza attese né parcelle" />
     <meta name="author" content="Difendimi.AI" />
-
-    <meta property="og:title" content="Difendimi.AI" />
-    <meta property="og:description" content="Soluzioni intelligenti per la tua protezione digitale" />
+    <meta name="theme-color" content="#3b82f6" />
+    
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Difendimi.AI - Assistente Legale Intelligente" />
+    <meta property="og:description" content="Scopri cosa dice la legge, senza attese né parcelle" />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta property="og:image" content="/icon-512.png" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@lovable_dev" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta name="twitter:title" content="Difendimi.AI" />
+    <meta name="twitter:description" content="Scopri cosa dice la legge, senza attese né parcelle" />
+    <meta name="twitter:image" content="/icon-512.png" />
   </head>
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Registra il service worker per PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => console.log('Service Worker registrato:', registration))
+            .catch(error => console.log('Service Worker registration failed:', error));
+        });
+      }
+    </script>
   </body>
 </html>
