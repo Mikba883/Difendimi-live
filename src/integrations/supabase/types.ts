@@ -14,7 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cases: {
+        Row: {
+          cards_json: Json
+          created_at: string
+          doc_availability: Json | null
+          id: string
+          sources_used: Json | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cards_json: Json
+          created_at?: string
+          doc_availability?: Json | null
+          id?: string
+          sources_used?: Json | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cards_json?: Json
+          created_at?: string
+          doc_availability?: Json | null
+          id?: string
+          sources_used?: Json | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          privacy_consent: boolean | null
+          privacy_consent_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          privacy_consent?: boolean | null
+          privacy_consent_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          privacy_consent?: boolean | null
+          privacy_consent_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
