@@ -1,6 +1,4 @@
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { it } from "date-fns/locale";
 
 interface MessageBubbleProps {
   message: {
@@ -32,12 +30,6 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         <p className="text-sm whitespace-pre-wrap break-words">
           {message.text}
         </p>
-        <span className={cn(
-          "text-xs mt-1 block",
-          isUser ? "text-primary-foreground/70" : "text-muted-foreground"
-        )}>
-          {format(message.timestamp, 'HH:mm', { locale: it })}
-        </span>
       </div>
     </div>
   );

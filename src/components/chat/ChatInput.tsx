@@ -47,7 +47,7 @@ export function ChatInput({
   return (
     <div className="bg-background p-4">
       <div className="max-w-4xl mx-auto">
-        <div className="relative flex items-end gap-2 bg-muted/30 rounded-3xl p-2">
+        <div className="relative flex items-end gap-2 bg-muted/30 rounded-3xl p-3 border-2 border-foreground">
           <textarea
             ref={textareaRef}
             value={inputText}
@@ -56,11 +56,11 @@ export function ChatInput({
             placeholder={placeholder}
             disabled={isDisabled || isRecording}
             className={cn(
-              "flex-1 resize-none bg-transparent px-4 py-2",
+              "flex-1 resize-none bg-transparent px-4 py-3",
               "text-sm placeholder:text-muted-foreground",
               "focus:outline-none",
               "disabled:cursor-not-allowed disabled:opacity-50",
-              "min-h-[36px] max-h-[200px] transition-all"
+              "min-h-[48px] max-h-[200px] transition-all"
             )}
             rows={1}
           />
