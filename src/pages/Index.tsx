@@ -1,11 +1,10 @@
-import { Shield, ArrowRight, CheckCircle, Lock, Scale, Clock, Download } from "lucide-react";
+import { Shield, ArrowRight, CheckCircle, Lock, Scale, Clock, Download, Brain, FileText, Zap, Users, Star, MessageSquare, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InstallPWA } from "@/components/InstallPWA";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import logoShield from "@/assets/logo-shield.png";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -94,31 +93,34 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
-      {/* Header Banner */}
-      <header className="bg-background border-b">
+      {/* Header */}
+      <header className="fixed top-0 w-full bg-background/95 backdrop-blur-md border-b border-border/50 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl md:text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Difendimi.AI
-            </h1>
+            <div className="flex items-center gap-2">
+              <Shield className="h-7 w-7 text-primary" />
+              <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                Difendimi.AI
+              </h1>
+            </div>
             <Button 
               onClick={handleMainButtonClick}
-              className="gap-2"
+              className="bg-gradient-primary hover:opacity-90 transition-opacity text-white shadow-elegant"
             >
               {isInstalled ? (
                 <>
                   Apri App
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-4 w-4 ml-2" />
                 </>
               ) : installPrompt ? (
                 <>
-                  <Download className="h-4 w-4" />
-                  Installa
+                  <Download className="h-4 w-4 mr-2" />
+                  Installa App
                 </>
               ) : (
                 <>
-                  Login
-                  <ArrowRight className="h-4 w-4" />
+                  Accedi
+                  <ArrowRight className="h-4 w-4 ml-2" />
                 </>
               )}
             </Button>
@@ -127,125 +129,315 @@ const Index = () => {
       </header>
 
       {/* Hero Section */}
-      <div className="container mx-auto px-4 pt-16 pb-16">
-        <div className="text-center max-w-4xl mx-auto animate-fadeIn">
-          <p className="text-xl md:text-2xl text-muted-foreground mb-8">
-            Scopri cosa dice la legge, senza attese né parcelle
-          </p>
-          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Un assistente intelligente che analizza il tuo caso, cerca le normative pertinenti
-            e ti fornisce informazioni chiare e comprensibili.
-          </p>
+      <section className="relative pt-32 pb-20 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-hero" />
+        <div className="container mx-auto px-4 relative">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full mb-6">
+              <Zap className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-primary">Assistenza Legale Intelligente</span>
+            </div>
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 animate-fade-in">
+              Scopri cosa dice la
+              <span className="bg-gradient-primary bg-clip-text text-transparent"> legge</span>
+            </h1>
+            <p className="text-xl md:text-2xl text-muted-foreground mb-8 animate-fade-in" style={{animationDelay: "0.1s"}}>
+              Senza attese, senza parcelle, con l'intelligenza artificiale
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in" style={{animationDelay: "0.2s"}}>
+              <Button 
+                size="lg"
+                onClick={handleMainButtonClick}
+                className="bg-gradient-primary hover:opacity-90 text-white shadow-elegant px-8"
+              >
+                Inizia Ora
+                <ArrowRight className="h-5 w-5 ml-2" />
+              </Button>
+              <Button 
+                size="lg"
+                variant="outline"
+                className="border-primary/20 hover:bg-primary/5"
+              >
+                Scopri di Più
+                <ChevronRight className="h-5 w-5 ml-2" />
+              </Button>
+            </div>
+            <div className="flex items-center justify-center gap-8 mt-12 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-primary" />
+                <span>100% Anonimo</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" />
+                <span>Privacy Garantita</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Brain className="h-4 w-4 text-primary" />
+                <span>AI Avanzata</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* Come Funziona Section */}
-      <div className="container mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-center mb-12">Come Funziona</h2>
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <Card className="border-none shadow-lg">
-            <CardContent className="pt-6">
-              <div className="rounded-full bg-primary/10 w-12 h-12 flex items-center justify-center mb-4">
-                <span className="text-primary font-bold">1</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Racconta il tuo caso</h3>
-              <p className="text-muted-foreground">
-                Descrivi la tua situazione scrivendo o parlando. L'AI ti guiderà con domande mirate.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-lg">
-            <CardContent className="pt-6">
-              <div className="rounded-full bg-primary/10 w-12 h-12 flex items-center justify-center mb-4">
-                <span className="text-primary font-bold">2</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Fonti ufficiali</h3>
-              <p className="text-muted-foreground">
-                Il sistema cerca automaticamente le normative italiane ed europee pertinenti.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-lg">
-            <CardContent className="pt-6">
-              <div className="rounded-full bg-primary/10 w-12 h-12 flex items-center justify-center mb-4">
-                <span className="text-primary font-bold">3</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Ricevi le informazioni</h3>
-              <p className="text-muted-foreground">
-                Ottieni 7 schede informative e documenti PDF scaricabili.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Benefici Section */}
-      <div className="container mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-center mb-12">I Vantaggi</h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-          <div className="flex items-start gap-3">
-            <CheckCircle className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-            <div>
-              <h4 className="font-semibold mb-1">100% Anonimo</h4>
-              <p className="text-sm text-muted-foreground">I tuoi dati sono sempre protetti e anonimizzati</p>
-            </div>
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              Come <span className="bg-gradient-primary bg-clip-text text-transparent">Funziona</span>
+            </h2>
+            <p className="text-xl text-muted-foreground">Tre semplici passi verso la chiarezza legale</p>
           </div>
+          
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <Card className="group hover:shadow-elegant transition-all duration-300 border-border/50 bg-gradient-card">
+              <CardContent className="pt-8 text-center">
+                <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-primary flex items-center justify-center text-white font-bold text-xl group-hover:scale-110 transition-transform">
+                  1
+                </div>
+                <MessageSquare className="h-8 w-8 mx-auto mb-4 text-primary" />
+                <h3 className="text-xl font-semibold mb-3">Racconta il tuo caso</h3>
+                <p className="text-muted-foreground">
+                  Descrivi la situazione con parole tue. L'AI comprenderà e ti guiderà.
+                </p>
+              </CardContent>
+            </Card>
 
-          <div className="flex items-start gap-3">
-            <Scale className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-            <div>
-              <h4 className="font-semibold mb-1">Fonti Ufficiali</h4>
-              <p className="text-sm text-muted-foreground">Basato su Normattiva e EUR-Lex</p>
-            </div>
-          </div>
+            <Card className="group hover:shadow-elegant transition-all duration-300 border-border/50 bg-gradient-card">
+              <CardContent className="pt-8 text-center">
+                <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-primary flex items-center justify-center text-white font-bold text-xl group-hover:scale-110 transition-transform">
+                  2
+                </div>
+                <Brain className="h-8 w-8 mx-auto mb-4 text-primary" />
+                <h3 className="text-xl font-semibold mb-3">Analisi intelligente</h3>
+                <p className="text-muted-foreground">
+                  Il sistema cerca nelle banche dati Normattiva ed EUR-Lex.
+                </p>
+              </CardContent>
+            </Card>
 
-          <div className="flex items-start gap-3">
-            <Clock className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-            <div>
-              <h4 className="font-semibold mb-1">Risposte Immediate</h4>
-              <p className="text-sm text-muted-foreground">Ottieni informazioni in pochi minuti</p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3">
-            <Lock className="h-6 w-6 text-primary flex-shrink-0 mt-1" />
-            <div>
-              <h4 className="font-semibold mb-1">Privacy First</h4>
-              <p className="text-sm text-muted-foreground">Nessun dato personale viene salvato</p>
-            </div>
+            <Card className="group hover:shadow-elegant transition-all duration-300 border-border/50 bg-gradient-card">
+              <CardContent className="pt-8 text-center">
+                <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-primary flex items-center justify-center text-white font-bold text-xl group-hover:scale-110 transition-transform">
+                  3
+                </div>
+                <FileText className="h-8 w-8 mx-auto mb-4 text-primary" />
+                <h3 className="text-xl font-semibold mb-3">Ricevi documenti</h3>
+                <p className="text-muted-foreground">
+                  Ottieni schede informative chiare e PDF scaricabili.
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Vantaggi Section */}
+      <section className="py-20 bg-gradient-subtle">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              I Nostri <span className="bg-gradient-primary bg-clip-text text-transparent">Vantaggi</span>
+            </h2>
+            <p className="text-xl text-muted-foreground">Perché scegliere Difendimi.AI</p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+            <Card className="group hover:shadow-soft transition-all duration-300 border-0 bg-background">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 mb-4 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <Lock className="h-6 w-6 text-primary" />
+                </div>
+                <h4 className="text-lg font-semibold mb-2">100% Anonimo</h4>
+                <p className="text-muted-foreground">
+                  I tuoi dati sono sempre protetti e anonimizzati
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="group hover:shadow-soft transition-all duration-300 border-0 bg-background">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 mb-4 rounded-xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                  <Scale className="h-6 w-6 text-accent" />
+                </div>
+                <h4 className="text-lg font-semibold mb-2">Fonti Ufficiali</h4>
+                <p className="text-muted-foreground">
+                  Basato su Normattiva e EUR-Lex
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="group hover:shadow-soft transition-all duration-300 border-0 bg-background">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 mb-4 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <Clock className="h-6 w-6 text-primary" />
+                </div>
+                <h4 className="text-lg font-semibold mb-2">Risposte Immediate</h4>
+                <p className="text-muted-foreground">
+                  Ottieni informazioni in pochi minuti
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="group hover:shadow-soft transition-all duration-300 border-0 bg-background">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 mb-4 rounded-xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                  <Shield className="h-6 w-6 text-accent" />
+                </div>
+                <h4 className="text-lg font-semibold mb-2">Privacy First</h4>
+                <p className="text-muted-foreground">
+                  Nessun dato personale viene salvato
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonianze Section */}
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              Cosa Dicono i Nostri <span className="bg-gradient-primary bg-clip-text text-transparent">Utenti</span>
+            </h2>
+            <p className="text-xl text-muted-foreground">Storie di successo dalla nostra community</p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <Card className="border-border/50 hover:shadow-elegant transition-all duration-300">
+              <CardHeader>
+                <div className="flex items-center gap-1 mb-2">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
+                  ))}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  "Ho risolto una questione contrattuale in pochi minuti. Servizio eccezionale!"
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-primary" />
+                  <div>
+                    <p className="font-semibold text-sm">Marco R.</p>
+                    <p className="text-xs text-muted-foreground">Imprenditore</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/50 hover:shadow-elegant transition-all duration-300">
+              <CardHeader>
+                <div className="flex items-center gap-1 mb-2">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
+                  ))}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  "Finalmente posso capire le normative senza dover consultare un avvocato ogni volta."
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-secondary" />
+                  <div>
+                    <p className="font-semibold text-sm">Laura B.</p>
+                    <p className="text-xs text-muted-foreground">Freelance</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/50 hover:shadow-elegant transition-all duration-300">
+              <CardHeader>
+                <div className="flex items-center gap-1 mb-2">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
+                  ))}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  "Risparmio tempo e denaro. L'AI è precisa e le informazioni sempre aggiornate."
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-primary" />
+                  <div>
+                    <p className="font-semibold text-sm">Giuseppe M.</p>
+                    <p className="text-xs text-muted-foreground">Consulente</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
 
       {/* Disclaimer Section */}
-      <div className="container mx-auto px-4 py-16">
-          <Card className="max-w-3xl mx-auto bg-muted/50">
+      <section className="py-20 bg-gradient-subtle">
+        <div className="container mx-auto px-4">
+          <Card className="max-w-3xl mx-auto border-primary/20 bg-background/50 backdrop-blur">
             <CardContent className="p-8">
-              <h3 className="text-xl font-semibold mb-4">Nota Importante</h3>
-              <p className="text-muted-foreground">
-                Difendimi.AI fornisce esclusivamente informazioni educative.
+              <div className="flex items-center gap-3 mb-4">
+                <Shield className="h-6 w-6 text-primary" />
+                <h3 className="text-xl font-semibold">Nota Importante</h3>
+              </div>
+              <p className="text-muted-foreground leading-relaxed">
+                Difendimi.AI fornisce esclusivamente informazioni educative basate su fonti ufficiali.
                 Per questioni legali specifiche, consulta sempre un professionista qualificato.
                 Il servizio è progettato per aiutarti a comprendere meglio le normative applicabili.
               </p>
             </CardContent>
           </Card>
-      </div>
+        </div>
+      </section>
 
       {/* Footer */}
-      <footer className="border-t bg-background/95 backdrop-blur">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-primary" />
-              <span className="font-semibold">Difendimi.AI</span>
+      <footer className="bg-foreground text-background">
+        <div className="container mx-auto px-4 py-12">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Shield className="h-6 w-6 text-primary" />
+                <span className="text-lg font-bold">Difendimi.AI</span>
+              </div>
+              <p className="text-background/70 text-sm">
+                Assistenza legale intelligente per tutti
+              </p>
             </div>
-            <div className="flex gap-6 text-sm text-muted-foreground">
-              <a href="/privacy" className="hover:text-foreground transition">Privacy Policy</a>
-              <a href="/terms" className="hover:text-foreground transition">Termini & Condizioni</a>
-              <a href="/disclaimer" className="hover:text-foreground transition">Disclaimer Legale</a>
+            
+            <div>
+              <h4 className="font-semibold mb-4">Prodotto</h4>
+              <ul className="space-y-2 text-sm text-background/70">
+                <li><a href="/features" className="hover:text-background transition">Funzionalità</a></li>
+                <li><a href="/pricing" className="hover:text-background transition">Prezzi</a></li>
+                <li><a href="/faq" className="hover:text-background transition">FAQ</a></li>
+              </ul>
             </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">Azienda</h4>
+              <ul className="space-y-2 text-sm text-background/70">
+                <li><a href="/about" className="hover:text-background transition">Chi Siamo</a></li>
+                <li><a href="/contact" className="hover:text-background transition">Contatti</a></li>
+                <li><a href="/blog" className="hover:text-background transition">Blog</a></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">Legale</h4>
+              <ul className="space-y-2 text-sm text-background/70">
+                <li><a href="/privacy" className="hover:text-background transition">Privacy Policy</a></li>
+                <li><a href="/terms" className="hover:text-background transition">Termini di Servizio</a></li>
+                <li><a href="/disclaimer" className="hover:text-background transition">Disclaimer</a></li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="border-t border-background/20 pt-8 text-center text-sm text-background/60">
+            <p>&copy; 2024 Difendimi.AI. Tutti i diritti riservati.</p>
           </div>
         </div>
       </footer>
