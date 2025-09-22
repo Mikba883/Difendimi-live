@@ -19,6 +19,13 @@ export function AudioWaveform({
   const analyserRef = useRef<AnalyserNode>();
   const [bars] = useState(40);
 
+  // Helper function to get CSS variable value
+  const getCSSVariableValue = (variable: string): string => {
+    const root = document.documentElement;
+    const value = getComputedStyle(root).getPropertyValue(variable).trim();
+    return value;
+  };
+
   useEffect(() => {
     if (!isRecording || !audioContext || !mediaStream || !canvasRef.current) {
       if (animationRef.current) {
@@ -30,6 +37,10 @@ export function AudioWaveform({
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // Get the primary color HSL values
+    const primaryHSL = getCSSVariableValue('--primary');
+    const [h, s, l] = primaryHSL.split(' ').map(v => parseFloat(v));
 
     // Set up audio analyzer
     const analyser = audioContext.createAnalyser();
@@ -65,10 +76,10 @@ export function AudioWaveform({
         const x = i * barWidth + gap / 2;
         const y = (canvas.height - barHeight) / 2;
 
-        // Create gradient for bars
+        // Create gradient for bars using actual HSL values
         const gradient = ctx.createLinearGradient(0, y, 0, y + barHeight);
-        gradient.addColorStop(0, 'hsl(var(--primary) / 0.6)');
-        gradient.addColorStop(1, 'hsl(var(--primary))');
+        gradient.addColorStop(0, `hsla(${h}, ${s}%, ${l}%, 0.6)`);
+        gradient.addColorStop(1, `hsl(${h}, ${s}%, ${l}%)`);
 
         ctx.fillStyle = gradient;
         ctx.fillRect(x, y, barWidth - gap, barHeight);
