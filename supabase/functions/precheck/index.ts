@@ -120,6 +120,16 @@ Deno.serve(async (req) => {
 3. Generare domande mirate per ottenere informazioni mancanti
 4. Suggerire istituti giuridici e fonti normative rilevanti
 
+${previousContext ? `CONTESTO COMPLETO DELLA CONVERSAZIONE:
+${previousContext}
+
+REGOLE IMPORTANTI:
+- Il "caseText" contiene TUTTE le risposte dell'utente accumulate finora
+- NON ripetere domande a cui l'utente ha già risposto
+- Se l'utente ha appena risposto a una tua domanda (anche con una singola parola), considerala come risposta valida
+- Procedi con la domanda successiva solo se mancano ancora informazioni essenziali
+- Riconosci quando una risposta breve è la risposta diretta alla tua domanda precedente` : ''}
+
 Devi rispondere SEMPRE in formato JSON con questa struttura:
 {
   "completeness": {

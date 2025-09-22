@@ -142,9 +142,17 @@ export default function NewCase() {
   };
 
   const analyzeCase = async (newText?: string) => {
-    const textToAnalyze = newText ? currentText + " " + newText : currentText;
+    // Costruisci il testo completo del caso includendo tutte le risposte dell'utente
+    const allUserMessages = messages
+      .filter(m => m.sender === 'user')
+      .map(m => m.text);
     
-    if (!textToAnalyze.trim()) {
+    // Aggiungi il nuovo testo al contesto completo
+    const fullCaseText = newText 
+      ? [...allUserMessages, newText].join('\n')
+      : allUserMessages.join('\n');
+    
+    if (!fullCaseText.trim()) {
       toast({
         title: "Attenzione",
         description: "Inserisci o detta le informazioni del caso",
@@ -155,13 +163,14 @@ export default function NewCase() {
 
     setIsAnalyzing(true);
     try {
+      // Costruisci il contesto completo della conversazione per riferimento
       const conversationContext = messages
-        .map(m => `${m.sender === 'user' ? 'Tu' : 'Assistente'}: ${m.text}`)
+        .map(m => `${m.sender === 'user' ? 'Utente' : 'Assistente'}: ${m.text}`)
         .join('\n');
 
       const { data, error } = await supabase.functions.invoke('precheck', {
         body: { 
-          caseText: textToAnalyze,
+          caseText: fullCaseText,
           caseType: 'general',
           previousContext: conversationContext
         }
