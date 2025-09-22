@@ -76,7 +76,7 @@ export function VoiceRecordingInput({
       <Button
         type="button"
         size="icon"
-        variant="destructive"
+        variant="secondary"
         onClick={onStopRecording}
         disabled={isProcessing}
         className={cn(

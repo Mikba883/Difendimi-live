@@ -77,7 +77,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, voice = 'it-IT-Wavenet-D' } = await req.json();
+    const { text, voice = 'it-IT-Neural2-A' } = await req.json();
     
     if (!text) {
       throw new Error('Text is required');
@@ -134,8 +134,8 @@ serve(async (req) => {
           },
           audioConfig: {
             audioEncoding: 'MP3',
-            pitch: 0,
-            speakingRate: 1,
+            pitch: -2,
+            speakingRate: 0.95,
           },
         }),
       }

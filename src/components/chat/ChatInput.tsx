@@ -134,7 +134,7 @@ export function ChatInput({
                 variant="ghost"
                 onClick={onStartRecording}
                 disabled={isDisabled}
-                className="h-10 w-10 rounded-full transition-all hover:bg-muted"
+                className="h-10 w-10 rounded-full transition-colors duration-200 hover:bg-muted"
               >
                 <Mic className="h-5 w-5" />
               </Button>
@@ -145,7 +145,7 @@ export function ChatInput({
                 className={cn(
                   "h-10 w-10 rounded-full transition-all",
                   !inputText.trim() || isDisabled
-                    ? "bg-muted hover:bg-muted cursor-not-allowed opacity-50"
+                    ? "bg-muted-foreground/20 hover:bg-muted-foreground/20 cursor-not-allowed opacity-50"
                     : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
                 )}
               >
