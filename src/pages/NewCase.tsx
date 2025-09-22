@@ -219,7 +219,8 @@ export default function NewCase() {
           timestamp: new Date()
         };
         setMessages(prev => [...prev, assistantMessage]);
-        await speakText(data.nextQuestion.text);
+        // TTS disabilitato per ora
+        // await speakText(data.nextQuestion.text);
       }
 
       // Se il caso è sufficientemente completo, salva
