@@ -159,17 +159,12 @@ export default function NewCase() {
   };
 
   const handleSendMessage = async (text: string) => {
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text,
-      sender: 'user',
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, userMessage]);
+    if (!text.trim()) return;
+    
+    // NON aggiungere il messaggio qui - lasciamo che analyzeCase lo gestisca
     setCurrentText(prev => prev + " " + text);
     
-    // Analyze the case
+    // Passa il testo e lascia che analyzeCase gestisca tutto
     await analyzeCase(text);
   };
 
@@ -187,23 +182,26 @@ export default function NewCase() {
 
     setIsAnalyzing(true);
     try {
-      // Get only PREVIOUS messages (not including the new one that was just added)
-      // This is crucial: we don't want to include the message we just added
+      // PRIMA: Prendi i messaggi ATTUALI (prima di aggiungere il nuovo)
       const previousMessages = messages.map(m => ({
         role: m.sender === 'user' ? 'user' : 'assistant',
         content: m.text
       }));
 
-      console.log('=== ANALYZE CASE DEBUG ===');
+      // ORA: Aggiungi il messaggio dell'utente DOPO aver catturato il contesto precedente
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        text: latestUserResponse,
+        sender: 'user',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, userMessage]);
+
+      console.log('=== ANALYZE CASE DEBUG (FIXED) ===');
       console.log('Number of previous messages:', previousMessages.length);
       console.log('Latest user response:', latestUserResponse);
       console.log('Previous messages:', previousMessages);
-      
-      // Check for potential duplicates
-      const lastUserMessage = [...previousMessages].reverse().find(m => m.role === 'user');
-      if (lastUserMessage && lastUserMessage.content === latestUserResponse) {
-        console.warn('WARNING: Duplicate message detected!');
-      }
+      console.log('New message added to state AFTER capturing context');
 
       const { data, error } = await supabase.functions.invoke('precheck', {
         body: { 
