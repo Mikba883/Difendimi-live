@@ -64,7 +64,7 @@ async function callOpenAI(openAIApiKey: string, systemPrompt: string, userPrompt
 }
 
 async function handoffToGenerate(projectRef: string, serviceRoleKey: string, payload: unknown) {
-  const url = `https://${projectRef}.functions.supabase.co/generate`;
+  const url = `https://${projectRef}.supabase.co/functions/v1/generate`;
   const res = await fetch(url, {
     method: "POST",
     headers: {
