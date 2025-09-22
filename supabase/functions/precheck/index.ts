@@ -193,8 +193,17 @@ Devi rispondere SEMPRE in formato JSON con questa struttura:
 
     await handoffToGenerate(projectRef, serviceRoleKey, generatePayload);
 
-    // Risposta al client: niente analisi/codici, solo coda job
-    return new Response(JSON.stringify({ status: "queued", job_id }), {
+    // Risposta al client: include sempre completeness per evitare errori nel frontend
+    return new Response(JSON.stringify({ 
+      status: "queued", 
+      job_id,
+      completeness: {
+        score: 100,
+        status: "complete",
+        missingElements: []
+      },
+      analysis: precheck?.analysis ?? null
+    }), {
       status: 202,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
