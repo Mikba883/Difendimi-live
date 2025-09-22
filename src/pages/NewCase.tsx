@@ -142,18 +142,9 @@ export default function NewCase() {
   };
 
   const analyzeCase = async (newText?: string) => {
-    // Costruisci il testo completo del caso includendo tutte le risposte dell'utente
-    const allUserMessages = messages
-      .filter(m => m.sender === 'user')
-      .map(m => m.text);
-    
-    // Il testo completo del caso finora
-    const fullCaseText = allUserMessages.join('\n');
-    
-    // L'ultima risposta dell'utente (quella nuova)
     const latestUserResponse = newText || '';
     
-    if (!latestUserResponse.trim() && !fullCaseText.trim()) {
+    if (!latestUserResponse.trim() && messages.filter(m => m.sender === 'user').length === 0) {
       toast({
         title: "Attenzione",
         description: "Inserisci o detta le informazioni del caso",
@@ -164,17 +155,21 @@ export default function NewCase() {
 
     setIsAnalyzing(true);
     try {
-      // Costruisci il contesto completo della conversazione per riferimento
-      const conversationContext = messages
-        .map(m => `${m.sender === 'user' ? 'Utente' : 'Assistente'}: ${m.text}`)
-        .join('\n');
+      // Get only PREVIOUS messages (not including the new one that was just added)
+      const previousMessages = messages.map(m => ({
+        role: m.sender === 'user' ? 'user' : 'assistant',
+        content: m.text
+      }));
+
+      console.log('Sending to precheck:', {
+        previousMessages,
+        latestResponse: latestUserResponse
+      });
 
       const { data, error } = await supabase.functions.invoke('precheck', {
         body: { 
-          caseText: fullCaseText,
           latestResponse: latestUserResponse,
-          caseType: 'general',
-          previousContext: conversationContext
+          previousContext: previousMessages
         }
       });
 

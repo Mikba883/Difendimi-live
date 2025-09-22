@@ -100,11 +100,14 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Invalid JSON body" }, 400);
     }
 
-    const { caseText, latestResponse = "", caseType = "general", previousContext = null } = body ?? {};
-    // Se non c'è né caseText né latestResponse, errore
-    if ((!caseText || typeof caseText !== "string" || !caseText.trim()) && 
-        (!latestResponse || typeof latestResponse !== "string" || !latestResponse.trim())) {
-      return jsonResponse({ error: "Case text or latest response is required" }, 400);
+    const { latestResponse = "", previousContext = [] } = body ?? {};
+    
+    // Log for debugging
+    console.log('Received:', { latestResponse, previousContext });
+    
+    // Validate input
+    if (!latestResponse || typeof latestResponse !== "string" || !latestResponse.trim()) {
+      return jsonResponse({ error: "Latest response is required" }, 400);
     }
 
     // Env
@@ -115,31 +118,35 @@ Deno.serve(async (req) => {
     if (!projectRef)   return jsonResponse({ error: "SP_PROJECT_REF not configured" }, 500);
     if (!serviceRoleKey) return jsonResponse({ error: "SP_SERVICE_ROLE_KEY not configured" }, 500);
 
+    // Build conversation history
+    const conversationHistory = previousContext.map((msg: any) => 
+      `${msg.role === 'user' ? 'Utente' : 'Assistente'}: ${msg.content}`
+    ).join('\n');
+
     // Prompt system per analisi legale
-    const systemPrompt = `Sei un assistente legale AI esperto nel diritto italiano. Il tuo compito è analizzare un caso legale e guidare l'utente nella raccolta delle informazioni necessarie.
+    const systemPrompt = `Sei un assistente legale AI esperto nel diritto italiano. Stai guidando l'utente nella raccolta di informazioni per il suo caso legale.
 
-${previousContext ? `CONVERSAZIONE FINORA:
-${previousContext}
+${conversationHistory ? `CONVERSAZIONE PRECEDENTE:
+${conversationHistory}
 
-ULTIMA RISPOSTA DELL'UTENTE: "${latestResponse}"
+ULTIMA RISPOSTA DELL'UTENTE (NUOVA): "${latestResponse}"` : `PRIMA RISPOSTA DELL'UTENTE: "${latestResponse}"`}
 
-REGOLE CRITICHE PER EVITARE LOOP:
-1. Se hai chiesto "Cosa vuoi ottenere?" e l'utente risponde con una parola come "annullamento", "rimborso", "risarcimento", ecc., ACCETTA questa risposta e PASSA alla prossima domanda
-2. NON ripetere MAI la stessa domanda due volte
-3. Ogni risposta dell'utente, anche breve, è valida - procedi con la domanda successiva
-4. Se l'utente ha già fornito informazioni su un aspetto, non chiederle di nuovo
-5. Esempi di risposte valide a "Cosa vuoi ottenere?": "annullamento", "ricorso", "opposizione", "risarcimento", "rimborso"
+REGOLE FONDAMENTALI:
+1. PROGRESSIONE: Ogni risposta dell'utente, anche breve, fa progredire la conversazione
+2. NO LOOP: Mai ripetere la stessa domanda o simili
+3. ACCETTAZIONE: "annullamento", "rimborso", "ricorso" sono risposte valide e complete
+4. MEMORIA: Ricorda tutte le informazioni già fornite
 
-PROGRESSIONE TIPICA:
-- Prima domanda: "Di che tipo di problema legale si tratta?" → risposta: "multa"
-- Seconda domanda: "Cosa vuoi ottenere?" → risposta: "annullamento"
-- Terza domanda: "Quando hai ricevuto la multa?" → risposta: [data]
-- Continua con domande diverse finché non hai informazioni sufficienti` : ''}
+DOMANDE DA FARE IN SEQUENZA (salta quelle già risposte):
+1. Tipo di problema legale (multa, contratto, etc.)
+2. Obiettivo desiderato (annullamento, rimborso, etc.) 
+3. Date rilevanti (quando è successo)
+4. Importi coinvolti (se applicabile)
+5. Azioni già intraprese
+6. Documentazione disponibile
+7. Urgenza/scadenze
 
-Analizza le informazioni fornite e determina:
-1. Quali informazioni sono già state raccolte
-2. Quali informazioni critiche mancano ancora
-3. La prossima domanda specifica da fare (MAI ripetere una domanda già fatta)
+Analizza la conversazione e determina:
 
 Devi rispondere SEMPRE in formato JSON con questa struttura:
 {
@@ -162,12 +169,14 @@ Devi rispondere SEMPRE in formato JSON con questa struttura:
   }
 }`;
 
-    const userPrompt = previousContext
-      ? `L'utente ha appena risposto: "${latestResponse}"\n\nRisposte accumulate finora:\n${caseText}\n\nAnalizza se hai bisogno di ulteriori informazioni o se puoi procedere. NON ripetere domande già fatte.`
-      : `Nuovo caso legale:\n${caseText || latestResponse}\n\nTipo di caso: ${caseType}`;
+    const userPrompt = `Basandoti sulla conversazione e sull'ultima risposta, determina la prossima domanda appropriata o se hai informazioni sufficienti per procedere.
+    
+IMPORTANTE: Se l'utente ha risposto "annullamento" alla domanda su cosa vuole ottenere, ACCETTA questa risposta e passa alla domanda successiva (es. date, importi, etc.)`;
 
     // Analizza con OpenAI
+    console.log('Calling OpenAI with conversation history');
     const precheck = await callOpenAI(openAIApiKey, systemPrompt, userPrompt);
+    console.log('OpenAI response:', precheck);
 
     // Valuta completezza
     const score: number = Number(precheck?.completeness?.score ?? 0);
@@ -185,14 +194,20 @@ Devi rispondere SEMPRE in formato JSON con questa struttura:
 
     // Caso completo → crea job e inoltra a `generate`
     const job_id = makeJobId();
+    
+    // Collect all user responses for the complete case text
+    const fullCaseText = previousContext
+      .filter((msg: any) => msg.role === 'user')
+      .map((msg: any) => msg.content)
+      .concat([latestResponse])
+      .join('\n');
 
     const generatePayload = {
       job_id,
-      caseType,
+      caseType: "general",
       caseData: {
-        previousContext,
-        caseText,
-        // opzionale: passaggi utili estratti da precheck (senza esporre tutto al client)
+        previousContext: conversationHistory,
+        caseText: fullCaseText,
         fromPrecheck: {
           keyFacts: precheck?.analysis?.keyFacts ?? [],
           legalIssues: precheck?.analysis?.legalIssues ?? [],
