@@ -100,9 +100,11 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Invalid JSON body" }, 400);
     }
 
-    const { caseText, caseType = "general", previousContext = null } = body ?? {};
-    if (!caseText || typeof caseText !== "string" || !caseText.trim()) {
-      return jsonResponse({ error: "Case text is required" }, 400);
+    const { caseText, latestResponse = "", caseType = "general", previousContext = null } = body ?? {};
+    // Se non c'è né caseText né latestResponse, errore
+    if ((!caseText || typeof caseText !== "string" || !caseText.trim()) && 
+        (!latestResponse || typeof latestResponse !== "string" || !latestResponse.trim())) {
+      return jsonResponse({ error: "Case text or latest response is required" }, 400);
     }
 
     // Env
@@ -114,21 +116,30 @@ Deno.serve(async (req) => {
     if (!serviceRoleKey) return jsonResponse({ error: "SP_SERVICE_ROLE_KEY not configured" }, 500);
 
     // Prompt system per analisi legale
-    const systemPrompt = `Sei un assistente legale AI esperto nel diritto italiano. Il tuo compito è analizzare un caso legale e:
-1. Valutare la completezza delle informazioni fornite
-2. Identificare gli elementi mancanti critici
-3. Generare domande mirate per ottenere informazioni mancanti
-4. Suggerire istituti giuridici e fonti normative rilevanti
+    const systemPrompt = `Sei un assistente legale AI esperto nel diritto italiano. Il tuo compito è analizzare un caso legale e guidare l'utente nella raccolta delle informazioni necessarie.
 
-${previousContext ? `CONTESTO COMPLETO DELLA CONVERSAZIONE:
+${previousContext ? `CONVERSAZIONE FINORA:
 ${previousContext}
 
-REGOLE IMPORTANTI:
-- Il "caseText" contiene TUTTE le risposte dell'utente accumulate finora
-- NON ripetere domande a cui l'utente ha già risposto
-- Se l'utente ha appena risposto a una tua domanda (anche con una singola parola), considerala come risposta valida
-- Procedi con la domanda successiva solo se mancano ancora informazioni essenziali
-- Riconosci quando una risposta breve è la risposta diretta alla tua domanda precedente` : ''}
+ULTIMA RISPOSTA DELL'UTENTE: "${latestResponse}"
+
+REGOLE CRITICHE PER EVITARE LOOP:
+1. Se hai chiesto "Cosa vuoi ottenere?" e l'utente risponde con una parola come "annullamento", "rimborso", "risarcimento", ecc., ACCETTA questa risposta e PASSA alla prossima domanda
+2. NON ripetere MAI la stessa domanda due volte
+3. Ogni risposta dell'utente, anche breve, è valida - procedi con la domanda successiva
+4. Se l'utente ha già fornito informazioni su un aspetto, non chiederle di nuovo
+5. Esempi di risposte valide a "Cosa vuoi ottenere?": "annullamento", "ricorso", "opposizione", "risarcimento", "rimborso"
+
+PROGRESSIONE TIPICA:
+- Prima domanda: "Di che tipo di problema legale si tratta?" → risposta: "multa"
+- Seconda domanda: "Cosa vuoi ottenere?" → risposta: "annullamento"
+- Terza domanda: "Quando hai ricevuto la multa?" → risposta: [data]
+- Continua con domande diverse finché non hai informazioni sufficienti` : ''}
+
+Analizza le informazioni fornite e determina:
+1. Quali informazioni sono già state raccolte
+2. Quali informazioni critiche mancano ancora
+3. La prossima domanda specifica da fare (MAI ripetere una domanda già fatta)
 
 Devi rispondere SEMPRE in formato JSON con questa struttura:
 {
@@ -152,8 +163,8 @@ Devi rispondere SEMPRE in formato JSON con questa struttura:
 }`;
 
     const userPrompt = previousContext
-      ? `Caso precedente: ${previousContext}\n\nNuove informazioni: ${caseText}\n\nTipo di caso: ${caseType}`
-      : `Analizza questo caso legale:\n${caseText}\n\nTipo di caso: ${caseType}`;
+      ? `L'utente ha appena risposto: "${latestResponse}"\n\nRisposte accumulate finora:\n${caseText}\n\nAnalizza se hai bisogno di ulteriori informazioni o se puoi procedere. NON ripetere domande già fatte.`
+      : `Nuovo caso legale:\n${caseText || latestResponse}\n\nTipo di caso: ${caseType}`;
 
     // Analizza con OpenAI
     const precheck = await callOpenAI(openAIApiKey, systemPrompt, userPrompt);

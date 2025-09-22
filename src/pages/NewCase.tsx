@@ -147,12 +147,13 @@ export default function NewCase() {
       .filter(m => m.sender === 'user')
       .map(m => m.text);
     
-    // Aggiungi il nuovo testo al contesto completo
-    const fullCaseText = newText 
-      ? [...allUserMessages, newText].join('\n')
-      : allUserMessages.join('\n');
+    // Il testo completo del caso finora
+    const fullCaseText = allUserMessages.join('\n');
     
-    if (!fullCaseText.trim()) {
+    // L'ultima risposta dell'utente (quella nuova)
+    const latestUserResponse = newText || '';
+    
+    if (!latestUserResponse.trim() && !fullCaseText.trim()) {
       toast({
         title: "Attenzione",
         description: "Inserisci o detta le informazioni del caso",
@@ -171,6 +172,7 @@ export default function NewCase() {
       const { data, error } = await supabase.functions.invoke('precheck', {
         body: { 
           caseText: fullCaseText,
+          latestResponse: latestUserResponse,
           caseType: 'general',
           previousContext: conversationContext
         }
