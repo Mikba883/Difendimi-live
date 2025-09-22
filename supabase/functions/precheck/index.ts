@@ -107,11 +107,11 @@ Deno.serve(async (req) => {
 
     // Env
     const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
-    const projectRef = Deno.env.get("SUPABASE_PROJECT_REF"); // es: abcdxyzefghijklmno
-    const serviceRoleKey = Deno.env.get("SERVICE_ROLE_KEY"); // SOLO lato server
+    const projectRef = Deno.env.get("SP_PROJECT_REF"); // Use correct env var
+    const serviceRoleKey = Deno.env.get("SP_SERVICE_ROLE_KEY"); // Use correct env var
     if (!openAIApiKey) return jsonResponse({ error: "OPENAI_API_KEY not configured" }, 500);
-    if (!projectRef)   return jsonResponse({ error: "SUPABASE_PROJECT_REF not configured" }, 500);
-    if (!serviceRoleKey) return jsonResponse({ error: "SERVICE_ROLE_KEY not configured" }, 500);
+    if (!projectRef)   return jsonResponse({ error: "SP_PROJECT_REF not configured" }, 500);
+    if (!serviceRoleKey) return jsonResponse({ error: "SP_SERVICE_ROLE_KEY not configured" }, 500);
 
     // Prompt system per analisi legale
     const systemPrompt = `Sei un assistente legale AI esperto nel diritto italiano. Il tuo compito è analizzare un caso legale e:
