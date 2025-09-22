@@ -103,12 +103,29 @@ Deno.serve(async (req) => {
     const { latestResponse = "", previousContext = [] } = body ?? {};
     
     // Enhanced logging for debugging
-    console.log('=== PRECHECK DEBUG ===');
+    console.log('=== PRECHECK START ===');
+    console.log('Timestamp:', new Date().toISOString());
     console.log('Latest Response:', latestResponse);
-    console.log('Previous Context Length:', previousContext.length);
-    if (previousContext.length > 0) {
+    console.log('Previous Context Type:', Array.isArray(previousContext) ? 'array' : typeof previousContext);
+    console.log('Previous Context Length:', Array.isArray(previousContext) ? previousContext.length : 0);
+    
+    // Log conversation flow
+    if (Array.isArray(previousContext) && previousContext.length > 0) {
+      console.log('--- Conversation History ---');
+      previousContext.forEach((msg: any, idx: number) => {
+        console.log(`[${idx}] ${msg.role}: ${msg.content?.substring(0, 50)}...`);
+      });
+      
       const lastAssistantMessage = [...previousContext].reverse().find((msg: any) => msg.role === 'assistant');
+      const lastUserMessage = [...previousContext].reverse().find((msg: any) => msg.role === 'user');
       console.log('Last Assistant Question:', lastAssistantMessage?.content || 'none');
+      console.log('Last User Response:', lastUserMessage?.content || 'none');
+      console.log('Current User Response:', latestResponse);
+      
+      // Check for potential issues
+      if (lastUserMessage && lastUserMessage.content === latestResponse) {
+        console.warn('⚠️ WARNING: Current response matches last user message - possible duplicate!');
+      }
     }
     
     // Validate input
@@ -124,12 +141,18 @@ Deno.serve(async (req) => {
     if (!projectRef)   return jsonResponse({ error: "SP_PROJECT_REF not configured" }, 500);
     if (!serviceRoleKey) return jsonResponse({ error: "SP_SERVICE_ROLE_KEY not configured" }, 500);
 
-    // Build conversation history
-    const conversationHistory = previousContext.map((msg: any) => 
-      `${msg.role === 'user' ? 'Utente' : 'Assistente'}: ${msg.content}`
-    ).join('\n');
+    // Build conversation history with validation
+    let conversationHistory = '';
+    if (Array.isArray(previousContext)) {
+      conversationHistory = previousContext.map((msg: any) => 
+        `${msg.role === 'user' ? 'Utente' : 'Assistente'}: ${msg.content}`
+      ).join('\n');
+    }
+    
+    console.log('Conversation History Built:', conversationHistory ? 'yes' : 'no');
+    console.log('History Length:', conversationHistory.length);
 
-    // Prompt system per analisi legale
+    // Prompt system per analisi legale con tracking migliorato
     const systemPrompt = `Sei un assistente legale AI esperto nel diritto italiano. Stai guidando l'utente nella raccolta di informazioni per il suo caso legale.
 
 ${conversationHistory ? `CONVERSAZIONE PRECEDENTE:
@@ -137,32 +160,34 @@ ${conversationHistory}
 
 ULTIMA RISPOSTA DELL'UTENTE (NUOVA): "${latestResponse}"` : `PRIMA RISPOSTA DELL'UTENTE: "${latestResponse}"`}
 
-REGOLE FONDAMENTALI:
-1. PROGRESSIONE: Ogni risposta dell'utente, anche breve, fa progredire la conversazione
-2. NO LOOP: Mai ripetere la stessa domanda o simili
-3. ACCETTAZIONE: "annullamento", "rimborso", "ricorso" sono risposte valide e complete
-4. MEMORIA: Ricorda tutte le informazioni già fornite
-5. RICONOSCIMENTO RISPOSTE NON PERTINENTI: Se l'utente risponde con frasi come "esatto", "sì", "no", "al prossimo episodio", "dopo", "non ricordo" senza aggiungere informazioni:
-   - NON ripetere la stessa domanda
-   - Riformula la domanda in modo più chiaro o specifico
-   - Oppure passa alla domanda successiva se hai già provato
+TRACKER DOMANDE GIÀ FATTE:
+${conversationHistory ? `Analizza la conversazione e identifica quali domande sono già state fatte. NON ripeterle.` : 'Prima interazione'}
 
-DOMANDE DA FARE IN SEQUENZA (salta quelle già risposte):
-1. Tipo di problema legale (multa, contratto, etc.)
-2. Obiettivo desiderato (annullamento, rimborso, etc.) 
-3. Date rilevanti (quando è successo)
-4. Importi coinvolti (se applicabile)
-5. Azioni già intraprese
-6. Documentazione disponibile
-7. Urgenza/scadenze
+REGOLE CRITICHE ANTI-LOOP:
+1. ANALIZZA PRIMA: Controlla SEMPRE quali domande hai già fatto nella conversazione
+2. MAI DUPLICARE: Se hai già chiesto qualcosa, NON chiederlo di nuovo in nessuna forma
+3. RISPOSTE BREVI VALIDE: "sì", "no", "annullamento", "rimborso" SONO risposte complete e valide
+4. PROGRESSIONE OBBLIGATORIA: Ogni turno DEVE avanzare nella raccolta informazioni
+5. GESTIONE RISPOSTE AMBIGUE:
+   - "sì"/"no" dopo una domanda → accetta e passa alla domanda successiva
+   - "dopo"/"non so"/"non ricordo" → chiedi in modo diverso O passa avanti
+   - Risposte scherzose → riformula più chiaramente
+   
+SEQUENZA DOMANDE (salta quelle con risposta già data):
+1. ✓ Tipo di problema (multa, contratto, lavoro, etc.) 
+2. ✓ Obiettivo (annullamento, rimborso, risarcimento, etc.)
+3. ✓ Date/periodo (quando è successo)
+4. ✓ Importi coinvolti (se applicabile)
+5. ✓ Azioni intraprese (cosa hai già fatto)
+6. ✓ Documentazione (cosa possiedi)
+7. ✓ Urgenza/scadenze
 
-ANALISI DELLE RISPOSTE:
-- Se l'utente risponde "non ricordo" o "non so" a una data → chiedi un periodo approssimativo o passa alla domanda successiva
-- Se l'utente dà risposte evasive o scherzose → riformula la domanda in modo più chiaro
-- Se hai già fatto la stessa domanda 2 volte → passa alla domanda successiva
-- Controlla sempre se stai per ripetere esattamente la stessa domanda dell'ultima volta
-
-Analizza la conversazione e determina:
+ANALISI INTELLIGENTE:
+- Estrai informazioni implicite dalle risposte
+- Se l'utente menziona "multa" → hai già il tipo di problema
+- Se dice "voglio annullamento" → hai già l'obiettivo
+- Se dice "ieri" o "settimana scorsa" → hai già la data
+- NON chiedere ciò che è già chiaro dal contesto
 
 Devi rispondere SEMPRE in formato JSON con questa struttura:
 {
@@ -172,7 +197,7 @@ Devi rispondere SEMPRE in formato JSON con questa struttura:
     "missingElements": ["elemento1", "elemento2"]
   },
   "nextQuestion": {
-    "text": "domanda specifica",
+    "text": "domanda specifica NUOVA e MAI fatta prima",
     "type": "text|date|choice|multiselect",
     "options": ["opzione1", "opzione2"]
   },
@@ -185,25 +210,45 @@ Devi rispondere SEMPRE in formato JSON con questa struttura:
   }
 }`;
 
-    const userPrompt = `Basandoti sulla conversazione e sull'ultima risposta, determina la prossima domanda appropriata o se hai informazioni sufficienti per procedere.
-    
-IMPORTANTE: 
-- Se l'utente ha risposto "annullamento" alla domanda su cosa vuole ottenere, ACCETTA questa risposta e passa alla domanda successiva (es. date, importi, etc.)
-- Se l'utente risponde con "esatto", "sì", "al prossimo episodio" o simili senza informazioni utili:
-  * NON ripetere la stessa domanda
-  * Riformula in modo diverso: invece di "Quando è avvenuto?" prova "In che mese è successo?" o "Era recente o tempo fa?"
-  * O passa alla domanda successiva se necessario
-- Verifica sempre l'ultima domanda fatta per non ripeterla identica`;
+    const userPrompt = `ANALIZZA LA CONVERSAZIONE E L'ULTIMA RISPOSTA.
+
+CONTROLLO ANTI-DUPLICAZIONE:
+1. Identifica l'ultima domanda che hai fatto
+2. Verifica che la nuova domanda sia DIVERSA
+3. Se stai per ripetere, SALTA alla domanda successiva
+
+INTERPRETAZIONE RISPOSTE:
+- "annullamento" = obiettivo chiaro, passa oltre
+- "sì"/"no" dopo domanda = risposta valida, continua
+- "dopo"/"non so" = riformula O passa avanti
+- Risposte brevi SONO valide se pertinenti
+
+DECISIONE:
+Se hai informazioni su tipo problema + obiettivo + almeno 2 altri elementi → puoi considerare il caso sufficiente.
+Altrimenti, fai la PROSSIMA domanda NON ancora fatta.`;
 
     // Analizza con OpenAI
     console.log('Calling OpenAI for analysis...');
     const precheck = await callOpenAI(openAIApiKey, systemPrompt, userPrompt);
-    console.log('OpenAI Analysis:', {
-      score: precheck?.completeness?.score,
-      status: precheck?.completeness?.status,
-      nextQuestion: precheck?.nextQuestion?.text,
-      missingElements: precheck?.completeness?.missingElements
-    });
+    console.log('=== OpenAI Response ===');
+    console.log('Completeness Score:', precheck?.completeness?.score);
+    console.log('Status:', precheck?.completeness?.status);
+    console.log('Next Question:', precheck?.nextQuestion?.text);
+    console.log('Missing Elements:', precheck?.completeness?.missingElements);
+    console.log('Key Facts:', precheck?.analysis?.keyFacts);
+    
+    // Validation check
+    if (previousContext.length > 0) {
+      const lastAssistantMsg = [...previousContext].reverse().find((m: any) => m.role === 'assistant');
+      if (lastAssistantMsg && precheck?.nextQuestion?.text) {
+        const similarity = lastAssistantMsg.content.toLowerCase().includes(
+          precheck.nextQuestion.text.substring(0, 20).toLowerCase()
+        );
+        if (similarity) {
+          console.warn('⚠️ POTENTIAL DUPLICATE QUESTION DETECTED!');
+        }
+      }
+    }
 
     // Valuta completezza
     const score: number = Number(precheck?.completeness?.score ?? 0);
@@ -223,11 +268,14 @@ IMPORTANTE:
     const job_id = makeJobId();
     
     // Collect all user responses for the complete case text
-    const fullCaseText = previousContext
-      .filter((msg: any) => msg.role === 'user')
-      .map((msg: any) => msg.content)
-      .concat([latestResponse])
-      .join('\n');
+    const userResponses = Array.isArray(previousContext) 
+      ? previousContext.filter((msg: any) => msg.role === 'user').map((msg: any) => msg.content)
+      : [];
+    userResponses.push(latestResponse);
+    const fullCaseText = userResponses.join('\n');
+    
+    console.log('Full case text length:', fullCaseText.length);
+    console.log('Number of user responses:', userResponses.length);
 
     const generatePayload = {
       job_id,
@@ -271,7 +319,10 @@ IMPORTANTE:
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (error) {
-    console.error("precheck error:", error);
+    console.error("=== PRECHECK ERROR ===");
+    console.error("Error Type:", error instanceof Error ? error.constructor.name : typeof error);
+    console.error("Error Message:", String(error));
+    console.error("Stack Trace:", error instanceof Error ? error.stack : 'No stack trace');
     return jsonResponse(
       { error: "Internal error", details: String(error) },
       500

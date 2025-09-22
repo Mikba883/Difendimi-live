@@ -188,15 +188,22 @@ export default function NewCase() {
     setIsAnalyzing(true);
     try {
       // Get only PREVIOUS messages (not including the new one that was just added)
+      // This is crucial: we don't want to include the message we just added
       const previousMessages = messages.map(m => ({
         role: m.sender === 'user' ? 'user' : 'assistant',
         content: m.text
       }));
 
-      console.log('Sending to precheck:', {
-        previousMessages,
-        latestResponse: latestUserResponse
-      });
+      console.log('=== ANALYZE CASE DEBUG ===');
+      console.log('Number of previous messages:', previousMessages.length);
+      console.log('Latest user response:', latestUserResponse);
+      console.log('Previous messages:', previousMessages);
+      
+      // Check for potential duplicates
+      const lastUserMessage = [...previousMessages].reverse().find(m => m.role === 'user');
+      if (lastUserMessage && lastUserMessage.content === latestUserResponse) {
+        console.warn('WARNING: Duplicate message detected!');
+      }
 
       const { data, error } = await supabase.functions.invoke('precheck', {
         body: { 
