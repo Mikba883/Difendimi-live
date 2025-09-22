@@ -22,12 +22,16 @@ export default function NewCase() {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isRecording, setIsRecording] = useState(false);
+  const [isProcessingAudio, setIsProcessingAudio] = useState(false);
+  const [transcribedText, setTranscribedText] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [completeness, setCompleteness] = useState(0);
   const [analysis, setAnalysis] = useState<any>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [currentText, setCurrentText] = useState("");
 
@@ -59,6 +63,13 @@ export default function NewCase() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Set up audio context and stream for waveform visualization
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContext();
+      }
+      mediaStreamRef.current = stream;
+      
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -71,15 +82,17 @@ export default function NewCase() {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         await processAudio(audioBlob);
         stream.getTracks().forEach(track => track.stop());
+        mediaStreamRef.current = null;
       };
 
       mediaRecorder.start();
       setIsRecording(true);
+      console.log('Recording started');
     } catch (error) {
       console.error('Error starting recording:', error);
       toast({
         title: "Errore",
-        description: "Impossibile accedere al microfono",
+        description: "Impossibile accedere al microfono. Verifica i permessi.",
         variant: "destructive",
       });
     }
@@ -94,33 +107,52 @@ export default function NewCase() {
 
   const processAudio = async (audioBlob: Blob) => {
     try {
+      console.log('Processing audio, size:', audioBlob.size);
+      setIsProcessingAudio(true);
+      
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64Audio = reader.result?.toString().split(',')[1];
+        
+        if (!base64Audio) {
+          setIsProcessingAudio(false);
+          throw new Error('Failed to convert audio to base64');
+        }
+        
+        console.log('Sending audio to STT function');
         
         const { data, error } = await supabase.functions.invoke('stt', {
           body: { audio: base64Audio }
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error('STT error:', error);
+          setIsProcessingAudio(false);
+          throw error;
+        }
         
-        if (data?.text) {
-          const newMessage: Message = {
-            id: Date.now().toString(),
-            text: data.text,
-            sender: 'user',
-            timestamp: new Date()
-          };
-          setMessages(prev => [...prev, newMessage]);
-          setCurrentText(prev => prev + " " + data.text);
+        const transcribedText = data?.text || '';
+        console.log('Transcription result:', transcribedText);
+        
+        if (transcribedText) {
+          // Set transcribed text as preview instead of sending immediately
+          setTranscribedText(transcribedText);
+          setIsProcessingAudio(false);
+        } else {
+          setIsProcessingAudio(false);
+          toast({
+            title: "Nessun audio rilevato",
+            description: "Non è stato possibile trascrivere l'audio. Riprova.",
+          });
         }
       };
       reader.readAsDataURL(audioBlob);
     } catch (error) {
       console.error('Error processing audio:', error);
+      setIsProcessingAudio(false);
       toast({
-        title: "Errore",
-        description: "Impossibile processare l'audio",
+        title: "Errore di trascrizione",
+        description: "Si è verificato un errore durante la trascrizione. Riprova.",
         variant: "destructive",
       });
     }
@@ -340,14 +372,19 @@ export default function NewCase() {
             </div>
             
             <div className="w-full bg-card/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-              <ChatInput
-                onSendMessage={handleSendMessage}
-                onStartRecording={startRecording}
-                onStopRecording={stopRecording}
-                isRecording={isRecording}
-                isDisabled={isAnalyzing}
-                placeholder="Inizia a descrivere il tuo caso..."
-              />
+            <ChatInput
+              onSendMessage={handleSendMessage}
+              onStartRecording={startRecording}
+              onStopRecording={stopRecording}
+              isRecording={isRecording}
+              isProcessingAudio={isProcessingAudio}
+              transcribedText={transcribedText}
+              onClearTranscription={() => setTranscribedText("")}
+              isDisabled={isAnalyzing}
+              placeholder="Inizia a descrivere il tuo caso..."
+              audioContext={audioContextRef.current || undefined}
+              mediaStream={mediaStreamRef.current || undefined}
+            />
             </div>
             
             <div className="flex justify-center gap-8 text-sm text-muted-foreground">
@@ -396,8 +433,13 @@ export default function NewCase() {
                 onStartRecording={startRecording}
                 onStopRecording={stopRecording}
                 isRecording={isRecording}
+                isProcessingAudio={isProcessingAudio}
+                transcribedText={transcribedText}
+                onClearTranscription={() => setTranscribedText("")}
                 isDisabled={isAnalyzing || isSpeaking}
                 placeholder="Continua a descrivere il tuo caso..."
+                audioContext={audioContextRef.current || undefined}
+                mediaStream={mediaStreamRef.current || undefined}
               />
             </div>
           </div>
