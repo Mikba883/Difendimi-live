@@ -102,8 +102,14 @@ Deno.serve(async (req) => {
 
     const { latestResponse = "", previousContext = [] } = body ?? {};
     
-    // Log for debugging
-    console.log('Received:', { latestResponse, previousContext });
+    // Enhanced logging for debugging
+    console.log('=== PRECHECK DEBUG ===');
+    console.log('Latest Response:', latestResponse);
+    console.log('Previous Context Length:', previousContext.length);
+    if (previousContext.length > 0) {
+      const lastAssistantMessage = [...previousContext].reverse().find((msg: any) => msg.role === 'assistant');
+      console.log('Last Assistant Question:', lastAssistantMessage?.content || 'none');
+    }
     
     // Validate input
     if (!latestResponse || typeof latestResponse !== "string" || !latestResponse.trim()) {
@@ -136,6 +142,10 @@ REGOLE FONDAMENTALI:
 2. NO LOOP: Mai ripetere la stessa domanda o simili
 3. ACCETTAZIONE: "annullamento", "rimborso", "ricorso" sono risposte valide e complete
 4. MEMORIA: Ricorda tutte le informazioni già fornite
+5. RICONOSCIMENTO RISPOSTE NON PERTINENTI: Se l'utente risponde con frasi come "esatto", "sì", "no", "al prossimo episodio", "dopo", "non ricordo" senza aggiungere informazioni:
+   - NON ripetere la stessa domanda
+   - Riformula la domanda in modo più chiaro o specifico
+   - Oppure passa alla domanda successiva se hai già provato
 
 DOMANDE DA FARE IN SEQUENZA (salta quelle già risposte):
 1. Tipo di problema legale (multa, contratto, etc.)
@@ -145,6 +155,12 @@ DOMANDE DA FARE IN SEQUENZA (salta quelle già risposte):
 5. Azioni già intraprese
 6. Documentazione disponibile
 7. Urgenza/scadenze
+
+ANALISI DELLE RISPOSTE:
+- Se l'utente risponde "non ricordo" o "non so" a una data → chiedi un periodo approssimativo o passa alla domanda successiva
+- Se l'utente dà risposte evasive o scherzose → riformula la domanda in modo più chiaro
+- Se hai già fatto la stessa domanda 2 volte → passa alla domanda successiva
+- Controlla sempre se stai per ripetere esattamente la stessa domanda dell'ultima volta
 
 Analizza la conversazione e determina:
 
@@ -171,12 +187,23 @@ Devi rispondere SEMPRE in formato JSON con questa struttura:
 
     const userPrompt = `Basandoti sulla conversazione e sull'ultima risposta, determina la prossima domanda appropriata o se hai informazioni sufficienti per procedere.
     
-IMPORTANTE: Se l'utente ha risposto "annullamento" alla domanda su cosa vuole ottenere, ACCETTA questa risposta e passa alla domanda successiva (es. date, importi, etc.)`;
+IMPORTANTE: 
+- Se l'utente ha risposto "annullamento" alla domanda su cosa vuole ottenere, ACCETTA questa risposta e passa alla domanda successiva (es. date, importi, etc.)
+- Se l'utente risponde con "esatto", "sì", "al prossimo episodio" o simili senza informazioni utili:
+  * NON ripetere la stessa domanda
+  * Riformula in modo diverso: invece di "Quando è avvenuto?" prova "In che mese è successo?" o "Era recente o tempo fa?"
+  * O passa alla domanda successiva se necessario
+- Verifica sempre l'ultima domanda fatta per non ripeterla identica`;
 
     // Analizza con OpenAI
-    console.log('Calling OpenAI with conversation history');
+    console.log('Calling OpenAI for analysis...');
     const precheck = await callOpenAI(openAIApiKey, systemPrompt, userPrompt);
-    console.log('OpenAI response:', precheck);
+    console.log('OpenAI Analysis:', {
+      score: precheck?.completeness?.score,
+      status: precheck?.completeness?.status,
+      nextQuestion: precheck?.nextQuestion?.text,
+      missingElements: precheck?.completeness?.missingElements
+    });
 
     // Valuta completezza
     const score: number = Number(precheck?.completeness?.score ?? 0);

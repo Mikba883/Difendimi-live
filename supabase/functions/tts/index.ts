@@ -130,7 +130,7 @@ serve(async (req) => {
           voice: {
             languageCode: 'it-IT',
             name: voice,
-            ssmlGender: voice.includes('Wavenet-A') || voice.includes('Wavenet-C') ? 'FEMALE' : 'MALE',
+            ssmlGender: voice.includes('-A') || voice.includes('-C') || voice.includes('-E') ? 'FEMALE' : 'MALE',
           },
           audioConfig: {
             audioEncoding: 'MP3',
