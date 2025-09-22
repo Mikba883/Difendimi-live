@@ -249,7 +249,7 @@ export default function NewCase() {
       const { error } = await supabase
         .from('cases')
         .insert({
-          user_id: user.id,
+          created_by: user.id,
           title: `Caso del ${new Date().toLocaleDateString('it-IT')}`,
           cards_json: {
             originalText: currentText,

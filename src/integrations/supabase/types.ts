@@ -16,34 +16,76 @@ export type Database = {
     Tables: {
       cases: {
         Row: {
+          area_of_law: string[] | null
           cards_json: Json
+          case_text: string | null
+          case_type: string | null
+          classification: Json | null
           created_at: string
+          created_by: string
           doc_availability: Json | null
+          documents: Json | null
+          error_message: string | null
           id: string
+          job_id: string | null
+          jurisdiction: string | null
+          legal_signals: Json | null
+          pii_scrubbed: boolean | null
+          previous_context: string | null
+          report: Json | null
+          search_plan: Json | null
           sources_used: Json | null
+          status: Database["public"]["Enums"]["case_status"] | null
           title: string
           updated_at: string
-          user_id: string
         }
         Insert: {
+          area_of_law?: string[] | null
           cards_json: Json
+          case_text?: string | null
+          case_type?: string | null
+          classification?: Json | null
           created_at?: string
+          created_by: string
           doc_availability?: Json | null
+          documents?: Json | null
+          error_message?: string | null
           id?: string
+          job_id?: string | null
+          jurisdiction?: string | null
+          legal_signals?: Json | null
+          pii_scrubbed?: boolean | null
+          previous_context?: string | null
+          report?: Json | null
+          search_plan?: Json | null
           sources_used?: Json | null
+          status?: Database["public"]["Enums"]["case_status"] | null
           title: string
           updated_at?: string
-          user_id: string
         }
         Update: {
+          area_of_law?: string[] | null
           cards_json?: Json
+          case_text?: string | null
+          case_type?: string | null
+          classification?: Json | null
           created_at?: string
+          created_by?: string
           doc_availability?: Json | null
+          documents?: Json | null
+          error_message?: string | null
           id?: string
+          job_id?: string | null
+          jurisdiction?: string | null
+          legal_signals?: Json | null
+          pii_scrubbed?: boolean | null
+          previous_context?: string | null
+          report?: Json | null
+          search_plan?: Json | null
           sources_used?: Json | null
+          status?: Database["public"]["Enums"]["case_status"] | null
           title?: string
           updated_at?: string
-          user_id?: string
         }
         Relationships: []
       }
@@ -85,7 +127,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      case_status:
+        | "draft"
+        | "collecting"
+        | "queued"
+        | "processing"
+        | "ready"
+        | "error"
+        | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -212,6 +261,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      case_status: [
+        "draft",
+        "collecting",
+        "queued",
+        "processing",
+        "ready",
+        "error",
+        "archived",
+      ],
+    },
   },
 } as const
