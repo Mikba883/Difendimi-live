@@ -141,6 +141,42 @@ Deno.serve(async (req) => {
       // FASE 1: Analizza il caso iniziale e genera domande intelligenti
       console.log('📋 FASE 1: Analisi caso iniziale e generazione domande');
       
+      // Prima valuta se è un messaggio generico o un caso reale
+      const validationSystemPrompt = `Sei Lexy, un assistente AI legale.
+      
+Analizza l'input dell'utente per determinare se:
+1. È un saluto o messaggio generico (es: "ciao", "buongiorno", "aiutami", "ho un problema")
+2. È una richiesta di assistenza generica senza dettagli
+3. Descrive un problema legale reale
+
+Rispondi SEMPRE in formato JSON.`;
+
+      const validationUserPrompt = `Input utente: "${latestResponse}"
+
+Se è un saluto o messaggio generico, rispondi:
+{
+  "isValidCase": false,
+  "welcomeMessage": "Ciao! Sono Lexy, il tuo assistente legale AI. Per poterti aiutare al meglio, ti prego di descrivere nel dettaglio il tuo problema legale. Ad esempio: controversie contrattuali, problemi di locazione, questioni di famiglia, multe, contenziosi, etc."
+}
+
+Se descrive un problema legale reale, rispondi:
+{
+  "isValidCase": true
+}`;
+
+      const validationResult = await callOpenAI(openAIApiKey, validationSystemPrompt, validationUserPrompt);
+      
+      // Se non è un caso valido, invia messaggio di benvenuto
+      if (validationResult.isValidCase === false) {
+        console.log('🤝 Input generico ricevuto - invio messaggio di benvenuto');
+        return jsonResponse({
+          status: "welcome_message",
+          message: validationResult.welcomeMessage || "Ciao! Per poterti aiutare, descrivi il tuo problema legale nel dettaglio.",
+          requiresInput: true
+        });
+      }
+      
+      // Se è un caso valido, procedi con l'analisi dettagliata
       const systemPrompt = `Sei Lexy, un assistente AI legale esperto e empatico.
       
 L'utente ha appena descritto il suo caso legale. Devi:

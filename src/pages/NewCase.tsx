@@ -200,16 +200,7 @@ export default function NewCase() {
 
     setIsAnalyzing(true);
     
-    // Se è la prima analisi, mostra messaggio di "pensiero"
-    if (allQuestions.length === 0) {
-      const thinkingMessage: Message = {
-        id: 'thinking-' + Date.now(),
-        text: "Fammi pensare un attimo alla tua situazione... Sto analizzando il caso per identificare le informazioni essenziali che mi servono.",
-        sender: 'assistant',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, thinkingMessage]);
-    }
+    // Non mostriamo più il messaggio di "pensiero" - solo l'indicatore di caricamento
     
     try {
       // Prepara il contesto precedente (escluso l'ultimo messaggio appena aggiunto e il messaggio di thinking se presente)
@@ -242,6 +233,19 @@ export default function NewCase() {
       if (error) throw error;
 
       console.log('Response from precheck:', data);
+
+      // Se è un messaggio di benvenuto (input non valido)
+      if (data.status === 'welcome_message') {
+        const welcomeMessage: Message = {
+          id: 'welcome-' + Date.now(),
+          text: data.message,
+          sender: 'assistant',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, welcomeMessage]);
+        setIsAnalyzing(false);
+        return;
+      }
 
       // FASE 1: Generazione domande iniziali
       if (data.phase === 'initial_analysis' && data.questions) {
