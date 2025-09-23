@@ -398,28 +398,29 @@ export default function NewCase() {
       {/* Header - solo se ci sono messaggi */}
       {hasMessages && (
         <div className="border-b bg-background/95 backdrop-blur-sm px-4 py-3 animate-fade-in">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/dashboard')}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Dashboard
-              </Button>
-              <div>
-                <h1 className="text-lg font-semibold">Nuovo Caso</h1>
-                <p className="text-xs text-muted-foreground">Lexy AI Assistant</p>
+          <div className="max-w-4xl mx-auto">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate('/dashboard')}
+                  className="h-8 w-8"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                {completeness > 0 && (
+                  <span className="text-sm font-medium md:hidden">{completeness}%</span>
+                )}
               </div>
+              {completeness > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Analisi caso</span>
+                  <Progress value={completeness} className="h-2 flex-1" />
+                  <span className="text-sm font-medium hidden md:inline">{completeness}%</span>
+                </div>
+              )}
             </div>
-            {completeness > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Analisi</span>
-                <Progress value={completeness} className="h-2 w-24" />
-                <span className="text-sm font-medium">{completeness}%</span>
-              </div>
-            )}
           </div>
         </div>
       )}

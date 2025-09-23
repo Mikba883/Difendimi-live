@@ -234,6 +234,7 @@ Dati dall'analisi preliminare:
         classification: result.classification || {},
         report: result.report || {},
         documents: result.documents || [],
+        cards_json: result.report || {}, // Aggiungiamo cards_json che è richiesto nel database
         jurisdiction: result.classification?.jurisdiction || "unknown",
         area_of_law: result.classification?.areaOfLaw || [],
         doc_availability: {

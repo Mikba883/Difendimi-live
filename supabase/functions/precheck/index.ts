@@ -164,10 +164,21 @@ Se descrive un problema legale reale, rispondi:
   "isValidCase": true
 }`;
 
-      const validationResult = await callOpenAI(openAIApiKey, validationSystemPrompt, validationUserPrompt);
+      let validationResult;
+      try {
+        validationResult = await callOpenAI(openAIApiKey, validationSystemPrompt, validationUserPrompt);
+      } catch (error) {
+        console.log('⚠️ Errore validazione input, assumo sia un saluto generico:', error);
+        // Se c'è un errore nel parsing, assumiamo sia un input generico
+        return jsonResponse({
+          status: "welcome_message",
+          message: "Ciao! Sono Lexy, il tuo assistente legale AI. Per poterti aiutare al meglio, ti prego di descrivere nel dettaglio il tuo problema legale. Ad esempio: controversie contrattuali, problemi di locazione, questioni di famiglia, multe, contenziosi, etc.",
+          requiresInput: true
+        });
+      }
       
       // Se non è un caso valido, invia messaggio di benvenuto
-      if (validationResult.isValidCase === false) {
+      if (!validationResult || validationResult.isValidCase === false) {
         console.log('🤝 Input generico ricevuto - invio messaggio di benvenuto');
         return jsonResponse({
           status: "welcome_message",
