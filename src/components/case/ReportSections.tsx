@@ -12,14 +12,13 @@ import {
   ListCheck,
   Calendar,
   Paperclip,
-  Menu,
-  X,
-  ChevronUp
+  Menu
 } from "lucide-react";
 import type { TabbedLegalReport } from "@/types/case";
 import { cn } from "@/lib/utils";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ReportSectionsProps {
   report: TabbedLegalReport;
@@ -37,7 +36,7 @@ const sectionIcons = {
 export function ReportSections({ report }: ReportSectionsProps) {
   const [activeSection, setActiveSection] = useState<string>("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showScrollTop, setShowScrollTop] = useState(false);
+  const isMobile = useIsMobile();
 
   // Handle both camelCase and snake_case formats
   const normalizedReport = report ? {
@@ -51,10 +50,6 @@ export function ReportSections({ report }: ReportSectionsProps) {
   useEffect(() => {
     const handleScroll = () => {
       const sections = Object.keys(sectionIcons);
-      const scrollPosition = window.scrollY + 100;
-      
-      // Show scroll to top button
-      setShowScrollTop(window.scrollY > 300);
       
       for (const section of sections) {
         const element = document.getElementById(`section-${section}`);
@@ -81,10 +76,6 @@ export function ReportSections({ report }: ReportSectionsProps) {
     }
   };
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
   if (!normalizedReport) {
     return (
       <Alert>
@@ -98,39 +89,51 @@ export function ReportSections({ report }: ReportSectionsProps) {
 
   return (
     <div className="relative">
-      {/* Desktop/Tablet Sidebar */}
-      <nav className="hidden md:block fixed left-4 top-1/2 -translate-y-1/2 z-40">
-        <div className="bg-card border rounded-lg shadow-lg p-2 space-y-1">
-          {Object.entries(sectionIcons).map(([key, { icon: Icon, label, color }]) => (
-            <Tooltip key={key} delayDuration={100}>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => scrollToSection(key)}
-                  className={cn(
-                    "w-12 h-12 rounded-lg flex items-center justify-center transition-all",
-                    "hover:bg-muted hover:scale-110",
-                    activeSection === key && "bg-primary/10 scale-110"
-                  )}
-                >
-                  <Icon className={cn("h-5 w-5", color)} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p>{label}</p>
-              </TooltipContent>
-            </Tooltip>
-          ))}
+      {/* Desktop Horizontal Navigation */}
+      {!isMobile && (
+        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b mb-6">
+          <TooltipProvider>
+            <nav className="flex items-center justify-center gap-1 p-3">
+              {Object.entries(sectionIcons).map(([key, { icon: Icon, label, color }]) => {
+                const isActive = activeSection === key;
+                return (
+                  <Tooltip key={key}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={isActive ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => scrollToSection(key)}
+                        className={cn(
+                          "transition-all duration-200",
+                          isActive && "shadow-sm"
+                        )}
+                      >
+                        <Icon className={cn("h-4 w-4", !isActive && color)} />
+                        <span className="ml-2 hidden lg:inline">{label}</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{label}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </nav>
+          </TooltipProvider>
         </div>
-      </nav>
+      )}
 
       {/* Mobile Floating Button */}
-      <Button
-        size="icon"
-        className="md:hidden fixed bottom-4 right-4 z-50 rounded-full shadow-lg"
-        onClick={() => setMobileMenuOpen(true)}
-      >
-        <Menu className="h-5 w-5" />
-      </Button>
+      {isMobile && (
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setMobileMenuOpen(true)}
+          className="fixed bottom-6 right-6 z-50 rounded-full shadow-lg h-14 w-14 bg-background border-2"
+        >
+          <Menu className="h-6 w-6" />
+        </Button>
+      )}
 
       {/* Mobile Menu Drawer */}
       <Drawer open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -156,18 +159,6 @@ export function ReportSections({ report }: ReportSectionsProps) {
           </div>
         </DrawerContent>
       </Drawer>
-
-      {/* Scroll to Top Button */}
-      {showScrollTop && (
-        <Button
-          size="icon"
-          variant="outline"
-          className="fixed bottom-20 right-4 z-40 rounded-full shadow-lg md:bottom-4"
-          onClick={scrollToTop}
-        >
-          <ChevronUp className="h-5 w-5" />
-        </Button>
-      )}
 
       {/* Main Content */}
       <div className="space-y-8">
@@ -273,8 +264,8 @@ export function ReportSections({ report }: ReportSectionsProps) {
           </CardHeader>
           <CardContent className="pt-6">
             {normalizedReport.opzioni?.rows?.length ? (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
+              <div className="overflow-x-auto -mx-2 px-2">
+                <table className="w-full border-collapse min-w-[600px]">
                   <thead>
                     <tr className="border-b bg-muted/30">
                       <th className="text-left p-3">Opzione</th>

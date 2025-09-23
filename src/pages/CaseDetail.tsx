@@ -2,12 +2,11 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, FileText, AlertCircle } from "lucide-react";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 import { CaseStatusBadge } from "@/components/case/CaseStatusBadge";
 import { ReportSections } from "@/components/case/ReportSections";
-import { DocumentCard } from "@/components/case/DocumentCard";
 import type { Case } from "@/types/case";
 
 export default function CaseDetail() {
@@ -86,22 +85,42 @@ export default function CaseDetail() {
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          {/* Mobile header - 2 rows */}
+          <div className="md:hidden space-y-3">
+            <div className="flex items-center justify-between">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/dashboard')}
+                className="gap-2"
               >
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="h-4 w-4" />
                 Dashboard
               </Button>
-              <Separator orientation="vertical" className="h-6" />
-              <h1 className="text-xl font-semibold">
-                Report Completo - {caseData.title || `Caso ${caseData.job_id || caseData.id}`}
-              </h1>
               <CaseStatusBadge status={caseData.status} />
             </div>
+            <h1 className="text-xl font-bold">
+              {caseData.title || `Caso ${caseData.job_id || caseData.id}`}
+            </h1>
+          </div>
+
+          {/* Desktop header - 1 row */}
+          <div className="hidden md:flex items-center justify-between gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/dashboard')}
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Dashboard
+            </Button>
+            
+            <h1 className="text-2xl font-bold flex-1 text-center">
+              {caseData.title || `Caso ${caseData.job_id || caseData.id}`}
+            </h1>
+            
+            <CaseStatusBadge status={caseData.status} />
           </div>
         </div>
       </header>
@@ -120,39 +139,37 @@ export default function CaseDetail() {
             </Alert>
           )}
 
-          {/* Case Info */}
+          {/* Case Info Card */}
           {(caseData.case_type || caseData.jurisdiction || caseData.area_of_law) && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {caseData.case_type && (
-                <div className="bg-card rounded-lg p-4 border">
-                  <p className="text-sm text-muted-foreground">Tipo di Caso</p>
-                  <p className="text-lg font-medium mt-1">{caseData.case_type}</p>
+            <Card>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {caseData.case_type && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Tipologia Caso</p>
+                      <p className="font-medium">{caseData.case_type}</p>
+                    </div>
+                  )}
+                  {caseData.jurisdiction && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Giurisdizione</p>
+                      <p className="font-medium">{caseData.jurisdiction}</p>
+                    </div>
+                  )}
+                  {caseData.area_of_law?.length > 0 && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Area Legale</p>
+                      <p className="font-medium">{caseData.area_of_law.join(', ')}</p>
+                    </div>
+                  )}
                 </div>
-              )}
-              {caseData.jurisdiction && (
-                <div className="bg-card rounded-lg p-4 border">
-                  <p className="text-sm text-muted-foreground">Giurisdizione</p>
-                  <p className="text-lg font-medium mt-1">{caseData.jurisdiction}</p>
-                </div>
-              )}
-              {caseData.area_of_law?.length > 0 && (
-                <div className="bg-card rounded-lg p-4 border">
-                  <p className="text-sm text-muted-foreground">Area Legale</p>
-                  <p className="text-lg font-medium mt-1">{caseData.area_of_law.join(', ')}</p>
-                </div>
-              )}
-            </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Report Sections */}
           {caseData.report && (
-            <div>
-              <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
-                <FileText className="h-6 w-6" />
-                Report Completo
-              </h2>
-              <ReportSections report={caseData.report} />
-            </div>
+            <ReportSections report={caseData.report} />
           )}
 
           {/* No content message */}
