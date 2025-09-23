@@ -213,34 +213,57 @@ export default function NewCase() {
       if (error) throw error;
 
       setAnalysis(data);
-      setCompleteness(data.completeness.score);
-
-      // Controlla se il caso è completo PRIMA di aggiungere messaggi
-      const isComplete = data.completeness.status === 'complete' || data.completeness.score >= 95;
       
-      if (isComplete) {
-        // Caso completo: aggiungi solo messaggio di conferma e salva
+      // Aggiorna completezza solo se maggiore del valore attuale (incrementale)
+      if (data.completeness?.score > completeness) {
+        setCompleteness(data.completeness.score);
+      }
+
+      // Controlla lo stato dal backend
+      if (data.status === 'queued' && data.job_id) {
+        // Caso completo e in coda per elaborazione
         const completionMessage: Message = {
           id: Date.now().toString(),
-          text: data.nextQuestion?.text || "Perfetto! Ho raccolto tutte le informazioni necessarie. Il tuo caso è stato salvato e analizzato con successo.",
+          text: `Perfetto! Ho raccolto tutte le informazioni necessarie. Il tuo caso è ora in elaborazione.
+          
+Sto preparando un'analisi dettagliata per te...`,
+          sender: 'assistant',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, completionMessage]);
+        
+        // Salva il caso con job_id
+        await saveCase(data);
+        return;
+      }
+      
+      // Controlla se è completo basandosi su completeness
+      const isComplete = data.completeness?.status === 'complete' || data.completeness?.score >= 80;
+      
+      if (isComplete && !data.nextQuestion) {
+        // Caso completo senza job_id (fallback)
+        const completionMessage: Message = {
+          id: Date.now().toString(),
+          text: "Ho raccolto tutte le informazioni necessarie. Il tuo caso è stato salvato con successo.",
           sender: 'assistant',
           timestamp: new Date()
         };
         setMessages(prev => [...prev, completionMessage]);
         await saveCase(data);
-      } else {
-        // Caso incompleto: aggiungi la prossima domanda
-        if (data.nextQuestion?.text) {
-          const assistantMessage: Message = {
-            id: Date.now().toString(),
-            text: data.nextQuestion.text,
-            sender: 'assistant',
-            timestamp: new Date()
-          };
-          setMessages(prev => [...prev, assistantMessage]);
-          // TTS disabilitato per ora
-          // await speakText(data.nextQuestion.text);
-        }
+        return;
+      }
+      
+      // Solo se NON è completo e c'è una domanda successiva
+      if (!isComplete && data.nextQuestion?.text) {
+        const assistantMessage: Message = {
+          id: Date.now().toString(),
+          text: data.nextQuestion.text,
+          sender: 'assistant',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        // TTS disabilitato per ora per velocità
+        // await speakText(data.nextQuestion.text);
       }
 
     } catch (error) {

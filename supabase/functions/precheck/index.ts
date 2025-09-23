@@ -152,129 +152,137 @@ Deno.serve(async (req) => {
     console.log('Conversation History Built:', conversationHistory ? 'yes' : 'no');
     console.log('History Length:', conversationHistory.length);
 
-    // Calcolo completezza incrementale basato sulle informazioni raccolte
+    // Calcolo completezza più intelligente e progressivo
     let completenessScore = 0;
     const collectedInfo: string[] = [];
     const allResponses = conversationHistory.toLowerCase() + ' ' + latestResponse.toLowerCase();
     
-    // Calcolo preciso della completezza
+    // Calcolo base sulla lunghezza della conversazione (max 20%)
+    const messageCount = Array.isArray(previousContext) ? previousContext.length : 0;
+    if (messageCount >= 8) completenessScore += 20;
+    else if (messageCount >= 6) completenessScore += 15;
+    else if (messageCount >= 4) completenessScore += 10;
+    else if (messageCount >= 2) completenessScore += 5;
+    
+    // Tipo di problema (25%)
     if (allResponses.includes('multa') || allResponses.includes('contratto') || allResponses.includes('lavoro') || 
-        allResponses.includes('incidente') || allResponses.includes('affitto') || allResponses.includes('danni')) {
-      completenessScore += 20;
+        allResponses.includes('incidente') || allResponses.includes('affitto') || allResponses.includes('danni') ||
+        allResponses.includes('pagat') || allResponses.includes('licenzia')) {
+      completenessScore += 25;
       collectedInfo.push('tipo_problema');
     }
     
+    // Obiettivo (20%)
     if (allResponses.includes('annull') || allResponses.includes('rimbors') || allResponses.includes('risarciment') ||
-        allResponses.includes('accord') || allResponses.includes('contestar')) {
-      completenessScore += 15;
+        allResponses.includes('accord') || allResponses.includes('contestar') || allResponses.includes('ottenere') ||
+        allResponses.includes('voglio') || allResponses.includes('vorrei')) {
+      completenessScore += 20;
       collectedInfo.push('obiettivo');
     }
     
-    // Pattern per date/tempi
-    const datePatterns = /\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|ieri|oggi|settimana|mese|anno|giorni fa/i;
+    // Date/tempi (15%)
+    const datePatterns = /\d+\s*(mesi|giorni|anni|settimane)|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|\d{4}|\d{1,2}\/\d{1,2}/i;
     if (datePatterns.test(allResponses)) {
       completenessScore += 15;
       collectedInfo.push('quando');
     }
     
-    // Pattern per importi
-    const amountPatterns = /€|\d+\s*euro|cento|mila|costi|spese|pagament|import/i;
+    // Importi (10%)
+    const amountPatterns = /\d+[\.\,]?\d*\s*(euro|€)|migliaia?|centinaia/i;
     if (amountPatterns.test(allResponses)) {
-      completenessScore += 15;
+      completenessScore += 10;
       collectedInfo.push('importi');
     }
     
-    // Chi è coinvolto
-    if (allResponses.includes('comune') || allResponses.includes('azienda') || allResponses.includes('proprietario') ||
-        allResponses.includes('vigili') || allResponses.includes('polizia') || allResponses.includes('assicurazione')) {
+    // Parti coinvolte (10%)
+    if (allResponses.includes('datore') || allResponses.includes('azienda') || allResponses.includes('proprietario') ||
+        allResponses.includes('comune') || allResponses.includes('assicurazione') || allResponses.includes('banca')) {
       completenessScore += 10;
       collectedInfo.push('parti_coinvolte');
     }
     
-    // Azioni intraprese
-    if (allResponses.includes('già') || allResponses.includes('contatt') || allResponses.includes('inviato') ||
-        allResponses.includes('ricorso') || allResponses.includes('denunci')) {
-      completenessScore += 10;
-      collectedInfo.push('azioni_intraprese');
+    // Boost se l'utente ha fornito risposte dettagliate
+    if (latestResponse.length > 50) completenessScore += 5;
+    if (latestResponse.length > 100) completenessScore += 5;
+    
+    // Assicura che il punteggio sia incrementale (mai diminuisce)
+    // Recupera il punteggio precedente se esiste
+    let previousScore = 0;
+    if (Array.isArray(previousContext) && previousContext.length > 0) {
+      // Stima basata sul numero di messaggi
+      previousScore = Math.min(messageCount * 10, 70);
     }
     
-    // Documentazione
-    if (allResponses.includes('document') || allResponses.includes('verbale') || allResponses.includes('contratto') ||
-        allResponses.includes('foto') || allResponses.includes('prova') || allResponses.includes('ricevut')) {
-      completenessScore += 10;
-      collectedInfo.push('documentazione');
-    }
+    // Il punteggio non può mai diminuire
+    completenessScore = Math.max(completenessScore, previousScore);
     
-    // Urgenza
-    if (allResponses.includes('scad') || allResponses.includes('urgent') || allResponses.includes('entro') ||
-        allResponses.includes('termine')) {
-      completenessScore += 5;
-      collectedInfo.push('urgenza');
-    }
-    
-    // Assicura che il punteggio non superi 100
+    // Limita a 100
     completenessScore = Math.min(completenessScore, 100);
     
-    const systemPrompt = `Sei Lexy, un assistente AI che aiuta a raccogliere informazioni sui casi.
+    const systemPrompt = `Sei Lexy, un assistente AI conversazionale e intelligente.
 
-INFORMAZIONI GIÀ RACCOLTE (completezza: ${completenessScore}%):
-${collectedInfo.join(', ')}
+ANALISI CONVERSAZIONE:
+${conversationHistory ? conversationHistory : 'Prima risposta dell\'utente'}
+ULTIMA RISPOSTA: "${latestResponse}"
 
-${conversationHistory ? `CONVERSAZIONE:
-${conversationHistory}
+INFORMAZIONI RACCOLTE FINORA:
+- Tipo di problema: ${collectedInfo.includes('tipo_problema') ? '✓' : '❌'}
+- Obiettivo desiderato: ${collectedInfo.includes('obiettivo') ? '✓' : '❌'}
+- Quando è successo: ${collectedInfo.includes('quando') ? '✓' : '❌'}
+- Importi coinvolti: ${collectedInfo.includes('importi') ? '✓' : '❌'}
+- Parti coinvolte: ${collectedInfo.includes('parti_coinvolte') ? '✓' : '❌'}
+- Azioni intraprese: ${collectedInfo.includes('azioni_intraprese') ? '✓' : '❌'}
+- Documentazione disponibile: ${collectedInfo.includes('documentazione') ? '✓' : '❌'}
+- Urgenza/scadenze: ${collectedInfo.includes('urgenza') ? '✓' : '❌'}
 
-ULTIMA RISPOSTA: "${latestResponse}"` : `PRIMA RISPOSTA: "${latestResponse}"`}
+COMPLETEZZA ATTUALE: ${completenessScore}%
 
-REGOLA CRITICA: Se completezza >= 95%, NON fare altre domande. Conferma solo che hai tutto.
+REGOLE CRITICHE:
+1. Se completezza >= 80%, il caso è COMPLETO. NON fare altre domande.
+2. Analizza SEMPRE il contesto delle risposte, non solo le parole chiave.
+3. Se l'utente ha già risposto a una domanda, NON ripeterla MAI.
+4. Sii conversazionale e naturale, non meccanico.
+5. Se l'utente dice "non so" o simili, ACCETTA la risposta e passa oltre.
 
-CALCOLO COMPLETEZZA:
-- Il punteggio attuale è ${completenessScore}%
-- Status: ${completenessScore >= 95 ? 'complete' : completenessScore >= 70 ? 'sufficient' : 'needs_more_info'}
-
-${completenessScore < 95 ? `PROSSIMA DOMANDA DA FARE (scegli UNA sola tra quelle mancanti):
-${!collectedInfo.includes('tipo_problema') ? '- Che tipo di problema hai?' : ''}
-${!collectedInfo.includes('obiettivo') ? '- Cosa vorresti ottenere?' : ''}
-${!collectedInfo.includes('quando') ? '- Quando è successo?' : ''}
-${!collectedInfo.includes('importi') ? '- Ci sono importi coinvolti?' : ''}
-${!collectedInfo.includes('parti_coinvolte') ? '- Chi è coinvolto?' : ''}
-${!collectedInfo.includes('azioni_intraprese') ? '- Hai già fatto qualcosa?' : ''}
-${!collectedInfo.includes('documentazione') ? '- Hai documentazione?' : ''}
-${!collectedInfo.includes('urgenza') ? '- Ci sono scadenze?' : ''}` : 'CASO COMPLETO: Conferma che hai raccolto tutto.'}
-
-Rispondi in JSON:
+Rispondi SEMPRE in questo formato JSON:
 {
   "completeness": {
     "score": ${completenessScore},
-    "status": "${completenessScore >= 95 ? 'complete' : completenessScore >= 70 ? 'sufficient' : 'needs_more_info'}",
-    "missingElements": [/* elementi mancanti */]
+    "status": "${completenessScore >= 80 ? 'complete' : 'needs_more_info'}",
+    "missingElements": [/* lista elementi mancanti */]
   },
-  "nextQuestion": {
-    "text": "${completenessScore >= 95 ? 'Ho raccolto tutte le informazioni necessarie per analizzare il tuo caso.' : 'domanda specifica'}",
-    "category": "string"
-  },
+  "nextQuestion": ${completenessScore >= 80 ? 'null' : '{
+    "text": "domanda naturale e specifica basata su cosa manca",
+    "category": "categoria_domanda"
+  }'},
   "analysis": {
-    "caseType": "string",
-    "suggestedKeywords": [],
-    "recommendedDocuments": []
+    "caseType": "tipo di caso identificato",
+    "keyFacts": ["fatto1", "fatto2"],
+    "suggestedKeywords": ["keyword1", "keyword2"],
+    "recommendedDocuments": ["doc1", "doc2"]
   }
 }`;
 
-    const userPrompt = `ANALIZZA LA CONVERSAZIONE E L'ULTIMA RISPOSTA.
+    const userPrompt = `ISTRUZIONI PER L'ANALISI:
 
-CONTROLLO ANTI-DUPLICAZIONE:
-1. Identifica l'ultima domanda che hai fatto
-2. Verifica che la nuova domanda sia DIVERSA
-3. Se stai per ripetere, SALTA alla domanda successiva
+1. COMPRENDI IL CONTESTO: L'utente sta descrivendo: ${latestResponse}
+2. VALUTA COSA HAI GIÀ: Controlla le informazioni raccolte sopra
+3. DECIDI:
+   - Se completezza >= 80% → status = "complete", NO nextQuestion
+   - Se < 80% → chiedi UNA SOLA cosa che manca davvero
+   
+4. EVITA RIPETIZIONI:
+   - Se hai già chiesto qualcosa, NON richiederla
+   - Se l'utente dice "non so", accetta e vai avanti
+   - Se l'utente ha dato info parziali, accettale
 
-INTERPRETAZIONE RISPOSTE:
-- "annullamento" = obiettivo chiaro, passa oltre
-- "sì"/"no" dopo domanda = risposta valida, continua
-- "dopo"/"non so" = riformula O passa avanti
-- Risposte brevi SONO valide se pertinenti
+5. SII INTELLIGENTE:
+   - Interpreta le risposte nel contesto
+   - "5000 euro" = ha dato l'importo, non chiedere di nuovo
+   - "il mio datore" = ha detto chi è coinvolto
+   - "due mesi fa" = ha detto quando
 
-DECISIONE:
-Se hai informazioni su tipo problema + obiettivo + almeno 2 altri elementi → puoi considerare il caso sufficiente.
-Altrimenti, fai la PROSSIMA domanda NON ancora fatta.`;
+IMPORTANTE: Se hai abbastanza info per capire il caso (>80%), COMPLETA SUBITO.`;
 
     // Analizza con OpenAI
     console.log('Calling OpenAI for analysis...');
@@ -299,10 +307,10 @@ Altrimenti, fai la PROSSIMA domanda NON ancora fatta.`;
       }
     }
 
-    // Valuta completezza
+    // Valuta completezza con soglia più bassa per evitare loop
     const score: number = Number(precheck?.completeness?.score ?? 0);
     const status: string = String(precheck?.completeness?.status ?? "").toLowerCase();
-    const isComplete = status === "complete" || score >= 90;
+    const isComplete = status === "complete" || score >= 80; // Abbassata soglia a 80%
 
     if (!isComplete) {
       // Torna solo le info utili a proseguire la raccolta dati
