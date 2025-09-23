@@ -232,7 +232,7 @@ Dati dall'analisi preliminare:
     }
     
     // Prepare the data with the correct structure
-    const caseData = {
+    const caseDbData = {
       job_id,
       created_by: userId,
       title: result.title || "Caso senza titolo",
@@ -249,14 +249,14 @@ Dati dall'analisi preliminare:
         diffida: false,
         adr: false,
       },
-      // Store the original case text and context
-      case_text: caseData.caseText || "",
-      previous_context: caseData.previousContext || "",
+      // Non salviamo più i dati utente nel database
+      case_text: null,
+      previous_context: null,
     };
     
     // Check if documents were generated and update availability
     if (result.documents?.items && Array.isArray(result.documents.items)) {
-      caseData.doc_availability = {
+      caseDbData.doc_availability = {
         relazione: result.documents.items.some((d: any) => d.title?.toLowerCase().includes("relazione")),
         diffida: result.documents.items.some((d: any) => d.title?.toLowerCase().includes("diffida")),
         adr: result.documents.items.some((d: any) => d.title?.toLowerCase().includes("adr")),
@@ -266,7 +266,7 @@ Dati dall'analisi preliminare:
     // Save to database
     const { data: caseRecord, error: dbError } = await supabase
       .from("cases")
-      .insert(caseData)
+      .insert(caseDbData)
       .select()
       .single();
 
