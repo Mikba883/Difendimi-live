@@ -9,7 +9,15 @@ interface ReportTabsProps {
 }
 
 export function ReportTabs({ report }: ReportTabsProps) {
-  if (!report) {
+  // Handle both camelCase and snake_case formats for backward compatibility
+  const normalizedReport = report ? {
+    ...report,
+    executive_summary: report.executive_summary || (report as any).executiveSummary,
+    qualificazione_giuridica: report.qualificazione_giuridica || (report as any).qualificazioneGiuridica,
+    passi_operativi: report.passi_operativi || (report as any).passiOperativi,
+  } : null;
+  
+  if (!normalizedReport) {
     return (
       <Alert>
         <AlertCircle className="h-4 w-4" />
@@ -19,14 +27,16 @@ export function ReportTabs({ report }: ReportTabsProps) {
       </Alert>
     );
   }
+  
+  const reportData = normalizedReport;
 
   return (
     <div className="space-y-6">
-      {report.disclaimer && (
+      {reportData.disclaimer && (
         <Alert className="border-yellow-200 bg-yellow-50">
           <AlertCircle className="h-4 w-4 text-yellow-600" />
           <AlertDescription className="text-yellow-800">
-            {report.disclaimer}
+            {reportData.disclaimer}
           </AlertDescription>
         </Alert>
       )}
@@ -48,14 +58,14 @@ export function ReportTabs({ report }: ReportTabsProps) {
               <CardTitle>Executive Summary</CardTitle>
             </CardHeader>
             <CardContent>
-              {report.executive_summary ? (
+              {reportData.executive_summary ? (
                 <div className="space-y-4">
                   <p className="text-muted-foreground leading-relaxed">
-                    {report.executive_summary.summary}
+                    {reportData.executive_summary.summary || (reportData.executive_summary as any).content}
                   </p>
-                  {report.executive_summary.key_points && (
+                  {reportData.executive_summary.key_points && (
                     <ul className="list-disc pl-5 space-y-2">
-                      {report.executive_summary.key_points.map((point, idx) => (
+                      {reportData.executive_summary.key_points.map((point, idx) => (
                         <li key={idx} className="text-muted-foreground">
                           {point}
                         </li>
@@ -76,16 +86,16 @@ export function ReportTabs({ report }: ReportTabsProps) {
               <CardTitle>Qualificazione Giuridica</CardTitle>
             </CardHeader>
             <CardContent>
-              {report.qualificazione_giuridica ? (
+              {reportData.qualificazione_giuridica ? (
                 <div className="space-y-4">
                   <p className="text-muted-foreground leading-relaxed">
-                    {report.qualificazione_giuridica.description}
+                    {reportData.qualificazione_giuridica.description || (reportData.qualificazione_giuridica as any).content}
                   </p>
-                  {report.qualificazione_giuridica.articles && (
+                  {reportData.qualificazione_giuridica.articles && (
                     <div className="space-y-2">
                       <h4 className="font-medium">Articoli di riferimento:</h4>
                       <ul className="list-disc pl-5 space-y-1">
-                        {report.qualificazione_giuridica.articles.map((article, idx) => (
+                        {reportData.qualificazione_giuridica.articles.map((article, idx) => (
                           <li key={idx} className="text-muted-foreground">
                             {article}
                           </li>
@@ -107,9 +117,9 @@ export function ReportTabs({ report }: ReportTabsProps) {
               <CardTitle>Fonti Normative</CardTitle>
             </CardHeader>
             <CardContent>
-              {report.fonti?.items?.length ? (
+              {reportData.fonti?.items?.length ? (
                 <div className="space-y-3">
-                  {report.fonti.items.map((fonte, idx) => (
+                  {reportData.fonti.items.map((fonte, idx) => (
                     <div key={idx} className="border rounded-lg p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -145,7 +155,7 @@ export function ReportTabs({ report }: ReportTabsProps) {
               <CardTitle>Opzioni Disponibili</CardTitle>
             </CardHeader>
             <CardContent>
-              {report.opzioni?.rows?.length ? (
+              {reportData.opzioni?.rows?.length ? (
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
                     <thead>
@@ -159,20 +169,20 @@ export function ReportTabs({ report }: ReportTabsProps) {
                       </tr>
                     </thead>
                     <tbody>
-                      {report.opzioni.rows.map((row, idx) => (
+                      {reportData.opzioni.rows.map((row, idx) => (
                         <tr key={idx} className="border-b hover:bg-muted/50">
-                          <td className="p-3 font-medium">{row.name}</td>
-                          <td className="p-3 text-sm text-green-600">{row.pro}</td>
-                          <td className="p-3 text-sm text-red-600">{row.contro}</td>
+                          <td className="p-3 font-medium">{row.name || (row as any).option}</td>
+                          <td className="p-3 text-sm text-green-600">{row.pro || (row as any).pros}</td>
+                          <td className="p-3 text-sm text-red-600">{row.contro || (row as any).cons}</td>
                           <td className="p-3 text-sm">
                             <Clock className="inline h-3 w-3 mr-1" />
-                            {row.tempi}
+                            {row.tempi || '-'}
                           </td>
                           <td className="p-3 text-sm">
                             <Euro className="inline h-3 w-3 mr-1" />
-                            {row.costi}
+                            {row.costi || '-'}
                           </td>
-                          <td className="p-3 text-sm">{row.esito}</td>
+                          <td className="p-3 text-sm">{row.esito || '-'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -191,9 +201,9 @@ export function ReportTabs({ report }: ReportTabsProps) {
               <CardTitle>Passi Operativi</CardTitle>
             </CardHeader>
             <CardContent>
-              {report.passi_operativi?.checklist?.length ? (
+              {reportData.passi_operativi?.checklist?.length ? (
                 <div className="space-y-3">
-                  {report.passi_operativi.checklist.map((item, idx) => (
+                  {reportData.passi_operativi.checklist.map((item, idx) => (
                     <div key={item.id || idx} className="flex items-start gap-3">
                       <CheckCircle2 className="h-5 w-5 text-muted-foreground mt-0.5" />
                       <p className="text-muted-foreground flex-1">{item.text}</p>

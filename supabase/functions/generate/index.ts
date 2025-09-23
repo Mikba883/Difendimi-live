@@ -116,86 +116,96 @@ serve(async (req) => {
       console.error("No valid user ID found - case will be saved without user association");
     }
 
-    // Generate legal analysis
+    // Generate legal analysis with correct structure
     const systemPrompt = `Sei un assistente legale AI specializzato nel diritto italiano. 
 Genera un report legale dettagliato basato sul caso fornito.
 
-Il report deve essere in formato JSON con questa struttura:
+IMPORTANTE: Il report deve essere in formato JSON con questa ESATTA struttura usando snake_case:
 {
   "title": "Titolo del caso",
   "classification": {
-    "caseType": "tipo di caso",
-    "jurisdiction": "giurisdizione",
-    "areaOfLaw": ["area1", "area2"],
+    "case_type": "tipo di caso",
+    "jurisdiction": "giurisdizione", 
+    "area_of_law": ["area1", "area2"],
     "urgency": "alta|media|bassa",
     "complexity": "alta|media|bassa"
   },
   "report": {
-    "executiveSummary": {
-      "title": "Sintesi Esecutiva",
-      "content": "Riassunto del caso e raccomandazioni principali"
+    "executive_summary": {
+      "summary": "Riassunto completo del caso e delle raccomandazioni principali",
+      "key_points": ["punto chiave 1", "punto chiave 2", "punto chiave 3"]
     },
-    "qualificazioneGiuridica": {
-      "title": "Qualificazione Giuridica",
-      "content": "Analisi giuridica dettagliata del caso"
+    "qualificazione_giuridica": {
+      "description": "Analisi giuridica dettagliata del caso secondo il diritto italiano",
+      "articles": ["Art. X Codice Civile", "Art. Y Codice Penale", "Legge N/Anno"]
     },
     "fonti": {
-      "title": "Fonti Normative",
       "items": [
         {
-          "type": "legge|articolo|giurisprudenza",
-          "reference": "riferimento normativo",
-          "relevance": "alta|media|bassa",
-          "description": "descrizione"
+          "title": "Nome della legge o regolamento (es. Codice Civile)",
+          "official_url": "https://www.normativa.it/...",
+          "description": "Descrizione della rilevanza per il caso"
         }
       ]
     },
     "opzioni": {
-      "title": "Opzioni Strategiche",
       "rows": [
         {
-          "option": "opzione",
-          "pros": "vantaggi",
-          "cons": "svantaggi",
-          "risk": "alto|medio|basso"
+          "name": "Nome dell'opzione strategica",
+          "pro": "Vantaggi di questa opzione",
+          "contro": "Svantaggi e rischi",
+          "tempi": "Tempistiche stimate (es. 2-3 mesi)",
+          "costi": "Costi stimati (es. €1000-2000)",
+          "esito": "Probabilità di successo e risultato atteso"
         }
       ]
     },
-    "passiOperativi": {
-      "title": "Passi Operativi",
+    "passi_operativi": {
       "checklist": [
         {
-          "step": "passo da fare",
-          "priority": 1,
-          "timeframe": "immediato|breve|medio|lungo termine"
+          "id": "step_1",
+          "text": "Descrizione del passo da compiere",
+          "completed": false
         }
       ]
     },
     "termini": {
-      "title": "Termini e Scadenze",
       "deadlines": [
         {
-          "description": "descrizione scadenza",
-          "date": "data (se applicabile)",
-          "mandatory": true
+          "description": "Descrizione della scadenza",
+          "date": "2024-MM-DD",
+          "type": "prescription|decadenza|other"
         }
-      ]
+      ],
+      "prescription": "Informazioni generali sulla prescrizione applicabile",
+      "decadenza": "Informazioni generali sulla decadenza applicabile"
     },
     "allegati": {
-      "title": "Documenti Suggeriti",
-      "documents": ["documento1", "documento2"]
-    }
+      "present": ["Documento già disponibile 1", "Documento già disponibile 2"],
+      "missing": ["Documento mancante necessario 1", "Documento mancante necessario 2"],
+      "nice_to_have": ["Documento opzionale 1", "Documento opzionale 2"]
+    },
+    "disclaimer": "Questo report è fornito a scopo informativo. Si consiglia di consultare un avvocato qualificato per una consulenza legale specifica."
   },
-  "documents": [
-    {
-      "type": "relazione|diffida|adr",
-      "title": "titolo documento",
-      "purpose": "scopo del documento",
-      "content": "contenuto del documento",
-      "priority": "alta|media|bassa"
-    }
-  ]
-}`;
+  "documents": {
+    "items": [
+      {
+        "id": "doc_1",
+        "title": "Titolo del documento generato",
+        "rationale": "Motivo per cui questo documento è necessario",
+        "storage_path": "",
+        "signed_url": "",
+        "size_bytes": 0
+      }
+    ]
+  }
+}
+
+REGOLE IMPORTANTI:
+1. Usa sempre snake_case (underscore) per i nomi dei campi, NON camelCase
+2. Fai riferimento a leggi italiane reali da normativa.it
+3. Fornisci tempistiche e costi realistici
+4. Includi tutti i campi richiesti nella struttura`;
 
     const userPrompt = `Analizza il seguente caso legale e genera un report completo:
 
@@ -221,27 +231,42 @@ Dati dall'analisi preliminare:
       }, 401);
     }
     
-    // Save only AI-generated data, not user conversation
+    // Prepare the data with the correct structure
+    const caseData = {
+      job_id,
+      created_by: userId,
+      title: result.title || "Caso senza titolo",
+      case_type: caseType,
+      status: "ready" as const,
+      classification: result.classification || {},
+      report: result.report || {},
+      documents: result.documents || { items: [] },
+      cards_json: result.report || {}, 
+      jurisdiction: result.classification?.jurisdiction || "unknown",
+      area_of_law: result.classification?.area_of_law || [],
+      doc_availability: {
+        relazione: false,
+        diffida: false,
+        adr: false,
+      },
+      // Store the original case text and context
+      case_text: caseData.caseText || "",
+      previous_context: caseData.previousContext || "",
+    };
+    
+    // Check if documents were generated and update availability
+    if (result.documents?.items && Array.isArray(result.documents.items)) {
+      caseData.doc_availability = {
+        relazione: result.documents.items.some((d: any) => d.title?.toLowerCase().includes("relazione")),
+        diffida: result.documents.items.some((d: any) => d.title?.toLowerCase().includes("diffida")),
+        adr: result.documents.items.some((d: any) => d.title?.toLowerCase().includes("adr")),
+      };
+    }
+    
+    // Save to database
     const { data: caseRecord, error: dbError } = await supabase
       .from("cases")
-      .insert({
-        job_id,
-        created_by: userId,
-        title: result.title || "Caso senza titolo",
-        case_type: caseType,
-        status: "ready",
-        classification: result.classification || {},
-        report: result.report || {},
-        documents: result.documents || [],
-        cards_json: result.report || {}, 
-        jurisdiction: result.classification?.jurisdiction || "unknown",
-        area_of_law: result.classification?.areaOfLaw || [],
-        doc_availability: {
-          relazione: result.documents?.some((d: any) => d.type === "relazione") || false,
-          diffida: result.documents?.some((d: any) => d.type === "diffida") || false,
-          adr: result.documents?.some((d: any) => d.type === "adr") || false,
-        },
-      })
+      .insert(caseData)
       .select()
       .single();
 
