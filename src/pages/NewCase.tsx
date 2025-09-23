@@ -101,34 +101,34 @@ export default function NewCase() {
       setQuestionsComplete(true);
       setCompleteness(100);
       
-      // Mostra subito il messaggio di completamento
-      const completionMsg: Message = {
-        id: Date.now().toString() + '-completion',
-        text: "Ho raccolto tutto! Ora mi prendo un minuto per elaborare il tuo report completo...",
-        sender: 'assistant',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, completionMsg]);
-      setShowCompletionMessage(true);
+      // Avvia IMMEDIATAMENTE la generazione
+      setIsGenerating(true);
+      analyzeCase("");
+      
+      // Dopo 5 secondi mostra il messaggio di completamento
+      const timer = setTimeout(() => {
+        const completionMsg: Message = {
+          id: Date.now().toString() + '-completion',
+          text: "Ho raccolto tutto! Ora mi prendo un minuto per elaborare il tuo report completo...",
+          sender: 'assistant',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, completionMsg]);
+        setShowCompletionMessage(true);
+      }, 5000); // 5 seconds after starting generation
+      
+      setAutoGenerateTimer(timer);
     }
   }, [currentQuestionIndex, allQuestions.length]);
   
+  // Cleanup timer on unmount
   useEffect(() => {
-    if (showCompletionMessage && !isAnalyzing && !isComplete && !autoGenerateTimer) {
-      // Avvia il timer 5 secondi DOPO aver mostrato il messaggio al 100%
-      const timer = setTimeout(() => {
-        setIsGenerating(true);
-        analyzeCase("");
-      }, 5000); // 5 seconds after reaching 100% and showing message
-      setAutoGenerateTimer(timer);
-    }
-    
     return () => {
       if (autoGenerateTimer) {
         clearTimeout(autoGenerateTimer);
       }
     };
-  }, [showCompletionMessage]);
+  }, [autoGenerateTimer]);
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
