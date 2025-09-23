@@ -215,7 +215,10 @@ Dati dall'analisi preliminare:
           diffida: result.documents?.some((d: any) => d.type === "diffida") || false,
           adr: result.documents?.some((d: any) => d.type === "adr") || false,
         },
-        cards_json: caseData.cards || {}, // Add cards_json to avoid null constraint
+        cards_json: meta?.cards_json || caseData.cards || {
+          messages: meta?.previousContext || [],
+          questions: meta?.questions || []
+        }, // Add cards_json with proper data
       })
       .select()
       .single();

@@ -65,9 +65,14 @@ export default function NewCase() {
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
+    setTimeout(() => {
+      if (scrollAreaRef.current) {
+        const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (scrollContainer) {
+          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        }
+      }
+    }, 100);
   }, [messages]);
 
   // Cleanup polling on unmount
@@ -133,11 +138,23 @@ export default function NewCase() {
   const processAudio = async (audioBlob: Blob) => {
     setIsProcessingAudio(true);
     try {
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
+      // Convert blob to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+          const base64 = reader.result as string;
+          // Remove the data:audio/webm;base64, prefix
+          const base64Audio = base64.split(',')[1];
+          resolve(base64Audio);
+        };
+        reader.onerror = reject;
+      });
+      
+      reader.readAsDataURL(audioBlob);
+      const audioBase64 = await base64Promise;
       
       const { data, error } = await supabase.functions.invoke('stt', {
-        body: formData,
+        body: { audio: audioBase64 },
       });
 
       if (error) throw error;
@@ -467,10 +484,6 @@ export default function NewCase() {
             <MessageBubble
               key={message.id}
               message={message}
-              sender={message.sender}
-              timestamp={message.timestamp}
-              isQuestion={message.isQuestion}
-              questionNumber={message.questionNumber}
             />
           ))}
           {isTyping && <TypingIndicator />}
@@ -487,9 +500,11 @@ export default function NewCase() {
               onStartRecording={startRecording}
               onStopRecording={stopRecording}
               isRecording={isRecording}
-              disabled={isAnalyzing || isProcessingAudio}
+              isDisabled={isAnalyzing || isProcessingAudio}
               transcribedText={transcribedText}
-              isTranscribing={isProcessingAudio}
+              isProcessingAudio={isProcessingAudio}
+              audioContext={audioContextRef.current || undefined}
+              mediaStream={mediaStreamRef.current || undefined}
             />
           </div>
         </div>
