@@ -40,7 +40,7 @@ export default function NewCase() {
     // Add welcome message
     setMessages([{
       id: '1',
-      text: "Ciao! Sono il tuo assistente legale AI. Descrivimi il tuo caso e ti guiderò con domande mirate per raccogliere tutte le informazioni necessarie.",
+      text: "Ciao! Sono Lexy, il tuo assistente AI. Sono qui per aiutarti a raccogliere tutte le informazioni necessarie per il tuo caso. Puoi parlarmi usando il testo o la voce. Inizia descrivendomi brevemente il tuo problema.",
       sender: 'assistant',
       timestamp: new Date()
     }]);
@@ -215,29 +215,32 @@ export default function NewCase() {
       setAnalysis(data);
       setCompleteness(data.completeness.score);
 
-      // Add assistant response
-      if (data.nextQuestion?.text) {
-        const assistantMessage: Message = {
-          id: Date.now().toString(),
-          text: data.nextQuestion.text,
-          sender: 'assistant',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-        // TTS disabilitato per ora
-        // await speakText(data.nextQuestion.text);
-      }
-
-      // Se il caso è sufficientemente completo, salva
-      if (data.completeness.status === 'complete' || data.completeness.status === 'sufficient') {
+      // Controlla se il caso è completo PRIMA di aggiungere messaggi
+      const isComplete = data.completeness.status === 'complete' || data.completeness.score >= 95;
+      
+      if (isComplete) {
+        // Caso completo: aggiungi solo messaggio di conferma e salva
         const completionMessage: Message = {
           id: Date.now().toString(),
-          text: "Perfetto! Ho raccolto tutte le informazioni necessarie. Il tuo caso è stato salvato e analizzato con successo.",
+          text: data.nextQuestion?.text || "Perfetto! Ho raccolto tutte le informazioni necessarie. Il tuo caso è stato salvato e analizzato con successo.",
           sender: 'assistant',
           timestamp: new Date()
         };
         setMessages(prev => [...prev, completionMessage]);
         await saveCase(data);
+      } else {
+        // Caso incompleto: aggiungi la prossima domanda
+        if (data.nextQuestion?.text) {
+          const assistantMessage: Message = {
+            id: Date.now().toString(),
+            text: data.nextQuestion.text,
+            sender: 'assistant',
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+          // TTS disabilitato per ora
+          // await speakText(data.nextQuestion.text);
+        }
       }
 
     } catch (error) {
@@ -349,8 +352,8 @@ export default function NewCase() {
                 Dashboard
               </Button>
               <div>
-                <h1 className="text-lg font-semibold">Nuovo Caso Legale</h1>
-                <p className="text-xs text-muted-foreground">Assistente AI Legale</p>
+                <h1 className="text-lg font-semibold">Nuovo Caso</h1>
+                <p className="text-xs text-muted-foreground">Lexy AI Assistant</p>
               </div>
             </div>
             {completeness > 0 && (
@@ -370,10 +373,10 @@ export default function NewCase() {
           <div className="max-w-2xl w-full text-center space-y-12">
             <div className="space-y-4">
               <h1 className="text-6xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                Assistente Legale AI
+                Lexy AI Assistant
               </h1>
               <p className="text-xl text-muted-foreground">
-                Sono qui per aiutarti ad analizzare il tuo caso legale
+                Sono qui per aiutarti ad analizzare il tuo caso
               </p>
             </div>
             

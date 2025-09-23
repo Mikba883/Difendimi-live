@@ -27,12 +27,13 @@ serve(async (req) => {
       bytes[i] = binaryString.charCodeAt(i);
     }
 
-    // Create form data for Whisper API
+    // Create form data for Whisper API - usa ogg per file più piccoli
     const formData = new FormData();
-    const blob = new Blob([bytes], { type: 'audio/webm' });
-    formData.append('file', blob, 'audio.webm');
+    const blob = new Blob([bytes], { type: 'audio/ogg' });
+    formData.append('file', blob, 'audio.ogg');
     formData.append('model', 'whisper-1');
     formData.append('language', 'it'); // Italian language
+    formData.append('prompt', 'Trascrivi accuratamente in italiano'); // Migliora accuratezza
 
     // Call OpenAI Whisper API
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {

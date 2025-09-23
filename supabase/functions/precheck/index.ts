@@ -24,13 +24,13 @@ function makeJobId() {
 
 async function callOpenAI(openAIApiKey: string, systemPrompt: string, userPrompt: string) {
   const body = {
-    model: "gpt-4o-mini",
+    model: "gpt-4o-mini", // Già ottimizzato per velocità
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
-    temperature: 0.3,
-    max_tokens: 1500,
+    temperature: 0.2, // Più deterministic per risposte consistenti
+    max_tokens: 800, // Ridotto per risposte più rapide
     response_format: { type: "json_object" as const },
   };
 
@@ -152,61 +152,110 @@ Deno.serve(async (req) => {
     console.log('Conversation History Built:', conversationHistory ? 'yes' : 'no');
     console.log('History Length:', conversationHistory.length);
 
-    // Prompt system per analisi legale con tracking migliorato
-    const systemPrompt = `Sei un assistente legale AI esperto nel diritto italiano. Stai guidando l'utente nella raccolta di informazioni per il suo caso legale.
+    // Calcolo completezza incrementale basato sulle informazioni raccolte
+    let completenessScore = 0;
+    const collectedInfo: string[] = [];
+    const allResponses = conversationHistory.toLowerCase() + ' ' + latestResponse.toLowerCase();
+    
+    // Calcolo preciso della completezza
+    if (allResponses.includes('multa') || allResponses.includes('contratto') || allResponses.includes('lavoro') || 
+        allResponses.includes('incidente') || allResponses.includes('affitto') || allResponses.includes('danni')) {
+      completenessScore += 20;
+      collectedInfo.push('tipo_problema');
+    }
+    
+    if (allResponses.includes('annull') || allResponses.includes('rimbors') || allResponses.includes('risarciment') ||
+        allResponses.includes('accord') || allResponses.includes('contestar')) {
+      completenessScore += 15;
+      collectedInfo.push('obiettivo');
+    }
+    
+    // Pattern per date/tempi
+    const datePatterns = /\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|ieri|oggi|settimana|mese|anno|giorni fa/i;
+    if (datePatterns.test(allResponses)) {
+      completenessScore += 15;
+      collectedInfo.push('quando');
+    }
+    
+    // Pattern per importi
+    const amountPatterns = /€|\d+\s*euro|cento|mila|costi|spese|pagament|import/i;
+    if (amountPatterns.test(allResponses)) {
+      completenessScore += 15;
+      collectedInfo.push('importi');
+    }
+    
+    // Chi è coinvolto
+    if (allResponses.includes('comune') || allResponses.includes('azienda') || allResponses.includes('proprietario') ||
+        allResponses.includes('vigili') || allResponses.includes('polizia') || allResponses.includes('assicurazione')) {
+      completenessScore += 10;
+      collectedInfo.push('parti_coinvolte');
+    }
+    
+    // Azioni intraprese
+    if (allResponses.includes('già') || allResponses.includes('contatt') || allResponses.includes('inviato') ||
+        allResponses.includes('ricorso') || allResponses.includes('denunci')) {
+      completenessScore += 10;
+      collectedInfo.push('azioni_intraprese');
+    }
+    
+    // Documentazione
+    if (allResponses.includes('document') || allResponses.includes('verbale') || allResponses.includes('contratto') ||
+        allResponses.includes('foto') || allResponses.includes('prova') || allResponses.includes('ricevut')) {
+      completenessScore += 10;
+      collectedInfo.push('documentazione');
+    }
+    
+    // Urgenza
+    if (allResponses.includes('scad') || allResponses.includes('urgent') || allResponses.includes('entro') ||
+        allResponses.includes('termine')) {
+      completenessScore += 5;
+      collectedInfo.push('urgenza');
+    }
+    
+    // Assicura che il punteggio non superi 100
+    completenessScore = Math.min(completenessScore, 100);
+    
+    const systemPrompt = `Sei Lexy, un assistente AI che aiuta a raccogliere informazioni sui casi.
 
-${conversationHistory ? `CONVERSAZIONE PRECEDENTE:
+INFORMAZIONI GIÀ RACCOLTE (completezza: ${completenessScore}%):
+${collectedInfo.join(', ')}
+
+${conversationHistory ? `CONVERSAZIONE:
 ${conversationHistory}
 
-ULTIMA RISPOSTA DELL'UTENTE (NUOVA): "${latestResponse}"` : `PRIMA RISPOSTA DELL'UTENTE: "${latestResponse}"`}
+ULTIMA RISPOSTA: "${latestResponse}"` : `PRIMA RISPOSTA: "${latestResponse}"`}
 
-TRACKER DOMANDE GIÀ FATTE:
-${conversationHistory ? `Analizza la conversazione e identifica quali domande sono già state fatte. NON ripeterle.` : 'Prima interazione'}
+REGOLA CRITICA: Se completezza >= 95%, NON fare altre domande. Conferma solo che hai tutto.
 
-REGOLE CRITICHE ANTI-LOOP:
-1. ANALIZZA PRIMA: Controlla SEMPRE quali domande hai già fatto nella conversazione
-2. MAI DUPLICARE: Se hai già chiesto qualcosa, NON chiederlo di nuovo in nessuna forma
-3. RISPOSTE BREVI VALIDE: "sì", "no", "annullamento", "rimborso" SONO risposte complete e valide
-4. PROGRESSIONE OBBLIGATORIA: Ogni turno DEVE avanzare nella raccolta informazioni
-5. GESTIONE RISPOSTE AMBIGUE:
-   - "sì"/"no" dopo una domanda → accetta e passa alla domanda successiva
-   - "dopo"/"non so"/"non ricordo" → chiedi in modo diverso O passa avanti
-   - Risposte scherzose → riformula più chiaramente
-   
-SEQUENZA DOMANDE (salta quelle con risposta già data):
-1. ✓ Tipo di problema (multa, contratto, lavoro, etc.) 
-2. ✓ Obiettivo (annullamento, rimborso, risarcimento, etc.)
-3. ✓ Date/periodo (quando è successo)
-4. ✓ Importi coinvolti (se applicabile)
-5. ✓ Azioni intraprese (cosa hai già fatto)
-6. ✓ Documentazione (cosa possiedi)
-7. ✓ Urgenza/scadenze
+CALCOLO COMPLETEZZA:
+- Il punteggio attuale è ${completenessScore}%
+- Status: ${completenessScore >= 95 ? 'complete' : completenessScore >= 70 ? 'sufficient' : 'needs_more_info'}
 
-ANALISI INTELLIGENTE:
-- Estrai informazioni implicite dalle risposte
-- Se l'utente menziona "multa" → hai già il tipo di problema
-- Se dice "voglio annullamento" → hai già l'obiettivo
-- Se dice "ieri" o "settimana scorsa" → hai già la data
-- NON chiedere ciò che è già chiaro dal contesto
+${completenessScore < 95 ? `PROSSIMA DOMANDA DA FARE (scegli UNA sola tra quelle mancanti):
+${!collectedInfo.includes('tipo_problema') ? '- Che tipo di problema hai?' : ''}
+${!collectedInfo.includes('obiettivo') ? '- Cosa vorresti ottenere?' : ''}
+${!collectedInfo.includes('quando') ? '- Quando è successo?' : ''}
+${!collectedInfo.includes('importi') ? '- Ci sono importi coinvolti?' : ''}
+${!collectedInfo.includes('parti_coinvolte') ? '- Chi è coinvolto?' : ''}
+${!collectedInfo.includes('azioni_intraprese') ? '- Hai già fatto qualcosa?' : ''}
+${!collectedInfo.includes('documentazione') ? '- Hai documentazione?' : ''}
+${!collectedInfo.includes('urgenza') ? '- Ci sono scadenze?' : ''}` : 'CASO COMPLETO: Conferma che hai raccolto tutto.'}
 
-Devi rispondere SEMPRE in formato JSON con questa struttura:
+Rispondi in JSON:
 {
   "completeness": {
-    "score": 0-100,
-    "status": "incomplete|sufficient|complete",
-    "missingElements": ["elemento1", "elemento2"]
+    "score": ${completenessScore},
+    "status": "${completenessScore >= 95 ? 'complete' : completenessScore >= 70 ? 'sufficient' : 'needs_more_info'}",
+    "missingElements": [/* elementi mancanti */]
   },
   "nextQuestion": {
-    "text": "domanda specifica NUOVA e MAI fatta prima",
-    "type": "text|date|choice|multiselect",
-    "options": ["opzione1", "opzione2"]
+    "text": "${completenessScore >= 95 ? 'Ho raccolto tutte le informazioni necessarie per analizzare il tuo caso.' : 'domanda specifica'}",
+    "category": "string"
   },
   "analysis": {
-    "keyFacts": ["fatto1", "fatto2"],
-    "legalIssues": ["questione1", "questione2"],
-    "suggestedKeywords": ["keyword1", "keyword2"],
-    "relevantInstitutes": ["istituto1", "istituto2"],
-    "recommendedDocuments": ["relazione", "diffida", "adr"]
+    "caseType": "string",
+    "suggestedKeywords": [],
+    "recommendedDocuments": []
   }
 }`;
 
