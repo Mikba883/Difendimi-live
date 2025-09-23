@@ -225,12 +225,17 @@ export default function NewCase() {
       console.log('Phase:', allQuestions.length === 0 ? 'initial' : 'answering');
       console.log('Current questions:', allQuestions.length);
       console.log('Current question index:', currentQuestionIndex);
+      
+      // Verifica se tutte le domande hanno ricevuto risposta
+      const allQuestionsAnswered = currentQuestionIndex >= allQuestions.length && allQuestions.length > 0;
+      console.log('All questions answered:', allQuestionsAnswered);
 
       const { data, error } = await supabase.functions.invoke('precheck', {
         body: { 
           latestResponse,
           previousContext: previousMessages,
-          currentQuestions: allQuestions
+          currentQuestions: allQuestions,
+          allQuestionsAnswered // Passa questo flag a precheck
         }
       });
 

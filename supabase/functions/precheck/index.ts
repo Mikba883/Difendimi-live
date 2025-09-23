@@ -98,13 +98,14 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Invalid JSON body" }, 400);
     }
 
-    const { latestResponse = "", previousContext = [], currentQuestions = [] } = body ?? {};
+    const { latestResponse = "", previousContext = [], currentQuestions = [], allQuestionsAnswered = false } = body ?? {};
     
     console.log('=== PRECHECK START ===');
     console.log('Timestamp:', new Date().toISOString());
     console.log('Latest Response:', latestResponse);
     console.log('Previous Context Length:', Array.isArray(previousContext) ? previousContext.length : 0);
     console.log('Current Questions:', currentQuestions);
+    console.log('All Questions Answered Flag:', allQuestionsAnswered);
     
     // Validate input
     if (!latestResponse || typeof latestResponse !== "string" || !latestResponse.trim()) {
@@ -118,6 +119,9 @@ Deno.serve(async (req) => {
     if (!openAIApiKey) return jsonResponse({ error: "OPENAI_API_KEY not configured" }, 500);
     if (!projectRef) return jsonResponse({ error: "SP_PROJECT_REF not configured" }, 500);
     if (!serviceRoleKey) return jsonResponse({ error: "SP_SERVICE_ROLE_KEY not configured" }, 500);
+    
+    // Leggi il parametro allQuestionsAnswered dal body
+    const allQuestionsAnswered = body?.allQuestionsAnswered || false;
 
     // Build conversation history
     let conversationHistory = '';
@@ -227,10 +231,11 @@ IMPORTANTE:
       const numberOfResponses = userResponses.length - 1; // -1 per escludere la descrizione iniziale
       
       console.log(`Domande: ${numberOfQuestions}, Risposte: ${numberOfResponses}`);
+      console.log(`AllQuestionsAnswered flag from client: ${allQuestionsAnswered}`);
       
-      // Se abbiamo ricevuto risposte a tutte le domande o siamo oltre il limite
-      if (numberOfResponses >= numberOfQuestions || numberOfResponses >= 6) {
-        console.log('✅ Tutte le domande hanno ricevuto risposta o limite raggiunto');
+      // Se il frontend dice che tutte le domande sono state risposte O abbiamo ricevuto abbastanza risposte
+      if (allQuestionsAnswered || numberOfResponses >= numberOfQuestions || numberOfResponses >= 6) {
+        console.log('✅ Tutte le domande hanno ricevuto risposta - procedo con generate');
         
         // Prepara il caso completo per la generazione
         const job_id = makeJobId();
