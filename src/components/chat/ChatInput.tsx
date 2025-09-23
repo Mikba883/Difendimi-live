@@ -119,15 +119,19 @@ export function ChatInput({
               placeholder={placeholder}
               disabled={isDisabled}
               className={cn(
-                "flex-1 min-w-0 resize-none bg-transparent px-4 py-3",
+                "flex-grow basis-0 min-w-[200px] resize-none bg-transparent px-4 py-3",
                 "text-[15px] placeholder:text-muted-foreground",
                 "focus:outline-none",
                 "disabled:cursor-not-allowed disabled:opacity-50",
                 "min-h-[52px] max-h-[200px] transition-all"
               )}
+              style={{ flexBasis: inputText.length > 100 ? '100%' : 'auto' }}
               rows={1}
             />
-            <div className="flex gap-2 pb-1">
+            <div className={cn(
+              "flex gap-2 pb-1",
+              inputText.length > 100 ? "basis-full justify-end" : ""
+            )}>
               <Button
                 type="button"
                 size="icon"
