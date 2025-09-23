@@ -84,18 +84,36 @@ serve(async (req) => {
 
     console.log(`Processing job ${job_id} of type ${caseType}`);
 
-    // Extract user from authorization header if present
-    const authHeader = req.headers.get("authorization");
+    // Extract user ID - from direct call or from meta passed by precheck
     let userId = null;
     
-    // If this is called from precheck, it will have service role key
-    // Otherwise, extract user from JWT
-    if (authHeader && !authHeader.includes(serviceRoleKey)) {
-      const token = authHeader.replace("Bearer ", "");
-      const { data: { user }, error } = await supabase.auth.getUser(token);
-      if (!error && user) {
-        userId = user.id;
+    // Check if we have an auth token in meta (from precheck)
+    if (meta?.authToken) {
+      const token = meta.authToken.replace("Bearer ", "");
+      if (token) {
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+        if (!error && user) {
+          userId = user.id;
+          console.log(`User ID extracted from precheck auth: ${userId}`);
+        }
       }
+    }
+    
+    // If not from precheck, try direct authorization header
+    if (!userId) {
+      const authHeader = req.headers.get("authorization");
+      if (authHeader && !authHeader.includes(serviceRoleKey)) {
+        const token = authHeader.replace("Bearer ", "");
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+        if (!error && user) {
+          userId = user.id;
+          console.log(`User ID extracted from direct auth: ${userId}`);
+        }
+      }
+    }
+    
+    if (!userId) {
+      console.error("No valid user ID found - case will be saved without user association");
     }
 
     // Generate legal analysis
@@ -194,12 +212,20 @@ Dati dall'analisi preliminare:
 
     const result = await callOpenAI(systemPrompt, userPrompt);
 
-    // Save to database
+    // Save to database - only save if we have a valid user ID
+    if (!userId) {
+      console.error("Cannot save case without valid user ID");
+      return jsonResponse({ 
+        error: "Authentication required", 
+        details: "No valid user ID found - please ensure you are logged in" 
+      }, 401);
+    }
+    
     const { data: caseRecord, error: dbError } = await supabase
       .from("cases")
       .insert({
         job_id,
-        created_by: userId || "00000000-0000-0000-0000-000000000000", // Default UUID if no user
+        created_by: userId,
         title: result.title || "Caso senza titolo",
         case_type: caseType,
         case_text: caseData.caseText,
