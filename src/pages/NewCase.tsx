@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Volume2, MessageCircle, Mic, FileText } from "lucide-react";
+import { ArrowLeft, MessageCircle, Mic, FileText } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -15,6 +15,16 @@ interface Message {
   text: string;
   sender: 'user' | 'assistant';
   timestamp: Date;
+  isQuestion?: boolean;
+  questionNumber?: number;
+}
+
+interface Question {
+  id: number;
+  text: string;
+  category: string;
+  importance: string;
+  reason: string;
 }
 
 export default function NewCase() {
@@ -25,24 +35,25 @@ export default function NewCase() {
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const [transcribedText, setTranscribedText] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [currentText, setCurrentText] = useState("");
+  const [allQuestions, setAllQuestions] = useState<Question[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
+  const [caseAnalysis, setCaseAnalysis] = useState<any>(null);
   const [completeness, setCompleteness] = useState(0);
-  const [analysis, setAnalysis] = useState<any>(null);
-  const [quickReplies, setQuickReplies] = useState<string[]>([]);
-  const [questionCount, setQuestionCount] = useState(0);
+  
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const [currentText, setCurrentText] = useState("");
 
   useEffect(() => {
     checkAuth();
     // Add welcome message
     setMessages([{
       id: '1',
-      text: "Ciao! Sono Lexy, il tuo assistente AI. Sono qui per aiutarti a raccogliere tutte le informazioni necessarie per il tuo caso. Puoi parlarmi usando il testo o la voce. Inizia descrivendomi brevemente il tuo problema.",
+      text: "Ciao! Sono Lexy, il tuo assistente AI legale. Descrivimi il tuo problema legale nel modo più dettagliato possibile. Dopo la tua descrizione, ti farò alcune domande mirate per completare l'analisi.",
       sender: 'assistant',
       timestamp: new Date()
     }]);
@@ -163,17 +174,22 @@ export default function NewCase() {
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return;
     
-    // NON aggiungere il messaggio qui - lasciamo che analyzeCase lo gestisca
+    // Aggiungi il messaggio dell'utente
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: text,
+      sender: 'user',
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, userMessage]);
     setCurrentText(prev => prev + " " + text);
     
-    // Passa il testo e lascia che analyzeCase gestisca tutto
+    // Analizza il caso
     await analyzeCase(text);
   };
 
-  const analyzeCase = async (newText?: string) => {
-    const latestUserResponse = newText || '';
-    
-    if (!latestUserResponse.trim() && messages.filter(m => m.sender === 'user').length === 0) {
+  const analyzeCase = async (latestResponse: string) => {
+    if (!latestResponse.trim()) {
       toast({
         title: "Attenzione",
         description: "Inserisci o detta le informazioni del caso",
@@ -184,110 +200,109 @@ export default function NewCase() {
 
     setIsAnalyzing(true);
     try {
-      // PRIMA: Prendi i messaggi ATTUALI (prima di aggiungere il nuovo)
-      const previousMessages = messages.map(m => ({
+      // Prepara il contesto precedente (escluso l'ultimo messaggio appena aggiunto)
+      const previousMessages = messages.slice(0, -1).map(m => ({
         role: m.sender === 'user' ? 'user' : 'assistant',
         content: m.text
       }));
 
-      // ORA: Aggiungi il messaggio dell'utente DOPO aver catturato il contesto precedente
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        text: latestUserResponse,
-        sender: 'user',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, userMessage]);
-
-      console.log('=== ANALYZE CASE DEBUG (FIXED) ===');
-      console.log('Number of previous messages:', previousMessages.length);
-      console.log('Latest user response:', latestUserResponse);
-      console.log('Previous messages:', previousMessages);
-      console.log('New message added to state AFTER capturing context');
+      console.log('=== ANALYZE CASE ===');
+      console.log('Phase:', allQuestions.length === 0 ? 'initial' : 'answering');
+      console.log('Current questions:', allQuestions.length);
+      console.log('Current question index:', currentQuestionIndex);
 
       const { data, error } = await supabase.functions.invoke('precheck', {
         body: { 
-          latestResponse: latestUserResponse,
-          previousContext: previousMessages
+          latestResponse,
+          previousContext: previousMessages,
+          currentQuestions: allQuestions
         }
       });
 
       if (error) throw error;
 
-      setAnalysis(data);
-      
-      // Aggiorna completezza solo se maggiore del valore attuale (incrementale)
-      if (data.completeness?.score > completeness) {
-        setCompleteness(data.completeness.score);
+      console.log('Response from precheck:', data);
+
+      // FASE 1: Generazione domande iniziali
+      if (data.phase === 'initial_analysis' && data.questions) {
+        setCaseAnalysis(data.caseAnalysis);
+        setAllQuestions(data.questions);
+        setCompleteness(data.estimatedCompleteness || 20);
+        
+        // Mostra messaggio di transizione
+        const transitionMessage: Message = {
+          id: Date.now().toString(),
+          text: `Grazie per aver descritto il tuo caso. Ho analizzato la situazione e ho preparato ${data.questions.length} domande specifiche per completare la comprensione del tuo problema.`,
+          sender: 'assistant',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, transitionMessage]);
+        
+        // Mostra la prima domanda dopo un breve delay
+        setTimeout(() => {
+          if (data.questions.length > 0) {
+            const firstQuestion: Message = {
+              id: Date.now().toString() + '-q',
+              text: `**Domanda 1 di ${data.questions.length}:**\n\n${data.questions[0].text}`,
+              sender: 'assistant',
+              timestamp: new Date(),
+              isQuestion: true,
+              questionNumber: 1
+            };
+            setMessages(prev => [...prev, firstQuestion]);
+            setCurrentQuestionIndex(1);
+          }
+        }, 1500);
+        
+        return;
       }
 
-      // Controlla lo stato dal backend
-      if (data.status === 'queued' && data.job_id) {
-        // Caso completo e in coda per elaborazione
-        const completionMessage: Message = {
-          id: Date.now().toString(),
-          text: `Perfetto! Ho raccolto tutte le informazioni necessarie. Il tuo caso è ora in elaborazione.
+      // FASE 2: Gestione risposte alle domande
+      if (data.status === 'waiting_responses') {
+        // Incrementa l'indice e mostra la prossima domanda
+        const nextIndex = currentQuestionIndex;
+        if (nextIndex < allQuestions.length) {
+          const nextQuestion = allQuestions[nextIndex];
+          const questionMessage: Message = {
+            id: Date.now().toString() + '-q',
+            text: `**Domanda ${nextIndex + 1} di ${allQuestions.length}:**\n\n${nextQuestion.text}`,
+            sender: 'assistant',
+            timestamp: new Date(),
+            isQuestion: true,
+            questionNumber: nextIndex + 1
+          };
+          setMessages(prev => [...prev, questionMessage]);
+          setCurrentQuestionIndex(nextIndex + 1);
           
-Sto preparando un'analisi dettagliata per te...`,
-          sender: 'assistant',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, completionMessage]);
-        
-        // Salva il caso con job_id
-        await saveCase(data);
+          // Aggiorna completezza progressivamente
+          const progress = Math.round(20 + (80 * (nextIndex + 1) / allQuestions.length));
+          setCompleteness(progress);
+        }
         return;
       }
-      
-      // Controlla se è completo basandosi su completeness
-      const isComplete = data.completeness?.status === 'complete' || data.completeness?.score >= 80;
-      
-      if (isComplete && !data.nextQuestion) {
-        // Caso completo senza job_id (fallback)
+
+      // FASE 3: Caso completo
+      if (data.status === 'complete' || data.status === 'queued') {
+        setIsComplete(true);
+        setCompleteness(100);
+        
         const completionMessage: Message = {
           id: Date.now().toString(),
-          text: "Ho raccolto tutte le informazioni necessarie. Il tuo caso è stato salvato con successo.",
+          text: data.message || "Perfetto! Ho raccolto tutte le informazioni necessarie. Sto preparando un'analisi legale dettagliata del tuo caso...",
           sender: 'assistant',
           timestamp: new Date()
         };
         setMessages(prev => [...prev, completionMessage]);
-        await saveCase(data);
-        return;
-      }
-      
-      // Solo se NON è completo e c'è una domanda successiva
-      if (!isComplete && data.nextQuestion?.text) {
-        // Incrementa contatore domande
-        setQuestionCount(prev => prev + 1);
         
-        const assistantMessage: Message = {
-          id: Date.now().toString(),
-          text: data.nextQuestion.text,
-          sender: 'assistant',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-        
-        // Imposta risposte rapide se disponibili
-        if (data.nextQuestion.quickReplies) {
-          setQuickReplies(data.nextQuestion.quickReplies);
-        } else {
-          // Default quick replies basati sul tipo di domanda
-          if (data.nextQuestion.text.toLowerCase().includes('hai') || 
-              data.nextQuestion.text.toLowerCase().includes('è') ||
-              data.nextQuestion.text.toLowerCase().includes('sei')) {
-            setQuickReplies(['Sì', 'No', 'Non so']);
-          } else if (data.nextQuestion.text.toLowerCase().includes('quando')) {
-            setQuickReplies(['Oggi', 'Ieri', 'Questa settimana', 'Questo mese', 'Non ricordo']);
-          } else if (data.nextQuestion.text.toLowerCase().includes('quanto')) {
-            setQuickReplies(['Meno di 1000€', '1000-5000€', 'Più di 5000€', 'Non so']);
-          } else {
-            setQuickReplies([]);
-          }
-        }
-        
-        // TTS disabilitato per ora per velocità
-        // await speakText(data.nextQuestion.text);
+        // Salva il caso
+        setTimeout(async () => {
+          await saveCase({
+            ...data,
+            caseAnalysis,
+            allQuestions,
+            messages
+          });
+        }, 2000);
       }
 
     } catch (error) {
@@ -302,39 +317,6 @@ Sto preparando un'analisi dettagliata per te...`,
     }
   };
 
-  const speakText = async (text: string) => {
-    try {
-      setIsSpeaking(true);
-      const { data, error } = await supabase.functions.invoke('tts', {
-        body: { text }
-      });
-
-      if (error) throw error;
-
-      if (data?.audio) {
-        const audioData = atob(data.audio);
-        const audioArray = new Uint8Array(audioData.length);
-        for (let i = 0; i < audioData.length; i++) {
-          audioArray[i] = audioData.charCodeAt(i);
-        }
-        
-        const audioBlob = new Blob([audioArray], { type: 'audio/mp3' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        
-        audio.onended = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-        };
-        
-        await audio.play();
-      }
-    } catch (error) {
-      console.error('Error speaking text:', error);
-      setIsSpeaking(false);
-    }
-  };
-
   const saveCase = async (analysisData: any) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -345,6 +327,16 @@ Sto preparando un'analisi dettagliata per te...`,
         .insert({
           created_by: user.id,
           title: `Caso del ${new Date().toLocaleDateString('it-IT')}`,
+          job_id: analysisData.job_id,
+          status: analysisData.job_id ? 'queued' : 'ready',
+          case_type: analysisData.caseAnalysis?.caseType || 'general',
+          case_text: currentText,
+          previous_context: JSON.stringify(messages),
+          report: {
+            executive_summary: {
+              summary: analysisData.analysis?.summary || "Analisi in corso..."
+            }
+          },
           cards_json: {
             originalText: currentText,
             conversation: messages.map(m => ({
@@ -352,15 +344,15 @@ Sto preparando un'analisi dettagliata per te...`,
               sender: m.sender,
               timestamp: m.timestamp.toISOString()
             })),
-            analysis: analysisData.analysis,
-            completeness: analysisData.completeness
-          },
-          doc_availability: {
-            relazione: analysisData.analysis.recommendedDocuments?.includes('relazione') || false,
-            diffida: analysisData.analysis.recommendedDocuments?.includes('diffida') || false,
-            adr: analysisData.analysis.recommendedDocuments?.includes('adr') || false
-          },
-          sources_used: analysisData.analysis.suggestedKeywords
+            questions: allQuestions.map(q => ({
+              id: q.id,
+              text: q.text,
+              category: q.category,
+              importance: q.importance,
+              reason: q.reason
+            })),
+            analysis: analysisData.analysis || analysisData.caseAnalysis
+          }
         });
 
       if (error) throw error;
@@ -405,7 +397,7 @@ Sto preparando un'analisi dettagliata per te...`,
             </div>
             {completeness > 0 && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Completezza</span>
+                <span className="text-sm text-muted-foreground">Analisi</span>
                 <Progress value={completeness} className="h-2 w-24" />
                 <span className="text-sm font-medium">{completeness}%</span>
               </div>
@@ -423,7 +415,7 @@ Sto preparando un'analisi dettagliata per te...`,
                 Lexy AI Assistant
               </h1>
               <p className="text-xl text-muted-foreground">
-                Sono qui per aiutarti ad analizzare il tuo caso
+                Descrivimi dettagliatamente il tuo problema legale
               </p>
             </div>
             
@@ -436,8 +428,8 @@ Sto preparando un'analisi dettagliata per te...`,
               isProcessingAudio={isProcessingAudio}
               transcribedText={transcribedText}
               onClearTranscription={() => setTranscribedText("")}
-              isDisabled={isAnalyzing}
-              placeholder="Inizia a descrivere il tuo caso..."
+              isDisabled={isAnalyzing || isComplete}
+              placeholder="Descrivi il tuo caso nel modo più completo possibile..."
               audioContext={audioContextRef.current || undefined}
               mediaStream={mediaStreamRef.current || undefined}
             />
@@ -446,7 +438,7 @@ Sto preparando un'analisi dettagliata per te...`,
             <div className="flex justify-center gap-8 text-sm text-muted-foreground">
               <div className="flex items-center gap-2 hover:text-foreground transition-colors">
                 <MessageCircle className="h-4 w-4" />
-                <span>Chat interattiva</span>
+                <span>Analisi intelligente</span>
               </div>
               <div className="flex items-center gap-2 hover:text-foreground transition-colors">
                 <Mic className="h-4 w-4" />
@@ -454,7 +446,7 @@ Sto preparando un'analisi dettagliata per te...`,
               </div>
               <div className="flex items-center gap-2 hover:text-foreground transition-colors">
                 <FileText className="h-4 w-4" />
-                <span>Analisi completa</span>
+                <span>Report completo</span>
               </div>
             </div>
           </div>
@@ -471,61 +463,33 @@ Sto preparando un'analisi dettagliata per te...`,
               ))}
               
               {isAnalyzing && <TypingIndicator />}
-              
-              {isSpeaking && (
-                <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm animate-fade-in">
-                  <Volume2 className="h-4 w-4 animate-pulse" />
-                  <span>Riproduzione audio in corso...</span>
-                </div>
-              )}
             </div>
           </ScrollArea>
 
-          {/* Input area - solo quando ci sono messaggi */}
-          <div className="border-t bg-background/95 backdrop-blur-sm px-4 py-4">
-            <div className="max-w-3xl mx-auto space-y-3">
-              {/* Quick reply buttons */}
-              {quickReplies.length > 0 && !isAnalyzing && (
-                <div className="flex flex-wrap gap-2 justify-center animate-fade-in">
-                  {quickReplies.map((reply, index) => (
-                    <Button
-                      key={index}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        handleSendMessage(reply);
-                        setQuickReplies([]);
-                      }}
-                      className="hover:scale-105 transition-transform"
-                    >
-                      {reply}
-                    </Button>
-                  ))}
-                </div>
-              )}
-              
-              {/* Avviso limite domande */}
-              {questionCount >= 4 && questionCount < 6 && (
-                <p className="text-center text-sm text-muted-foreground">
-                  Ancora {6 - questionCount} domande rimaste
-                </p>
-              )}
-              
-              <ChatInput
-                onSendMessage={handleSendMessage}
-                onStartRecording={startRecording}
-                onStopRecording={stopRecording}
-                isRecording={isRecording}
-                isProcessingAudio={isProcessingAudio}
-                transcribedText={transcribedText}
-                onClearTranscription={() => setTranscribedText("")}
-                isDisabled={isAnalyzing || isSpeaking}
-                placeholder={questionCount >= 5 ? "Ultima domanda..." : "Continua a descrivere il tuo caso..."}
-                audioContext={audioContextRef.current || undefined}
-                mediaStream={mediaStreamRef.current || undefined}
-              />
+          {/* Input area - solo quando ci sono messaggi e non è completo */}
+          {!isComplete && (
+            <div className="border-t bg-background/95 backdrop-blur-sm px-4 py-4">
+              <div className="max-w-3xl mx-auto">
+                <ChatInput
+                  onSendMessage={handleSendMessage}
+                  onStartRecording={startRecording}
+                  onStopRecording={stopRecording}
+                  isRecording={isRecording}
+                  isProcessingAudio={isProcessingAudio}
+                  transcribedText={transcribedText}
+                  onClearTranscription={() => setTranscribedText("")}
+                  isDisabled={isAnalyzing || isComplete}
+                  placeholder={
+                    currentQuestionIndex > 0 
+                      ? "Rispondi alla domanda..." 
+                      : "Continua a descrivere il tuo caso..."
+                  }
+                  audioContext={audioContextRef.current || undefined}
+                  mediaStream={mediaStreamRef.current || undefined}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </>
       )}
     </div>
