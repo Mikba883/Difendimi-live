@@ -90,23 +90,36 @@ export default function NewCase() {
     };
   }, [isGenerating]);
   
-  // Auto-start generation after all questions are answered (reduced to 4 seconds)
+  // Auto-start generation after all questions are answered with delay
   const [questionsComplete, setQuestionsComplete] = useState(false);
   const [autoGenerateTimer, setAutoGenerateTimer] = useState<NodeJS.Timeout | null>(null);
+  const [showCompletionMessage, setShowCompletionMessage] = useState(false);
   
   useEffect(() => {
     // Check if all questions have been answered
     if (currentQuestionIndex >= allQuestions.length && allQuestions.length > 0 && !questionsComplete) {
       setQuestionsComplete(true);
+      setCompleteness(100);
     }
   }, [currentQuestionIndex, allQuestions.length]);
   
   useEffect(() => {
-    if (questionsComplete && !isAnalyzing && !isComplete && !autoGenerateTimer) {
+    if (questionsComplete && !isAnalyzing && !isComplete && !showCompletionMessage) {
+      // Prima mostra il messaggio di completamento
+      setShowCompletionMessage(true);
+      const completionMsg: Message = {
+        id: Date.now().toString() + '-completion',
+        text: "Ho raccolto tutto! Ora mi prendo un minuto per elaborare il tuo report completo...",
+        sender: 'assistant',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, completionMsg]);
+      
+      // Poi avvia il timer dopo 4-5 secondi
       const timer = setTimeout(() => {
-        // Trigger automatic analysis
+        setIsGenerating(true);
         analyzeCase("");
-      }, 4000); // 4 seconds
+      }, 5000); // 5 seconds after showing completion message
       setAutoGenerateTimer(timer);
     }
     
@@ -115,7 +128,7 @@ export default function NewCase() {
         clearTimeout(autoGenerateTimer);
       }
     };
-  }, [questionsComplete]);
+  }, [questionsComplete, showCompletionMessage]);
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
@@ -372,18 +385,6 @@ export default function NewCase() {
       // FASE 3: Caso completo
       if (data.status === 'complete' || data.status === 'queued') {
         setIsComplete(true);
-        setCompleteness(100);
-        
-        // Avvia il timer di generazione
-        setIsGenerating(true);
-        
-        const completionMessage: Message = {
-          id: Date.now().toString(),
-          text: "Ho raccolto tutto! Ora mi prendo un minuto per elaborare il tuo report completo...",
-          sender: 'assistant',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, completionMessage]);
         
         // Salva il caso solo se non è già stato salvato
         if (!isSaving && !savedCaseId) {

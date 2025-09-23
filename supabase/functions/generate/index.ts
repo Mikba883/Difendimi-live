@@ -155,7 +155,10 @@ IMPORTANTE: Il report deve essere in formato JSON con questa ESATTA struttura us
     },
     "qualificazione_giuridica": {
       "description": "Analisi giuridica dettagliata del caso secondo il diritto italiano",
-      "articles": ["Art. X Codice/Legge - Testo sintetico dell'articolo e sua applicazione al caso"]
+      "articles": [
+        "Art. 18 L. 300/1970 - Tutela del lavoratore in caso di licenziamento illegittimo: prevede la reintegrazione nel posto di lavoro o un'indennità risarcitoria",
+        "Art. 2103 c.c. - Mansioni del lavoratore: il lavoratore deve essere adibito alle mansioni per le quali è stato assunto"
+      ]
     },
     "fonti": {
       "items": [

@@ -182,7 +182,7 @@ export function ReportSections({ report }: ReportSectionsProps) {
           <CardContent className="pt-6">
             {normalizedReport.executive_summary ? (
               <div className="space-y-4">
-                <p className="text-muted-foreground leading-relaxed">
+                <p className="text-muted-foreground leading-relaxed text-justify">
                   {normalizedReport.executive_summary.summary || (normalizedReport.executive_summary as any).content}
                 </p>
                 {normalizedReport.executive_summary.key_points && (
@@ -213,7 +213,7 @@ export function ReportSections({ report }: ReportSectionsProps) {
             {normalizedReport.qualificazione_giuridica ? (
               <div className="space-y-6">
                 <div>
-                  <p className="text-muted-foreground leading-relaxed">
+                  <p className="text-muted-foreground leading-relaxed text-justify">
                     {normalizedReport.qualificazione_giuridica.description || (normalizedReport.qualificazione_giuridica as any).content}
                   </p>
                 </div>
