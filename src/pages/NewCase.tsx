@@ -100,13 +100,8 @@ export default function NewCase() {
     if (currentQuestionIndex >= allQuestions.length && allQuestions.length > 0 && !questionsComplete) {
       setQuestionsComplete(true);
       setCompleteness(100);
-    }
-  }, [currentQuestionIndex, allQuestions.length]);
-  
-  useEffect(() => {
-    if (questionsComplete && !isAnalyzing && !isComplete && !showCompletionMessage) {
-      // Prima mostra il messaggio di completamento
-      setShowCompletionMessage(true);
+      
+      // Mostra subito il messaggio di completamento
       const completionMsg: Message = {
         id: Date.now().toString() + '-completion',
         text: "Ho raccolto tutto! Ora mi prendo un minuto per elaborare il tuo report completo...",
@@ -114,12 +109,17 @@ export default function NewCase() {
         timestamp: new Date()
       };
       setMessages(prev => [...prev, completionMsg]);
-      
-      // Poi avvia il timer dopo 4-5 secondi
+      setShowCompletionMessage(true);
+    }
+  }, [currentQuestionIndex, allQuestions.length]);
+  
+  useEffect(() => {
+    if (showCompletionMessage && !isAnalyzing && !isComplete && !autoGenerateTimer) {
+      // Avvia il timer 5 secondi DOPO aver mostrato il messaggio al 100%
       const timer = setTimeout(() => {
         setIsGenerating(true);
         analyzeCase("");
-      }, 5000); // 5 seconds after showing completion message
+      }, 5000); // 5 seconds after reaching 100% and showing message
       setAutoGenerateTimer(timer);
     }
     
@@ -128,7 +128,7 @@ export default function NewCase() {
         clearTimeout(autoGenerateTimer);
       }
     };
-  }, [questionsComplete, showCompletionMessage]);
+  }, [showCompletionMessage]);
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
