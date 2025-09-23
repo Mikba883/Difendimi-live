@@ -155,14 +155,13 @@ IMPORTANTE: Il report deve essere in formato JSON con questa ESATTA struttura us
     },
     "qualificazione_giuridica": {
       "description": "Analisi giuridica dettagliata del caso secondo il diritto italiano",
-      "articles": ["Art. X Codice Civile", "Art. Y Codice Penale", "Legge N/Anno"]
+      "articles": ["Art. X Codice/Legge - Testo sintetico dell'articolo e sua applicazione al caso"]
     },
     "fonti": {
       "items": [
         {
-          "title": "Nome della legge o regolamento (es. Codice Civile)",
-          "official_url": "https://www.normativa.it/...",
-          "description": "Descrizione della rilevanza per il caso"
+          "title": "Nome della legge o regolamento (es. Codice Civile Art. 2043)",
+          "description": "Descrizione dettagliata della norma e sua rilevanza per il caso"
         }
       ]
     },
@@ -190,7 +189,7 @@ IMPORTANTE: Il report deve essere in formato JSON con questa ESATTA struttura us
     "termini": {
       "deadlines": [
         {
-          "description": "Descrizione della scadenza",
+          "description": "Descrizione della scadenza (NON includere scadenze per presentare ricorso)",
           "date": "2024-MM-DD",
           "type": "prescription|decadenza|other"
         }

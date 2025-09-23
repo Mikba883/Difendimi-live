@@ -121,24 +121,12 @@ export function ReportTabs({ report }: ReportTabsProps) {
                 <div className="space-y-3">
                   {reportData.fonti.items.map((fonte, idx) => (
                     <div key={idx} className="border rounded-lg p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-medium">{fonte.title}</h4>
-                          {fonte.description && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {fonte.description}
-                            </p>
-                          )}
-                        </div>
-                        <a
-                          href={fonte.official_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="ml-4 text-primary hover:text-primary/80"
-                        >
-                          <ExternalLink className="h-5 w-5" />
-                        </a>
-                      </div>
+                      <h4 className="font-medium">{fonte.title}</h4>
+                      {fonte.description && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {fonte.description}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -225,7 +213,9 @@ export function ReportTabs({ report }: ReportTabsProps) {
               <div className="space-y-4">
                 {report.termini?.deadlines?.length ? (
                   <div className="space-y-3">
-                    {report.termini.deadlines.map((deadline, idx) => (
+                    {report.termini.deadlines
+                      .filter(deadline => !deadline.description.toLowerCase().includes('ricorso'))
+                      .map((deadline, idx) => (
                       <div key={idx} className="border rounded-lg p-3">
                         <div className="flex items-start justify-between">
                           <div>

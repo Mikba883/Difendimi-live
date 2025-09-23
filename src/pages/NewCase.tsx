@@ -55,6 +55,8 @@ export default function NewCase() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedCaseId, setSavedCaseId] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationTimer, setGenerationTimer] = useState(0);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -72,6 +74,21 @@ export default function NewCase() {
       timestamp: new Date()
     }]);
   }, []);
+
+  // Timer per la generazione del report
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isGenerating) {
+      interval = setInterval(() => {
+        setGenerationTimer(prev => prev + 1);
+      }, 1000);
+    } else {
+      setGenerationTimer(0);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isGenerating]);
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
@@ -330,9 +347,12 @@ export default function NewCase() {
         setIsComplete(true);
         setCompleteness(100);
         
+        // Avvia il timer di generazione
+        setIsGenerating(true);
+        
         const completionMessage: Message = {
           id: Date.now().toString(),
-          text: "Perfetto! Ho raccolto tutte le informazioni necessarie. Ora preparo il tuo report legale completo con strategie personalizzate e documenti consigliati.",
+          text: "Ho raccolto tutto! Ora mi prendo un minuto per elaborare il tuo report completo...",
           sender: 'assistant',
           timestamp: new Date()
         };
@@ -569,6 +589,15 @@ export default function NewCase() {
               ))}
               
               {isAnalyzing && <TypingIndicator />}
+              
+              {isGenerating && (
+                <div className="flex items-center justify-center space-x-2 p-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  <span className="text-sm text-muted-foreground">
+                    Elaborazione in corso... {generationTimer > 0 && `(${generationTimer}s)`}
+                  </span>
+                </div>
+              )}
             </div>
           </ScrollArea>
 

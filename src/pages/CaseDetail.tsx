@@ -155,23 +155,8 @@ export default function CaseDetail() {
             </div>
           )}
 
-          {/* Documents */}
-          {caseData.documents?.items?.length > 0 && (
-            <div>
-              <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
-                <FileText className="h-6 w-6" />
-                Documenti Generati
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {caseData.documents.items.map((doc) => (
-                  <DocumentCard key={doc.id} document={doc} />
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* No content message */}
-          {!caseData.report && (!caseData.documents?.items?.length) && caseData.status !== 'error' && (
+          {!caseData.report && caseData.status !== 'error' && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
