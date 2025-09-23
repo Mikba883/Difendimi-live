@@ -236,13 +236,17 @@ export default function NewCase() {
 
       // Se è un messaggio di benvenuto (input non valido)
       if (data.status === 'welcome_message') {
-        const welcomeMessage: Message = {
-          id: 'welcome-' + Date.now(),
-          text: data.message,
-          sender: 'assistant',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, welcomeMessage]);
+        // Rimuovi il messaggio di "pensiero" se presente
+        setMessages(prev => {
+          const filtered = prev.filter(m => !m.id.startsWith('thinking-'));
+          const welcomeMessage: Message = {
+            id: 'welcome-' + Date.now(),
+            text: data.message,
+            sender: 'assistant',
+            timestamp: new Date()
+          };
+          return [...filtered, welcomeMessage];
+        });
         setIsAnalyzing(false);
         return;
       }

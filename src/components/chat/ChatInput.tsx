@@ -107,7 +107,7 @@ export function ChatInput({
             </div>
           )}
           
-          <div className="flex items-end gap-2">
+          <div className="flex flex-col gap-2">
             <textarea
               ref={textareaRef}
               value={inputText}
@@ -119,7 +119,7 @@ export function ChatInput({
               placeholder={placeholder}
               disabled={isDisabled}
               className={cn(
-                "flex-1 resize-none bg-transparent px-4 py-3",
+                "w-full resize-none bg-transparent px-4 py-3",
                 "text-[15px] placeholder:text-muted-foreground",
                 "focus:outline-none",
                 "disabled:cursor-not-allowed disabled:opacity-50",
@@ -127,7 +127,7 @@ export function ChatInput({
               )}
               rows={1}
             />
-            <div className="flex gap-2 pb-1">
+            <div className="flex gap-2 justify-end md:pb-1">
               <Button
                 type="button"
                 size="icon"

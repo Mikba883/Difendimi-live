@@ -221,6 +221,7 @@ Dati dall'analisi preliminare:
       }, 401);
     }
     
+    // Save only AI-generated data, not user conversation
     const { data: caseRecord, error: dbError } = await supabase
       .from("cases")
       .insert({
@@ -228,13 +229,11 @@ Dati dall'analisi preliminare:
         created_by: userId,
         title: result.title || "Caso senza titolo",
         case_type: caseType,
-        case_text: caseData.caseText,
-        previous_context: caseData.previousContext,
         status: "ready",
         classification: result.classification || {},
         report: result.report || {},
         documents: result.documents || [],
-        cards_json: result.report || {}, // Aggiungiamo cards_json che è richiesto nel database
+        cards_json: result.report || {}, 
         jurisdiction: result.classification?.jurisdiction || "unknown",
         area_of_law: result.classification?.areaOfLaw || [],
         doc_availability: {
