@@ -152,112 +152,108 @@ Deno.serve(async (req) => {
     console.log('Conversation History Built:', conversationHistory ? 'yes' : 'no');
     console.log('History Length:', conversationHistory.length);
 
-    // Calcolo completezza più intelligente e progressivo
+    // LIMITE MASSIMO 6 DOMANDE - Calcolo intelligente della completezza
+    const messageCount = Array.isArray(previousContext) ? previousContext.length : 0;
+    const userMessages = Array.isArray(previousContext) ? 
+      previousContext.filter((msg: any) => msg.role === 'user').length : 0;
+    const questionsAsked = Math.floor(messageCount / 2); // Ogni scambio ha 2 messaggi
+    
+    // FORZA COMPLETAMENTO DOPO 6 DOMANDE
+    const maxQuestions = 6;
     let completenessScore = 0;
     const collectedInfo: string[] = [];
     const allResponses = conversationHistory.toLowerCase() + ' ' + latestResponse.toLowerCase();
     
-    // Calcolo base sulla lunghezza della conversazione (max 20%)
-    const messageCount = Array.isArray(previousContext) ? previousContext.length : 0;
-    if (messageCount >= 8) completenessScore += 20;
-    else if (messageCount >= 6) completenessScore += 15;
-    else if (messageCount >= 4) completenessScore += 10;
-    else if (messageCount >= 2) completenessScore += 5;
-    
-    // Tipo di problema (25%)
-    if (allResponses.includes('multa') || allResponses.includes('contratto') || allResponses.includes('lavoro') || 
-        allResponses.includes('incidente') || allResponses.includes('affitto') || allResponses.includes('danni') ||
-        allResponses.includes('pagat') || allResponses.includes('licenzia')) {
-      completenessScore += 25;
-      collectedInfo.push('tipo_problema');
+    // Se abbiamo raggiunto il limite, forza completamento
+    if (questionsAsked >= maxQuestions) {
+      completenessScore = 100;
+      console.log(`🔴 LIMITE RAGGIUNTO: ${questionsAsked} domande su massimo ${maxQuestions}`);
+    } else {
+      // Calcolo progressivo basato sul numero di domande (aumenta rapidamente)
+      completenessScore = Math.min(90, (questionsAsked / maxQuestions) * 100);
+      
+      // Tipo di problema (20%)
+      if (allResponses.includes('multa') || allResponses.includes('contratto') || allResponses.includes('lavoro') || 
+          allResponses.includes('incidente') || allResponses.includes('affitto') || allResponses.includes('danni') ||
+          allResponses.includes('pagat') || allResponses.includes('licenzia')) {
+        completenessScore += 20;
+        collectedInfo.push('tipo_problema');
+      }
+      
+      // Obiettivo (15%)
+      if (allResponses.includes('annull') || allResponses.includes('rimbors') || allResponses.includes('risarciment') ||
+          allResponses.includes('accord') || allResponses.includes('contestar') || allResponses.includes('ottenere') ||
+          allResponses.includes('voglio') || allResponses.includes('vorrei')) {
+        completenessScore += 15;
+        collectedInfo.push('obiettivo');
+      }
+      
+      // Date/tempi (10%)
+      const datePatterns = /\d+\s*(mesi|giorni|anni|settimane)|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|\d{4}|\d{1,2}\/\d{1,2}/i;
+      if (datePatterns.test(allResponses)) {
+        completenessScore += 10;
+        collectedInfo.push('quando');
+      }
+      
+      // Importi (10%)
+      const amountPatterns = /\d+[\.\,]?\d*\s*(euro|€)|migliaia?|centinaia/i;
+      if (amountPatterns.test(allResponses)) {
+        completenessScore += 10;
+        collectedInfo.push('importi');
+      }
+      
+      // Parti coinvolte (10%)
+      if (allResponses.includes('datore') || allResponses.includes('azienda') || allResponses.includes('proprietario') ||
+          allResponses.includes('comune') || allResponses.includes('assicurazione') || allResponses.includes('banca')) {
+        completenessScore += 10;
+        collectedInfo.push('parti_coinvolte');
+      }
+      
+      // Boost se l'utente ha fornito risposte dettagliate
+      if (latestResponse.length > 50) completenessScore += 5;
+      if (latestResponse.length > 100) completenessScore += 5;
     }
-    
-    // Obiettivo (20%)
-    if (allResponses.includes('annull') || allResponses.includes('rimbors') || allResponses.includes('risarciment') ||
-        allResponses.includes('accord') || allResponses.includes('contestar') || allResponses.includes('ottenere') ||
-        allResponses.includes('voglio') || allResponses.includes('vorrei')) {
-      completenessScore += 20;
-      collectedInfo.push('obiettivo');
-    }
-    
-    // Date/tempi (15%)
-    const datePatterns = /\d+\s*(mesi|giorni|anni|settimane)|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|\d{4}|\d{1,2}\/\d{1,2}/i;
-    if (datePatterns.test(allResponses)) {
-      completenessScore += 15;
-      collectedInfo.push('quando');
-    }
-    
-    // Importi (10%)
-    const amountPatterns = /\d+[\.\,]?\d*\s*(euro|€)|migliaia?|centinaia/i;
-    if (amountPatterns.test(allResponses)) {
-      completenessScore += 10;
-      collectedInfo.push('importi');
-    }
-    
-    // Parti coinvolte (10%)
-    if (allResponses.includes('datore') || allResponses.includes('azienda') || allResponses.includes('proprietario') ||
-        allResponses.includes('comune') || allResponses.includes('assicurazione') || allResponses.includes('banca')) {
-      completenessScore += 10;
-      collectedInfo.push('parti_coinvolte');
-    }
-    
-    // Boost se l'utente ha fornito risposte dettagliate
-    if (latestResponse.length > 50) completenessScore += 5;
-    if (latestResponse.length > 100) completenessScore += 5;
-    
-    // Assicura che il punteggio sia incrementale (mai diminuisce)
-    // Recupera il punteggio precedente se esiste
-    let previousScore = 0;
-    if (Array.isArray(previousContext) && previousContext.length > 0) {
-      // Stima basata sul numero di messaggi
-      previousScore = Math.min(messageCount * 10, 70);
-    }
-    
-    // Il punteggio non può mai diminuire
-    completenessScore = Math.max(completenessScore, previousScore);
-    
-    // Limita a 100
-    completenessScore = Math.min(completenessScore, 100);
     
     const systemPrompt = `Sei Lexy, un assistente AI conversazionale e intelligente.
+
+STATO CONVERSAZIONE:
+- Domande fatte: ${questionsAsked} su massimo ${maxQuestions}
+- Completezza: ${completenessScore}%
+${questionsAsked >= maxQuestions ? '⚠️ LIMITE DOMANDE RAGGIUNTO - CASO COMPLETO!' : ''}
 
 ANALISI CONVERSAZIONE:
 ${conversationHistory ? conversationHistory : 'Prima risposta dell\'utente'}
 ULTIMA RISPOSTA: "${latestResponse}"
 
-INFORMAZIONI RACCOLTE FINORA:
+INFORMAZIONI RACCOLTE:
 - Tipo di problema: ${collectedInfo.includes('tipo_problema') ? '✓' : '❌'}
 - Obiettivo desiderato: ${collectedInfo.includes('obiettivo') ? '✓' : '❌'}
 - Quando è successo: ${collectedInfo.includes('quando') ? '✓' : '❌'}
 - Importi coinvolti: ${collectedInfo.includes('importi') ? '✓' : '❌'}
 - Parti coinvolte: ${collectedInfo.includes('parti_coinvolte') ? '✓' : '❌'}
-- Azioni intraprese: ${collectedInfo.includes('azioni_intraprese') ? '✓' : '❌'}
-- Documentazione disponibile: ${collectedInfo.includes('documentazione') ? '✓' : '❌'}
-- Urgenza/scadenze: ${collectedInfo.includes('urgenza') ? '✓' : '❌'}
 
-COMPLETEZZA ATTUALE: ${completenessScore}%
-
-REGOLE CRITICHE:
-1. Se completezza >= 80%, il caso è COMPLETO. NON fare altre domande.
-2. Analizza SEMPRE il contesto delle risposte, non solo le parole chiave.
-3. Se l'utente ha già risposto a una domanda, NON ripeterla MAI.
-4. Sii conversazionale e naturale, non meccanico.
-5. Se l'utente dice "non so" o simili, ACCETTA la risposta e passa oltre.
+REGOLE ASSOLUTE:
+1. MASSIMO ${maxQuestions} DOMANDE - Hai fatto ${questionsAsked} domande
+2. Se completezza >= 80% o domande >= ${maxQuestions}, COMPLETA SUBITO
+3. NON ripetere domande già fatte
+4. Sii conversazionale e conciso
+5. Se l'utente dice "non so", accetta e vai avanti
 
 Rispondi SEMPRE in questo formato JSON:
 {
   "completeness": {
     "score": ${completenessScore},
     "status": "${completenessScore >= 80 ? 'complete' : 'needs_more_info'}",
-    "missingElements": [/* lista elementi mancanti */]
+    "missingElements": [/* solo se < 80% */]
   },
   "nextQuestion": ${completenessScore >= 80 ? 'null' : '{
-    "text": "domanda naturale e specifica basata su cosa manca",
-    "category": "categoria_domanda"
+    "text": "domanda breve e mirata",
+    "category": "tipo_domanda",
+    "quickReplies": ["Sì", "No", "Non so"] // suggerimenti risposte rapide
   }'},
   "analysis": {
-    "caseType": "tipo di caso identificato",
-    "keyFacts": ["fatto1", "fatto2"],
+    "caseType": "tipo caso",
+    "keyFacts": ["fatto chiave 1", "fatto chiave 2"],
     "suggestedKeywords": ["keyword1", "keyword2"],
     "recommendedDocuments": ["doc1", "doc2"]
   }

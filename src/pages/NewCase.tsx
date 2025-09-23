@@ -28,6 +28,8 @@ export default function NewCase() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [completeness, setCompleteness] = useState(0);
   const [analysis, setAnalysis] = useState<any>(null);
+  const [quickReplies, setQuickReplies] = useState<string[]>([]);
+  const [questionCount, setQuestionCount] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -255,6 +257,9 @@ Sto preparando un'analisi dettagliata per te...`,
       
       // Solo se NON è completo e c'è una domanda successiva
       if (!isComplete && data.nextQuestion?.text) {
+        // Incrementa contatore domande
+        setQuestionCount(prev => prev + 1);
+        
         const assistantMessage: Message = {
           id: Date.now().toString(),
           text: data.nextQuestion.text,
@@ -262,6 +267,25 @@ Sto preparando un'analisi dettagliata per te...`,
           timestamp: new Date()
         };
         setMessages(prev => [...prev, assistantMessage]);
+        
+        // Imposta risposte rapide se disponibili
+        if (data.nextQuestion.quickReplies) {
+          setQuickReplies(data.nextQuestion.quickReplies);
+        } else {
+          // Default quick replies basati sul tipo di domanda
+          if (data.nextQuestion.text.toLowerCase().includes('hai') || 
+              data.nextQuestion.text.toLowerCase().includes('è') ||
+              data.nextQuestion.text.toLowerCase().includes('sei')) {
+            setQuickReplies(['Sì', 'No', 'Non so']);
+          } else if (data.nextQuestion.text.toLowerCase().includes('quando')) {
+            setQuickReplies(['Oggi', 'Ieri', 'Questa settimana', 'Questo mese', 'Non ricordo']);
+          } else if (data.nextQuestion.text.toLowerCase().includes('quanto')) {
+            setQuickReplies(['Meno di 1000€', '1000-5000€', 'Più di 5000€', 'Non so']);
+          } else {
+            setQuickReplies([]);
+          }
+        }
+        
         // TTS disabilitato per ora per velocità
         // await speakText(data.nextQuestion.text);
       }
@@ -459,7 +483,34 @@ Sto preparando un'analisi dettagliata per te...`,
 
           {/* Input area - solo quando ci sono messaggi */}
           <div className="border-t bg-background/95 backdrop-blur-sm px-4 py-4">
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-3xl mx-auto space-y-3">
+              {/* Quick reply buttons */}
+              {quickReplies.length > 0 && !isAnalyzing && (
+                <div className="flex flex-wrap gap-2 justify-center animate-fade-in">
+                  {quickReplies.map((reply, index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        handleSendMessage(reply);
+                        setQuickReplies([]);
+                      }}
+                      className="hover:scale-105 transition-transform"
+                    >
+                      {reply}
+                    </Button>
+                  ))}
+                </div>
+              )}
+              
+              {/* Avviso limite domande */}
+              {questionCount >= 4 && questionCount < 6 && (
+                <p className="text-center text-sm text-muted-foreground">
+                  Ancora {6 - questionCount} domande rimaste
+                </p>
+              )}
+              
               <ChatInput
                 onSendMessage={handleSendMessage}
                 onStartRecording={startRecording}
@@ -469,7 +520,7 @@ Sto preparando un'analisi dettagliata per te...`,
                 transcribedText={transcribedText}
                 onClearTranscription={() => setTranscribedText("")}
                 isDisabled={isAnalyzing || isSpeaking}
-                placeholder="Continua a descrivere il tuo caso..."
+                placeholder={questionCount >= 5 ? "Ultima domanda..." : "Continua a descrivere il tuo caso..."}
                 audioContext={audioContextRef.current || undefined}
                 mediaStream={mediaStreamRef.current || undefined}
               />
