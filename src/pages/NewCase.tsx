@@ -199,12 +199,27 @@ export default function NewCase() {
     }
 
     setIsAnalyzing(true);
+    
+    // Se è la prima analisi, mostra messaggio di "pensiero"
+    if (allQuestions.length === 0) {
+      const thinkingMessage: Message = {
+        id: 'thinking-' + Date.now(),
+        text: "Fammi pensare un attimo alla tua situazione... Sto analizzando il caso per identificare le informazioni essenziali che mi servono.",
+        sender: 'assistant',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, thinkingMessage]);
+    }
+    
     try {
-      // Prepara il contesto precedente (escluso l'ultimo messaggio appena aggiunto)
-      const previousMessages = messages.slice(0, -1).map(m => ({
-        role: m.sender === 'user' ? 'user' : 'assistant',
-        content: m.text
-      }));
+      // Prepara il contesto precedente (escluso l'ultimo messaggio appena aggiunto e il messaggio di thinking se presente)
+      const previousMessages = messages
+        .filter(m => !m.id.startsWith('thinking-'))
+        .slice(0, -1)
+        .map(m => ({
+          role: m.sender === 'user' ? 'user' : 'assistant',
+          content: m.text
+        }));
 
       console.log('=== ANALYZE CASE ===');
       console.log('Phase:', allQuestions.length === 0 ? 'initial' : 'answering');
@@ -229,21 +244,15 @@ export default function NewCase() {
         setAllQuestions(data.questions);
         setCompleteness(data.estimatedCompleteness || 20);
         
-        // Mostra messaggio di transizione
-        const transitionMessage: Message = {
-          id: Date.now().toString(),
-          text: `Grazie per aver descritto il tuo caso. Ho analizzato la situazione e ho preparato ${data.questions.length} domande specifiche per completare la comprensione del tuo problema.`,
-          sender: 'assistant',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, transitionMessage]);
+        // Rimuovi il messaggio di "pensiero" e mostra le domande
+        setMessages(prev => prev.filter(m => !m.id.startsWith('thinking-')));
         
         // Mostra la prima domanda dopo un breve delay
         setTimeout(() => {
           if (data.questions.length > 0) {
             const firstQuestion: Message = {
               id: Date.now().toString() + '-q',
-              text: `**Domanda 1 di ${data.questions.length}:**\n\n${data.questions[0].text}`,
+              text: data.questions[0].text,
               sender: 'assistant',
               timestamp: new Date(),
               isQuestion: true,
@@ -252,7 +261,7 @@ export default function NewCase() {
             setMessages(prev => [...prev, firstQuestion]);
             setCurrentQuestionIndex(1);
           }
-        }, 1500);
+        }, 800);
         
         return;
       }
@@ -265,7 +274,7 @@ export default function NewCase() {
           const nextQuestion = allQuestions[nextIndex];
           const questionMessage: Message = {
             id: Date.now().toString() + '-q',
-            text: `**Domanda ${nextIndex + 1} di ${allQuestions.length}:**\n\n${nextQuestion.text}`,
+            text: nextQuestion.text,
             sender: 'assistant',
             timestamp: new Date(),
             isQuestion: true,
@@ -288,7 +297,7 @@ export default function NewCase() {
         
         const completionMessage: Message = {
           id: Date.now().toString(),
-          text: data.message || "Perfetto! Ho raccolto tutte le informazioni necessarie. Sto preparando un'analisi legale dettagliata del tuo caso...",
+          text: "Perfetto! Ho raccolto tutte le informazioni necessarie. Ora preparo il tuo report legale completo con strategie personalizzate e documenti consigliati.",
           sender: 'assistant',
           timestamp: new Date()
         };

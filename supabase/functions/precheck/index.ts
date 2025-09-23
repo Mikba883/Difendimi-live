@@ -140,16 +140,29 @@ Deno.serve(async (req) => {
       const systemPrompt = `Sei Lexy, un assistente AI legale esperto e empatico.
       
 L'utente ha appena descritto il suo caso legale. Devi:
-1. Analizzare attentamente la situazione
-2. Identificare le informazioni mancanti CRUCIALI per fornire assistenza legale
-3. Generare domande INTELLIGENTI e MIRATE (massimo 6)
+1. Analizzare ATTENTAMENTE la situazione descritta
+2. Valutare quali informazioni ESSENZIALI mancano per fornire assistenza legale accurata
+3. Generare SOLO le domande STRETTAMENTE NECESSARIE (minimo 1, massimo 6)
+
+CRITERI FONDAMENTALI:
+- Se il caso è già molto dettagliato → genera 1-2 domande di precisazione
+- Se mancano informazioni critiche → genera fino a 6 domande, ma SOLO quelle essenziali
+- Ogni domanda deve avere un ALTO VALORE INFORMATIVO
+- MAI domande di riempimento o generiche
 
 Le domande devono essere:
-- PERTINENTI al caso specifico
-- ORDINATE per importanza (prima le più cruciali)
-- NON RIDONDANTI (evita sovrapposizioni)
-- CONTESTUALIZZATE (mostra che hai capito il caso)
-- SPECIFICHE (non generiche)
+- INTELLIGENTI e mostrare comprensione profonda del caso
+- ORDINATE per importanza legale/urgenza
+- SPECIFICHE e contestualizzate alla situazione
+- NON SOVRAPPOSTE (ogni domanda deve coprire un aspetto unico)
+- FORMULATE in modo professionale ma comprensibile
+
+Valuta sempre:
+- Termini di prescrizione o scadenze urgenti
+- Prove e documentazione disponibile
+- Parti coinvolte e loro ruoli
+- Precedenti azioni legali intraprese
+- Obiettivi concreti del cliente
 
 Rispondi SEMPRE in questo formato JSON:
 {
@@ -158,7 +171,8 @@ Rispondi SEMPRE in questo formato JSON:
     "caseType": "tipo di caso identificato",
     "keyFacts": ["fatto chiave 1", "fatto chiave 2"],
     "legalArea": "area del diritto",
-    "complexity": "bassa|media|alta"
+    "complexity": "bassa|media|alta",
+    "informationCompleteness": "percentuale 0-100 di info già disponibili"
   },
   "questions": [
     {
@@ -166,7 +180,7 @@ Rispondi SEMPRE in questo formato JSON:
       "text": "domanda specifica e contestualizzata",
       "category": "tempistica|importi|parti|documenti|obiettivi|contesto",
       "importance": "critica|alta|media",
-      "reason": "perché questa info è importante"
+      "reason": "perché questa info è importante per il caso"
     }
   ],
   "estimatedCompleteness": 20
@@ -175,13 +189,14 @@ Rispondi SEMPRE in questo formato JSON:
       const userPrompt = `Il cliente ha descritto il seguente caso:
 "${latestResponse}"
 
-Analizza il caso e genera le domande ESSENZIALI per completare la comprensione.
-Ricorda:
-- Massimo 6 domande
-- Solo informazioni davvero necessarie
-- Ordinate per importanza
-- Evita domande ovvie o già risposte implicitamente
-- Personalizza le domande sul caso specifico`;
+Analizza il caso e genera SOLO le domande VERAMENTE NECESSARIE.
+IMPORTANTE:
+- Se il caso è già sufficientemente dettagliato, genera solo 1-2 domande di approfondimento critico
+- Se mancano informazioni fondamentali, genera fino a 6 domande (ma solo quelle essenziali)
+- Ogni domanda deve portare valore concreto per la risoluzione del caso
+- NON fare domande su informazioni già fornite o implicite
+- NON aggiungere domande di "riempimento" solo per arrivare a 6
+- Personalizza ogni domanda mostrando che hai compreso il caso specifico`;
 
       const analysis = await callOpenAI(openAIApiKey, systemPrompt, userPrompt);
       
