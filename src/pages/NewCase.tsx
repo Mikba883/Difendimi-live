@@ -477,7 +477,7 @@ export default function NewCase() {
 
           {/* Input area - solo quando ci sono messaggi e non è completo */}
           {!isComplete && (
-            <div className="border-t bg-background/95 backdrop-blur-sm px-4 py-4">
+            <div className="bg-background/95 backdrop-blur-sm px-4 py-4">
               <div className="max-w-3xl mx-auto">
                 <ChatInput
                   onSendMessage={handleSendMessage}
