@@ -119,9 +119,6 @@ Deno.serve(async (req) => {
     if (!openAIApiKey) return jsonResponse({ error: "OPENAI_API_KEY not configured" }, 500);
     if (!projectRef) return jsonResponse({ error: "SP_PROJECT_REF not configured" }, 500);
     if (!serviceRoleKey) return jsonResponse({ error: "SP_SERVICE_ROLE_KEY not configured" }, 500);
-    
-    // Leggi il parametro allQuestionsAnswered dal body
-    const allQuestionsAnswered = body?.allQuestionsAnswered || false;
 
     // Build conversation history
     let conversationHistory = '';

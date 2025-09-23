@@ -41,6 +41,7 @@ export default function NewCase() {
   const [isComplete, setIsComplete] = useState(false);
   const [caseAnalysis, setCaseAnalysis] = useState<any>(null);
   const [completeness, setCompleteness] = useState(0);
+  const [isTyping, setIsTyping] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -200,15 +201,9 @@ export default function NewCase() {
 
     setIsAnalyzing(true);
     
-    // Se è la prima analisi, mostra messaggio di "pensiero"
+    // Se è la prima analisi, mostra solo l'indicatore di digitazione
     if (allQuestions.length === 0) {
-      const thinkingMessage: Message = {
-        id: 'thinking-' + Date.now(),
-        text: "Fammi pensare un attimo alla tua situazione... Sto analizzando il caso per identificare le informazioni essenziali che mi servono.",
-        sender: 'assistant',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, thinkingMessage]);
+      setIsTyping(true);
     }
     
     try {
@@ -251,6 +246,7 @@ export default function NewCase() {
         
         // Rimuovi il messaggio di "pensiero" e mostra le domande
         setMessages(prev => prev.filter(m => !m.id.startsWith('thinking-')));
+        setIsTyping(false);
         
         // Mostra la prima domanda dopo un breve delay
         setTimeout(() => {
