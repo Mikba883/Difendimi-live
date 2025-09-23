@@ -9,6 +9,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogFooter,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 interface Message {
   id: string;
@@ -41,12 +50,16 @@ export default function NewCase() {
   const [isComplete, setIsComplete] = useState(false);
   const [caseAnalysis, setCaseAnalysis] = useState<any>(null);
   const [completeness, setCompleteness] = useState(0);
+  const [showInvalidCaseDialog, setShowInvalidCaseDialog] = useState(false);
+  const [invalidCaseMessage, setInvalidCaseMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const scrollAreaViewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     checkAuth();
@@ -61,8 +74,14 @@ export default function NewCase() {
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    if (scrollAreaViewportRef.current) {
+      const element = scrollAreaViewportRef.current;
+      setTimeout(() => {
+        element.scrollTo({
+          top: element.scrollHeight,
+          behavior: 'smooth'
+        });
+      }, 100);
     }
   }, [messages]);
 
@@ -172,7 +191,10 @@ export default function NewCase() {
   };
 
   const handleSendMessage = async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim() || isSubmitting) return;
+    
+    // Previeni invii multipli
+    setIsSubmitting(true);
     
     // Aggiungi il messaggio dell'utente
     const userMessage: Message = {
@@ -186,6 +208,7 @@ export default function NewCase() {
     
     // Analizza il caso
     await analyzeCase(text);
+    setIsSubmitting(false);
   };
 
   const analyzeCase = async (latestResponse: string) => {
@@ -236,18 +259,13 @@ export default function NewCase() {
 
       // Se è un messaggio di benvenuto (input non valido)
       if (data.status === 'welcome_message') {
-        // Rimuovi il messaggio di "pensiero" se presente
-        setMessages(prev => {
-          const filtered = prev.filter(m => !m.id.startsWith('thinking-'));
-          const welcomeMessage: Message = {
-            id: 'welcome-' + Date.now(),
-            text: data.message,
-            sender: 'assistant',
-            timestamp: new Date()
-          };
-          return [...filtered, welcomeMessage];
-        });
+        // Rimuovi il messaggio dell'utente dall'elenco (non salviamo se non è valido)
+        setMessages(prev => prev.slice(0, -1));
+        // Mostra il dialog invece di aggiungere alla chat
+        setInvalidCaseMessage(data.message);
+        setShowInvalidCaseDialog(true);
         setIsAnalyzing(false);
+        setCurrentText(""); // Reset del testo
         return;
       }
 
@@ -476,7 +494,7 @@ export default function NewCase() {
         </div>
       ) : (
         <>
-          <ScrollArea className="flex-1 px-4">
+          <ScrollArea className="flex-1 px-4" ref={scrollAreaViewportRef}>
             <div 
               ref={scrollAreaRef}
               className="max-w-3xl mx-auto py-6 space-y-5"
@@ -501,7 +519,7 @@ export default function NewCase() {
                   isProcessingAudio={isProcessingAudio}
                   transcribedText={transcribedText}
                   onClearTranscription={() => setTranscribedText("")}
-                  isDisabled={isAnalyzing || isComplete}
+                  isDisabled={isAnalyzing || isComplete || isSubmitting}
                   placeholder={
                     currentQuestionIndex > 0 
                       ? "Rispondi alla domanda..." 
@@ -515,6 +533,23 @@ export default function NewCase() {
           )}
         </>
       )}
+
+      {/* Dialog per input non validi */}
+      <AlertDialog open={showInvalidCaseDialog} onOpenChange={setShowInvalidCaseDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Descrivi il tuo problema legale</AlertDialogTitle>
+            <AlertDialogDescription>
+              {invalidCaseMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowInvalidCaseDialog(false)}>
+              Capito
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
