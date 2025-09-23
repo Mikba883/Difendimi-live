@@ -53,6 +53,8 @@ export default function NewCase() {
   const [showInvalidCaseDialog, setShowInvalidCaseDialog] = useState(false);
   const [invalidCaseMessage, setInvalidCaseMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedCaseId, setSavedCaseId] = useState<string | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -334,15 +336,17 @@ export default function NewCase() {
         };
         setMessages(prev => [...prev, completionMessage]);
         
-        // Salva il caso
-        setTimeout(async () => {
-          await saveCase({
-            ...data,
-            caseAnalysis,
-            allQuestions,
-            messages
-          });
-        }, 2000);
+        // Salva il caso solo se non è già stato salvato
+        if (!isSaving && !savedCaseId) {
+          setTimeout(async () => {
+            await saveCase({
+              ...data,
+              caseAnalysis,
+              allQuestions,
+              messages
+            });
+          }, 2000);
+        }
       }
 
     } catch (error) {
@@ -358,11 +362,45 @@ export default function NewCase() {
   };
 
   const saveCase = async (analysisData: any) => {
+    // Previeni salvataggi multipli
+    if (isSaving || savedCaseId) {
+      console.log('Salvataggio già in corso o caso già salvato');
+      return;
+    }
+    
+    setIsSaving(true);
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { error } = await supabase
+      // Prima controlla se esiste già un caso con lo stesso job_id
+      if (analysisData.job_id) {
+        const { data: existingCase, error: checkError } = await supabase
+          .from('cases')
+          .select('id')
+          .eq('job_id', analysisData.job_id)
+          .maybeSingle();
+        
+        if (checkError && checkError.code !== 'PGRST116') {
+          console.error('Errore controllo caso esistente:', checkError);
+        }
+        
+        // Se il caso esiste già, naviga direttamente ad esso
+        if (existingCase) {
+          console.log('Caso già esistente, navigazione a:', existingCase.id);
+          setSavedCaseId(existingCase.id);
+          toast({
+            title: "Caso già salvato",
+            description: "Navigazione al caso esistente...",
+          });
+          navigate(`/case/${existingCase.id}`);
+          return;
+        }
+      }
+
+      // Inserisci il nuovo caso
+      const { data: newCase, error } = await supabase
         .from('cases')
         .insert({
           created_by: user.id,
@@ -393,23 +431,51 @@ export default function NewCase() {
             })),
             analysis: analysisData.analysis || analysisData.caseAnalysis
           }
+        })
+        .select('id')
+        .single();
+
+      if (error) {
+        // Se è un errore di chiave duplicata, prova a recuperare il caso esistente
+        if (error.code === '23505' && analysisData.job_id) {
+          const { data: existingCase } = await supabase
+            .from('cases')
+            .select('id')
+            .eq('job_id', analysisData.job_id)
+            .maybeSingle();
+          
+          if (existingCase) {
+            setSavedCaseId(existingCase.id);
+            toast({
+              title: "Caso trovato",
+              description: "Navigazione al caso esistente...",
+            });
+            navigate(`/case/${existingCase.id}`);
+            return;
+          }
+        }
+        throw error;
+      }
+
+      if (newCase && newCase.id) {
+        setSavedCaseId(newCase.id);
+        toast({
+          title: "Successo",
+          description: "Caso salvato correttamente. Reindirizzamento al caso...",
         });
-
-      if (error) throw error;
-
-      toast({
-        title: "Successo",
-        description: "Caso salvato correttamente",
-      });
-
-      navigate('/dashboard');
+        
+        // Naviga direttamente alla pagina del caso invece che al dashboard
+        navigate(`/case/${newCase.id}`);
+      }
     } catch (error) {
       console.error('Error saving case:', error);
       toast({
         title: "Errore",
-        description: "Impossibile salvare il caso",
+        description: "Impossibile salvare il caso. Riprova.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
