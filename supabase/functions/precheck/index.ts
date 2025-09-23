@@ -63,20 +63,28 @@ async function callOpenAI(openAIApiKey: string, systemPrompt: string, userPrompt
 
 async function handoffToGenerate(projectRef: string, serviceRoleKey: string, payload: unknown) {
   const url = `https://${projectRef}.supabase.co/functions/v1/generate`;
+  console.log(`Calling generate function at: ${url}`);
+  
   const res = await fetch(url, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${serviceRoleKey}`,
+      "Authorization": `Bearer ${serviceRoleKey}`,
       "Content-Type": "application/json",
       "X-Source": "precheck",
+      "apikey": serviceRoleKey,
     },
     body: JSON.stringify(payload),
   });
+  
   if (!res.ok) {
     const t = await res.text().catch(() => "");
+    console.error(`Generate function failed: ${res.status} - ${t}`);
     throw new Error(`generate failed: ${res.status} - ${t}`);
   }
-  return true;
+  
+  const result = await res.json().catch(() => null);
+  console.log('Generate function response:', result);
+  return result || true;
 }
 
 // --- Handler ---
@@ -279,7 +287,13 @@ Rispondi in formato JSON:
           },
         };
 
-        await handoffToGenerate(projectRef, serviceRoleKey, generatePayload);
+        try {
+          await handoffToGenerate(projectRef, serviceRoleKey, generatePayload);
+          console.log('✅ Successfully handed off to generate function');
+        } catch (handoffError) {
+          console.error('❌ Failed to handoff to generate:', handoffError);
+          // Continue anyway - we have the analysis
+        }
         
         response = {
           status: "complete",
