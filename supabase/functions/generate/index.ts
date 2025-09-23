@@ -204,18 +204,6 @@ IMPORTANTE: Il report deve essere in formato JSON con questa ESATTA struttura us
       "nice_to_have": ["Documento opzionale 1", "Documento opzionale 2"]
     },
     "disclaimer": "Questo report è fornito a scopo informativo. Si consiglia di consultare un avvocato qualificato per una consulenza legale specifica."
-  },
-  "documents": {
-    "items": [
-      {
-        "id": "doc_1",
-        "title": "Titolo del documento generato",
-        "rationale": "Motivo per cui questo documento è necessario",
-        "storage_path": "",
-        "signed_url": "",
-        "size_bytes": 0
-      }
-    ]
   }
 }
 
@@ -258,7 +246,7 @@ Dati dall'analisi preliminare:
       status: "ready" as const,
       classification: result.classification || {},
       report: result.report || {},
-      documents: result.documents || { items: [] },
+      documents: null, // Non generiamo documenti vuoti
       cards_json: result.report || {}, 
       jurisdiction: result.classification?.jurisdiction || "unknown",
       area_of_law: result.classification?.area_of_law || [],
@@ -267,7 +255,7 @@ Dati dall'analisi preliminare:
         diffida: false,
         adr: false,
       },
-      // Non salviamo più i dati utente nel database
+      // Non generiamo documenti vuoti, quindi non li includiamo
       case_text: null,
       previous_context: null,
     };

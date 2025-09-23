@@ -179,7 +179,6 @@ export function ReportTabs({ report }: ReportTabsProps) {
                             {row.tempi || '-'}
                           </td>
                           <td className="p-3 text-sm">
-                            <Euro className="inline h-3 w-3 mr-1" />
                             {row.costi || '-'}
                           </td>
                           <td className="p-3 text-sm">{row.esito || '-'}</td>
@@ -231,9 +230,6 @@ export function ReportTabs({ report }: ReportTabsProps) {
                         <div className="flex items-start justify-between">
                           <div>
                             <p className="font-medium">{deadline.description}</p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Scadenza: {new Date(deadline.date).toLocaleDateString('it-IT')}
-                            </p>
                           </div>
                           <span className={`text-xs px-2 py-1 rounded-full ${
                             deadline.type === 'prescription' 
@@ -242,7 +238,8 @@ export function ReportTabs({ report }: ReportTabsProps) {
                               ? 'bg-orange-100 text-orange-700'
                               : 'bg-gray-100 text-gray-700'
                           }`}>
-                            {deadline.type}
+                            {deadline.type === 'prescription' ? 'Prescrizione' :
+                             deadline.type === 'decadenza' ? 'Decadenza' : 'Altro'}
                           </span>
                         </div>
                       </div>

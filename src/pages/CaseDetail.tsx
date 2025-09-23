@@ -98,7 +98,7 @@ export default function CaseDetail() {
               </Button>
               <Separator orientation="vertical" className="h-6" />
               <h1 className="text-xl font-semibold">
-                {caseData.title || `Caso ${caseData.job_id || caseData.id}`}
+                Report Completo - {caseData.title || `Caso ${caseData.job_id || caseData.id}`}
               </h1>
               <CaseStatusBadge status={caseData.status} />
             </div>
@@ -149,7 +149,7 @@ export default function CaseDetail() {
             <div>
               <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
                 <FileText className="h-6 w-6" />
-                Report Legale
+                Report Completo
               </h2>
               <ReportTabs report={caseData.report} />
             </div>
