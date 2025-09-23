@@ -79,24 +79,31 @@ serve(async (req) => {
 
     const { job_id, caseType, caseData, meta } = body;
     if (!job_id || !caseData) {
+      console.error("Missing fields - job_id:", job_id, "caseData:", !!caseData);
       return jsonResponse({ error: "Missing required fields" }, 400);
     }
 
     console.log(`Processing job ${job_id} of type ${caseType}`);
+    console.log("Meta received:", JSON.stringify(meta));
 
     // Extract user ID - from direct call or from meta passed by precheck
     let userId = null;
     
     // Check if we have an auth token in meta (from precheck)
     if (meta?.authToken) {
+      console.log("Auth token found in meta, extracting user...");
       const token = meta.authToken.replace("Bearer ", "");
       if (token) {
         const { data: { user }, error } = await supabase.auth.getUser(token);
-        if (!error && user) {
+        if (error) {
+          console.error("Error extracting user from token:", error);
+        } else if (user) {
           userId = user.id;
           console.log(`User ID extracted from precheck auth: ${userId}`);
         }
       }
+    } else {
+      console.log("No auth token in meta");
     }
     
     // If not from precheck, try direct authorization header
@@ -113,7 +120,18 @@ serve(async (req) => {
     }
     
     if (!userId) {
-      console.error("No valid user ID found - case will be saved without user association");
+      console.error("WARNING: No valid user ID found - attempting to save without user");
+      // Prova a recuperare l'ID utente dal job_id precedente se esiste
+      const { data: existingCase } = await supabase
+        .from("cases")
+        .select("created_by")
+        .eq("job_id", job_id)
+        .maybeSingle();
+      
+      if (existingCase?.created_by) {
+        userId = existingCase.created_by;
+        console.log(`User ID recovered from existing job: ${userId}`);
+      }
     }
 
     // Generate legal analysis with correct structure

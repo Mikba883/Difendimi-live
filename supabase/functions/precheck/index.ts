@@ -330,7 +330,18 @@ Rispondi in formato JSON:
           },
         };
 
-        await handoffToGenerate(projectRef, serviceRoleKey, generatePayload);
+        console.log("📤 Calling generate with payload:", JSON.stringify(generatePayload));
+        
+        try {
+          await handoffToGenerate(projectRef, serviceRoleKey, generatePayload);
+          console.log("✅ Generate function called successfully");
+        } catch (handoffError) {
+          console.error("❌ Error calling generate function:", handoffError);
+          return jsonResponse({
+            error: "Failed to process case",
+            details: String(handoffError)
+          }, 500);
+        }
         
         response = {
           status: "complete",

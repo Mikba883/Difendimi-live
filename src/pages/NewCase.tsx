@@ -61,7 +61,6 @@ export default function NewCase() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const scrollAreaViewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     checkAuth();
@@ -76,14 +75,17 @@ export default function NewCase() {
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
-    if (scrollAreaViewportRef.current) {
-      const element = scrollAreaViewportRef.current;
-      setTimeout(() => {
-        element.scrollTo({
-          top: element.scrollHeight,
-          behavior: 'smooth'
-        });
-      }, 100);
+    if (scrollAreaRef.current) {
+      // Trova il viewport effettivo di ScrollArea
+      const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        setTimeout(() => {
+          viewport.scrollTo({
+            top: viewport.scrollHeight,
+            behavior: 'smooth'
+          });
+        }, 100);
+      }
     }
   }, [messages]);
 
@@ -560,11 +562,8 @@ export default function NewCase() {
         </div>
       ) : (
         <>
-          <ScrollArea className="flex-1 px-4" ref={scrollAreaViewportRef}>
-            <div 
-              ref={scrollAreaRef}
-              className="max-w-3xl mx-auto py-6 space-y-5"
-            >
+          <ScrollArea className="flex-1 px-4" ref={scrollAreaRef}>
+            <div className="max-w-3xl mx-auto py-6 space-y-5">
               {messages.map((message) => (
                 <MessageBubble key={message.id} message={message} />
               ))}
