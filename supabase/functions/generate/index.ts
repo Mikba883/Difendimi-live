@@ -189,13 +189,13 @@ IMPORTANTE: Il report deve essere in formato JSON con questa ESATTA struttura us
     "termini": {
       "deadlines": [
         {
-          "description": "Descrizione della scadenza (NON includere scadenze per presentare ricorso)",
+          "description": "Descrizione della scadenza (NON includere scadenze per presentare ricorso o comunicazioni al proprietario)",
           "date": "2024-MM-DD",
           "type": "prescription|decadenza|other"
         }
       ],
-      "prescription": "Informazioni generali sulla prescrizione applicabile",
-      "decadenza": "Informazioni generali sulla decadenza applicabile"
+      "prescription": "Tempistiche generali sulla prescrizione applicabile (in giorni/mesi/anni)",
+      "decadenza": "Tempistiche generali sulla decadenza applicabile (in giorni/mesi/anni)"
     },
     "allegati": {
       "present": ["Documento già disponibile 1", "Documento già disponibile 2"],
@@ -209,8 +209,10 @@ IMPORTANTE: Il report deve essere in formato JSON con questa ESATTA struttura us
 REGOLE IMPORTANTI:
 1. Usa sempre snake_case (underscore) per i nomi dei campi, NON camelCase
 2. Fai riferimento a leggi italiane reali da normativa.it
-3. Fornisci tempistiche e costi realistici
-4. Includi tutti i campi richiesti nella struttura`;
+3. Per prescrizione e decadenza, indica le tempistiche generali in giorni/mesi/anni, NON date specifiche
+4. NON generare scadenze per "ricorso" o "comunicazione al proprietario" 
+5. Fornisci tempistiche e costi realistici
+6. Includi tutti i campi richiesti nella struttura`;
 
     const userPrompt = `Analizza il seguente caso legale e genera un report completo:
 

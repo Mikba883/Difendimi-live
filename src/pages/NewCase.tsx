@@ -89,6 +89,33 @@ export default function NewCase() {
       if (interval) clearInterval(interval);
     };
   }, [isGenerating]);
+  
+  // Auto-start generation after all questions are answered (reduced to 4 seconds)
+  const [questionsComplete, setQuestionsComplete] = useState(false);
+  const [autoGenerateTimer, setAutoGenerateTimer] = useState<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    // Check if all questions have been answered
+    if (currentQuestionIndex >= allQuestions.length && allQuestions.length > 0 && !questionsComplete) {
+      setQuestionsComplete(true);
+    }
+  }, [currentQuestionIndex, allQuestions.length]);
+  
+  useEffect(() => {
+    if (questionsComplete && !isAnalyzing && !isComplete && !autoGenerateTimer) {
+      const timer = setTimeout(() => {
+        // Trigger automatic analysis
+        analyzeCase("");
+      }, 4000); // 4 seconds
+      setAutoGenerateTimer(timer);
+    }
+    
+    return () => {
+      if (autoGenerateTimer) {
+        clearTimeout(autoGenerateTimer);
+      }
+    };
+  }, [questionsComplete]);
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive

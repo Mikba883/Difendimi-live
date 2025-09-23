@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, FileText, AlertCircle } from "lucide-react";
 import { CaseStatusBadge } from "@/components/case/CaseStatusBadge";
-import { ReportTabs } from "@/components/case/ReportTabs";
+import { ReportSections } from "@/components/case/ReportSections";
 import { DocumentCard } from "@/components/case/DocumentCard";
 import type { Case } from "@/types/case";
 
@@ -144,14 +144,14 @@ export default function CaseDetail() {
             </div>
           )}
 
-          {/* Report Tabs */}
+          {/* Report Sections */}
           {caseData.report && (
             <div>
               <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
                 <FileText className="h-6 w-6" />
                 Report Completo
               </h2>
-              <ReportTabs report={caseData.report} />
+              <ReportSections report={caseData.report} />
             </div>
           )}
 
