@@ -44,6 +44,7 @@ export default function NewCase() {
   const [isTyping, setIsTyping] = useState(false);
   const [pollingCaseId, setPollingCaseId] = useState<string | null>(null);
   const [generationMessage, setGenerationMessage] = useState<string>('');
+  const [hasStarted, setHasStarted] = useState(false); // New state for tracking if conversation started
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -198,6 +199,11 @@ export default function NewCase() {
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return;
+    
+    // Start conversation if not started
+    if (!hasStarted) {
+      setHasStarted(true);
+    }
     
     const userMessage: Message = {
       id: Date.now().toString(),
