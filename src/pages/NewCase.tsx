@@ -53,14 +53,34 @@ export default function NewCase() {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    checkAuth();
-    // Add welcome message
+    // Reset all state when component mounts
     setMessages([{
       id: '1',
       text: "Ciao! Sono Lexy, il tuo assistente AI legale. Descrivimi il tuo problema legale nel modo più dettagliato possibile. Dopo la tua descrizione, ti farò alcune domande mirate per completare l'analisi.",
       sender: 'assistant',
       timestamp: new Date()
     }]);
+    setIsRecording(false);
+    setIsProcessingAudio(false);
+    setTranscribedText("");
+    setIsAnalyzing(false);
+    setCurrentText("");
+    setAllQuestions([]);
+    setCurrentQuestionIndex(0);
+    setIsComplete(false);
+    setCaseAnalysis(null);
+    setCompleteness(0);
+    setIsTyping(false);
+    setPollingCaseId(null);
+    setGenerationMessage('');
+    
+    // Clear any existing polling
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    
+    checkAuth();
   }, []);
 
   useEffect(() => {
