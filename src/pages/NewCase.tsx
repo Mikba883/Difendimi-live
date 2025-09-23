@@ -41,69 +41,30 @@ export default function NewCase() {
   const [isComplete, setIsComplete] = useState(false);
   const [caseAnalysis, setCaseAnalysis] = useState<any>(null);
   const [completeness, setCompleteness] = useState(0);
-  const [isTyping, setIsTyping] = useState(false);
-  const [pollingCaseId, setPollingCaseId] = useState<string | null>(null);
-  const [generationMessage, setGenerationMessage] = useState<string>('');
-  const [hasStarted, setHasStarted] = useState(false); // New state for tracking if conversation started
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Reset all state when component mounts
+    checkAuth();
+    // Add welcome message
     setMessages([{
       id: '1',
       text: "Ciao! Sono Lexy, il tuo assistente AI legale. Descrivimi il tuo problema legale nel modo più dettagliato possibile. Dopo la tua descrizione, ti farò alcune domande mirate per completare l'analisi.",
       sender: 'assistant',
       timestamp: new Date()
     }]);
-    setIsRecording(false);
-    setIsProcessingAudio(false);
-    setTranscribedText("");
-    setIsAnalyzing(false);
-    setCurrentText("");
-    setAllQuestions([]);
-    setCurrentQuestionIndex(0);
-    setIsComplete(false);
-    setCaseAnalysis(null);
-    setCompleteness(0);
-    setIsTyping(false);
-    setPollingCaseId(null);
-    setGenerationMessage('');
-    
-    // Clear any existing polling
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-    
-    checkAuth();
   }, []);
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
-    setTimeout(() => {
-      if (scrollAreaRef.current) {
-        const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-        if (scrollContainer) {
-          scrollContainer.scrollTop = scrollContainer.scrollHeight;
-        }
-      }
-    }, 100);
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
   }, [messages]);
-
-  // Cleanup polling on unmount
-  useEffect(() => {
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
-    };
-  }, []);
 
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -139,11 +100,12 @@ export default function NewCase() {
 
       mediaRecorder.start();
       setIsRecording(true);
+      console.log('Recording started');
     } catch (error) {
       console.error('Error starting recording:', error);
       toast({
         title: "Errore",
-        description: "Impossibile accedere al microfono",
+        description: "Impossibile accedere al microfono. Verifica i permessi.",
         variant: "destructive",
       });
     }
@@ -157,85 +119,96 @@ export default function NewCase() {
   };
 
   const processAudio = async (audioBlob: Blob) => {
-    setIsProcessingAudio(true);
     try {
-      // Convert blob to base64
+      console.log('Processing audio, size:', audioBlob.size);
+      setIsProcessingAudio(true);
+      
       const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => {
-          const base64 = reader.result as string;
-          // Remove the data:audio/webm;base64, prefix
-          const base64Audio = base64.split(',')[1];
-          resolve(base64Audio);
-        };
-        reader.onerror = reject;
-      });
-      
-      reader.readAsDataURL(audioBlob);
-      const audioBase64 = await base64Promise;
-      
-      const { data, error } = await supabase.functions.invoke('stt', {
-        body: { audio: audioBase64 },
-      });
+      reader.onloadend = async () => {
+        const base64Audio = reader.result?.toString().split(',')[1];
+        
+        if (!base64Audio) {
+          setIsProcessingAudio(false);
+          throw new Error('Failed to convert audio to base64');
+        }
+        
+        console.log('Sending audio to STT function');
+        
+        const { data, error } = await supabase.functions.invoke('stt', {
+          body: { audio: base64Audio }
+        });
 
-      if (error) throw error;
-      
-      if (data?.text) {
-        setTranscribedText(data.text);
-        // Automatically send the transcribed text
-        handleSendMessage(data.text);
-      }
+        if (error) {
+          console.error('STT error:', error);
+          setIsProcessingAudio(false);
+          throw error;
+        }
+        
+        const transcribedText = data?.text || '';
+        console.log('Transcription result:', transcribedText);
+        
+        if (transcribedText) {
+          // Set transcribed text as preview instead of sending immediately
+          setTranscribedText(transcribedText);
+          setIsProcessingAudio(false);
+        } else {
+          setIsProcessingAudio(false);
+          toast({
+            title: "Nessun audio rilevato",
+            description: "Non è stato possibile trascrivere l'audio. Riprova.",
+          });
+        }
+      };
+      reader.readAsDataURL(audioBlob);
     } catch (error) {
       console.error('Error processing audio:', error);
+      setIsProcessingAudio(false);
       toast({
-        title: "Errore",
-        description: "Impossibile elaborare l'audio",
+        title: "Errore di trascrizione",
+        description: "Si è verificato un errore durante la trascrizione. Riprova.",
         variant: "destructive",
       });
-    } finally {
-      setIsProcessingAudio(false);
     }
   };
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim()) return;
     
-    // Start conversation if not started
-    if (!hasStarted) {
-      setHasStarted(true);
-    }
-    
+    // Aggiungi il messaggio dell'utente
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: text.trim(),
+      text: text,
       sender: 'user',
       timestamp: new Date()
     };
-    
     setMessages(prev => [...prev, userMessage]);
-    setTranscribedText('');
-    setCurrentText(text.trim());
+    setCurrentText(prev => prev + " " + text);
     
-    // If this is the first message, save as current text and analyze
-    if (allQuestions.length === 0) {
-      await analyzeCase(text.trim());
-    } else {
-      // It's an answer to a question
-      await analyzeCase(text.trim());
-    }
+    // Analizza il caso
+    await analyzeCase(text);
   };
 
   const analyzeCase = async (latestResponse: string) => {
-    if (isAnalyzing) {
-      console.warn('Already analyzing, skipping duplicate call');
+    if (!latestResponse.trim()) {
+      toast({
+        title: "Attenzione",
+        description: "Inserisci o detta le informazioni del caso",
+        variant: "destructive",
+      });
       return;
     }
 
     setIsAnalyzing(true);
     
-    // Se è la prima analisi, mostra solo l'indicatore di digitazione
+    // Se è la prima analisi, mostra messaggio di "pensiero"
     if (allQuestions.length === 0) {
-      setIsTyping(true);
+      const thinkingMessage: Message = {
+        id: 'thinking-' + Date.now(),
+        text: "Fammi pensare un attimo alla tua situazione... Sto analizzando il caso per identificare le informazioni essenziali che mi servono.",
+        sender: 'assistant',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, thinkingMessage]);
     }
     
     try {
@@ -278,7 +251,6 @@ export default function NewCase() {
         
         // Rimuovi il messaggio di "pensiero" e mostra le domande
         setMessages(prev => prev.filter(m => !m.id.startsWith('thinking-')));
-        setIsTyping(false);
         
         // Mostra la prima domanda dopo un breve delay
         setTimeout(() => {
@@ -323,25 +295,28 @@ export default function NewCase() {
         return;
       }
 
-      // FASE 3: Caso completo - polling per generazione report
-      if (data.status === 'complete') {
+      // FASE 3: Caso completo
+      if (data.status === 'complete' || data.status === 'queued') {
         setIsComplete(true);
         setCompleteness(100);
         
-        // Start polling for case generation
-        if (data.jobId) {
-          setPollingCaseId(data.jobId);
-          setGenerationMessage('Sto generando il tuo report legale...');
-          pollCaseStatus(data.jobId);
-        }
-        
         const completionMessage: Message = {
           id: Date.now().toString(),
-          text: "Perfetto! Ho raccolto tutte le informazioni necessarie. Ora preparo il tuo report legale completo. Questo potrebbe richiedere alcuni secondi...",
+          text: "Perfetto! Ho raccolto tutte le informazioni necessarie. Ora preparo il tuo report legale completo con strategie personalizzate e documenti consigliati.",
           sender: 'assistant',
           timestamp: new Date()
         };
         setMessages(prev => [...prev, completionMessage]);
+        
+        // Salva il caso
+        setTimeout(async () => {
+          await saveCase({
+            ...data,
+            caseAnalysis,
+            allQuestions,
+            messages
+          });
+        }, 2000);
       }
 
     } catch (error) {
@@ -354,81 +329,6 @@ export default function NewCase() {
     } finally {
       setIsAnalyzing(false);
     }
-  };
-
-  const pollCaseStatus = async (jobId: string) => {
-    let attemptCount = 0;
-    const maxAttempts = 30; // 30 attempts * 2 seconds = 1 minute max
-    
-    const messages = [
-      "Sto analizzando il tuo caso...",
-      "Sto cercando le normative rilevanti...",
-      "Sto preparando il report legale...",
-      "Quasi fatto, ancora qualche secondo...",
-    ];
-    
-    pollingIntervalRef.current = setInterval(async () => {
-      attemptCount++;
-      
-      // Update generation message
-      const messageIndex = Math.min(Math.floor(attemptCount / 5), messages.length - 1);
-      setGenerationMessage(messages[messageIndex]);
-      
-      try {
-        const { data, error } = await supabase
-          .from('cases')
-          .select('id, status')
-          .eq('job_id', jobId)
-          .single();
-        
-        if (error) {
-          console.error('Errore polling:', error);
-          return;
-        }
-        
-        if (data && data.status === 'ready') {
-          // Case is ready!
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-          }
-          setPollingCaseId(null);
-          setGenerationMessage('');
-          
-          // Navigate to case detail
-          navigate(`/case/${data.id}`);
-        } else if (data && data.status === 'error') {
-          // Error occurred
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-          }
-          setPollingCaseId(null);
-          setGenerationMessage('');
-          
-          toast({
-            title: "Errore nella generazione",
-            description: "Si è verificato un errore durante la generazione del report.",
-            variant: "destructive",
-          });
-        }
-        
-        if (attemptCount >= maxAttempts) {
-          // Timeout
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-          }
-          setPollingCaseId(null);
-          setGenerationMessage('');
-          
-          toast({
-            title: "Timeout",
-            description: "La generazione del report sta richiedendo più tempo del previsto. Controlla più tardi nella dashboard.",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error('Errore nel polling:', error);
-      }
-    }, 2000); // Poll every 2 seconds
   };
 
   const saveCase = async (analysisData: any) => {
@@ -452,16 +352,31 @@ export default function NewCase() {
             }
           },
           cards_json: {
-            summary: analysisData.analysis?.summary || "Analisi in corso...",
-            recommendations: analysisData.analysis?.recommendations || []
+            originalText: currentText,
+            conversation: messages.map(m => ({
+              text: m.text,
+              sender: m.sender,
+              timestamp: m.timestamp.toISOString()
+            })),
+            questions: allQuestions.map(q => ({
+              id: q.id,
+              text: q.text,
+              category: q.category,
+              importance: q.importance,
+              reason: q.reason
+            })),
+            analysis: analysisData.analysis || analysisData.caseAnalysis
           }
         });
 
       if (error) throw error;
 
-      // Navigate to dashboard to see the new case
+      toast({
+        title: "Successo",
+        description: "Caso salvato correttamente",
+      });
+
       navigate('/dashboard');
-      
     } catch (error) {
       console.error('Error saving case:', error);
       toast({
@@ -472,90 +387,124 @@ export default function NewCase() {
     }
   };
 
+  const hasMessages = messages.filter(m => m.sender === 'user').length > 0;
+
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+    <div className="flex flex-col h-screen bg-gradient-to-b from-background to-muted/5">
+      {/* Header - solo se ci sono messaggi */}
+      {hasMessages && (
+        <div className="border-b bg-background/95 backdrop-blur-sm px-4 py-3 animate-fade-in">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={() => navigate('/dashboard')}
               >
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Dashboard
               </Button>
               <div>
-                <h1 className="text-lg font-semibold text-foreground">Nuovo Caso</h1>
-                <p className="text-xs text-muted-foreground">Analisi assistita AI</p>
+                <h1 className="text-lg font-semibold">Nuovo Caso</h1>
+                <p className="text-xs text-muted-foreground">Lexy AI Assistant</p>
               </div>
             </div>
             {completeness > 0 && (
-              <div className="flex items-center gap-3 min-w-[200px]">
-                <Progress value={completeness} className="h-2" />
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {completeness}% completato
-                </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Analisi</span>
+                <Progress value={completeness} className="h-2 w-24" />
+                <span className="text-sm font-medium">{completeness}%</span>
               </div>
             )}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Messages Area */}
-      <ScrollArea className="flex-1 px-4" ref={scrollAreaRef}>
-        <div className="max-w-3xl mx-auto py-4 space-y-4">
-          {messages.map((message) => (
-            <MessageBubble
-              key={message.id}
-              message={message}
-            />
-          ))}
-          {isTyping && <TypingIndicator />}
-        </div>
-        <div className="h-4" /> {/* Bottom padding */}
-      </ScrollArea>
-
-      {/* Input Area or Generation Loading */}
-      {!isComplete && !pollingCaseId && (
-        <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4">
-          <div className="max-w-3xl mx-auto">
+      {/* Vista iniziale centrata o Chat Area */}
+      {!hasMessages ? (
+        <div className="flex-1 flex flex-col items-center justify-center px-4 animate-fade-in">
+          <div className="max-w-2xl w-full text-center space-y-12">
+            <div className="space-y-4">
+              <h1 className="text-6xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                Lexy AI Assistant
+              </h1>
+              <p className="text-xl text-muted-foreground">
+                Descrivimi dettagliatamente il tuo problema legale
+              </p>
+            </div>
+            
+            <div className="w-full bg-card/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
             <ChatInput
               onSendMessage={handleSendMessage}
               onStartRecording={startRecording}
               onStopRecording={stopRecording}
               isRecording={isRecording}
-              isDisabled={isAnalyzing || isProcessingAudio}
-              transcribedText={transcribedText}
               isProcessingAudio={isProcessingAudio}
+              transcribedText={transcribedText}
+              onClearTranscription={() => setTranscribedText("")}
+              isDisabled={isAnalyzing || isComplete}
+              placeholder="Descrivi il tuo caso nel modo più completo possibile..."
               audioContext={audioContextRef.current || undefined}
               mediaStream={mediaStreamRef.current || undefined}
             />
-          </div>
-        </div>
-      )}
-      
-      {/* Generation loading state */}
-      {pollingCaseId && (
-        <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-8">
-          <div className="max-w-3xl mx-auto text-center space-y-4">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-              <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground">
-              {generationMessage || 'Generazione del report in corso...'}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Questo processo richiede solitamente 10-20 secondi
-            </p>
-            <div className="w-full max-w-xs mx-auto">
-              <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full animate-pulse" style={{ width: '60%' }} />
+            
+            <div className="flex justify-center gap-8 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 hover:text-foreground transition-colors">
+                <MessageCircle className="h-4 w-4" />
+                <span>Analisi intelligente</span>
+              </div>
+              <div className="flex items-center gap-2 hover:text-foreground transition-colors">
+                <Mic className="h-4 w-4" />
+                <span>Input vocale</span>
+              </div>
+              <div className="flex items-center gap-2 hover:text-foreground transition-colors">
+                <FileText className="h-4 w-4" />
+                <span>Report completo</span>
               </div>
             </div>
           </div>
         </div>
+      ) : (
+        <>
+          <ScrollArea className="flex-1 px-4">
+            <div 
+              ref={scrollAreaRef}
+              className="max-w-3xl mx-auto py-6 space-y-5"
+            >
+              {messages.map((message) => (
+                <MessageBubble key={message.id} message={message} />
+              ))}
+              
+              {isAnalyzing && <TypingIndicator />}
+            </div>
+          </ScrollArea>
+
+          {/* Input area - solo quando ci sono messaggi e non è completo */}
+          {!isComplete && (
+            <div className="bg-background/95 backdrop-blur-sm px-4 py-4">
+              <div className="max-w-3xl mx-auto">
+                <ChatInput
+                  onSendMessage={handleSendMessage}
+                  onStartRecording={startRecording}
+                  onStopRecording={stopRecording}
+                  isRecording={isRecording}
+                  isProcessingAudio={isProcessingAudio}
+                  transcribedText={transcribedText}
+                  onClearTranscription={() => setTranscribedText("")}
+                  isDisabled={isAnalyzing || isComplete}
+                  placeholder={
+                    currentQuestionIndex > 0 
+                      ? "Rispondi alla domanda..." 
+                      : "Continua a descrivere il tuo caso..."
+                  }
+                  audioContext={audioContextRef.current || undefined}
+                  mediaStream={mediaStreamRef.current || undefined}
+                />
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

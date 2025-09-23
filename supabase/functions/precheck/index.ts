@@ -63,28 +63,20 @@ async function callOpenAI(openAIApiKey: string, systemPrompt: string, userPrompt
 
 async function handoffToGenerate(projectRef: string, serviceRoleKey: string, payload: unknown) {
   const url = `https://${projectRef}.supabase.co/functions/v1/generate`;
-  console.log(`Calling generate function at: ${url}`);
-  
   const res = await fetch(url, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${serviceRoleKey}`,
+      Authorization: `Bearer ${serviceRoleKey}`,
       "Content-Type": "application/json",
       "X-Source": "precheck",
-      "apikey": serviceRoleKey,
     },
     body: JSON.stringify(payload),
   });
-  
   if (!res.ok) {
     const t = await res.text().catch(() => "");
-    console.error(`Generate function failed: ${res.status} - ${t}`);
     throw new Error(`generate failed: ${res.status} - ${t}`);
   }
-  
-  const result = await res.json().catch(() => null);
-  console.log('Generate function response:', result);
-  return result || true;
+  return true;
 }
 
 // --- Handler ---
@@ -127,6 +119,9 @@ Deno.serve(async (req) => {
     if (!openAIApiKey) return jsonResponse({ error: "OPENAI_API_KEY not configured" }, 500);
     if (!projectRef) return jsonResponse({ error: "SP_PROJECT_REF not configured" }, 500);
     if (!serviceRoleKey) return jsonResponse({ error: "SP_SERVICE_ROLE_KEY not configured" }, 500);
+    
+    // Leggi il parametro allQuestionsAnswered dal body
+    const allQuestionsAnswered = body?.allQuestionsAnswered || false;
 
     // Build conversation history
     let conversationHistory = '';
@@ -287,13 +282,7 @@ Rispondi in formato JSON:
           },
         };
 
-        try {
-          await handoffToGenerate(projectRef, serviceRoleKey, generatePayload);
-          console.log('✅ Successfully handed off to generate function');
-        } catch (handoffError) {
-          console.error('❌ Failed to handoff to generate:', handoffError);
-          // Continue anyway - we have the analysis
-        }
+        await handoffToGenerate(projectRef, serviceRoleKey, generatePayload);
         
         response = {
           status: "complete",
