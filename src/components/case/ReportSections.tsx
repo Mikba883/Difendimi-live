@@ -20,6 +20,8 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { GeneratePdfButton } from "@/components/pdf/GeneratePdfButton";
+import { BlurredContent } from "@/components/premium/BlurredContent";
+import { usePremiumStatus } from "@/hooks/usePremiumStatus";
 
 interface ReportSectionsProps {
   report: TabbedLegalReport;
@@ -40,6 +42,7 @@ export function ReportSections({ report, caseId, caseStatus }: ReportSectionsPro
   const [activeSection, setActiveSection] = useState<string>("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
+  const { isPremium } = usePremiumStatus();
 
   // Handle both camelCase and snake_case formats
   const normalizedReport = report ? {

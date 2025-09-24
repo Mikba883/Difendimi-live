@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText, Loader2 } from "lucide-react";
+import { FileText, Loader2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PdfDocumentCard } from "./PdfDocumentCard";
+import { PremiumPaywall } from "@/components/premium/PremiumPaywall";
+import { usePremiumStatus } from "@/hooks/usePremiumStatus";
 
 interface GeneratePdfButtonProps {
   caseId: string;
@@ -23,8 +25,15 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
   const [isGenerating, setIsGenerating] = useState(false);
   const [documents, setDocuments] = useState<PdfDocument[]>([]);
   const [summary, setSummary] = useState<string>("");
+  const [showPaywall, setShowPaywall] = useState(false);
+  const { isPremium, loading } = usePremiumStatus();
 
   const handleGeneratePdf = async () => {
+    // Check premium status first
+    if (!isPremium) {
+      setShowPaywall(true);
+      return;
+    }
     try {
       setIsGenerating(true);
       setDocuments([]);
@@ -100,7 +109,7 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
               
               <Button
                 onClick={handleGeneratePdf}
-                disabled={isGenerating}
+                disabled={isGenerating || loading}
                 size="lg"
                 className="gap-2 px-8"
               >
@@ -108,6 +117,11 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
                   <>
                     <Loader2 className="h-5 w-5 animate-spin" />
                     Generazione in corso...
+                  </>
+                ) : !isPremium ? (
+                  <>
+                    <Lock className="h-5 w-5" />
+                    Genera Dossier (Premium)
                   </>
                 ) : (
                   <>
@@ -165,6 +179,12 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
           </div>
         </div>
       )}
+      
+      {/* Premium Paywall Modal */}
+      <PremiumPaywall 
+        open={showPaywall} 
+        onOpenChange={setShowPaywall}
+      />
     </div>
   );
 }
