@@ -1,10 +1,9 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Eye, Download } from "lucide-react";
+import { FileText, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { PdfViewer } from "./PdfViewer";
 
 interface PdfDocument {
   id: string;
@@ -21,26 +20,11 @@ interface PdfDocumentCardProps {
 
 export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
   const [isDownloading, setIsDownloading] = useState(false);
-  const [showPdfViewer, setShowPdfViewer] = useState(false);
   
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
     else if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
     else return Math.round(bytes / 1048576) + ' MB';
-  };
-
-  const handleOpenPdf = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!document.url && !document.content) {
-      toast({
-        title: "PDF non disponibile",
-        description: "Il PDF non è ancora pronto",
-        variant: "destructive",
-      });
-      return;
-    }
-    setShowPdfViewer(true);
   };
 
   const handleDownload = (e?: React.MouseEvent) => {
@@ -53,8 +37,18 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     
     // Se abbiamo un URL, lo usiamo direttamente
     if (document.url) {
-      window.open(document.url, '_blank');
+      // Creiamo un link temporaneo per forzare il download
+      const link = window.document.createElement('a');
+      link.href = document.url;
+      link.download = `${document.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      link.target = '_blank';
+      link.style.display = 'none';
+      
+      window.document.body.appendChild(link);
+      link.click();
+      
       setTimeout(() => {
+        window.document.body.removeChild(link);
         setIsDownloading(false);
       }, 1000);
     } else if (document.content) {
@@ -94,6 +88,14 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
         setIsDownloading(false);
         return;
       }
+    } else {
+      toast({
+        title: "PDF non disponibile",
+        description: "Il documento non è ancora pronto per il download",
+        variant: "destructive",
+      });
+      setIsDownloading(false);
+      return;
     }
     
     toast({
@@ -120,38 +122,17 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
           {document.rationale}
         </p>
         
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleOpenPdf}
-            className="gap-2"
-          >
-            <Eye className="h-4 w-4" />
-            Visualizza PDF
-          </Button>
-          
-          <Button
-            variant="default"
-            size="sm"
-            onClick={handleDownload}
-            className="gap-2"
-            disabled={isDownloading}
-          >
-            <Download className="h-4 w-4" />
-            {isDownloading ? "Download..." : "Scarica"}
-          </Button>
-        </div>
+        <Button
+          variant="default"
+          size="sm"
+          onClick={handleDownload}
+          className="gap-2 w-full"
+          disabled={isDownloading}
+        >
+          <Download className="h-4 w-4" />
+          {isDownloading ? "Download in corso..." : "Scarica PDF"}
+        </Button>
       </CardContent>
-      
-      {/* PDF Viewer Modal */}
-      <PdfViewer
-        isOpen={showPdfViewer}
-        onClose={() => setShowPdfViewer(false)}
-        pdfUrl={document.url}
-        title={document.title}
-        onDownload={handleDownload}
-      />
     </Card>
   );
 }
