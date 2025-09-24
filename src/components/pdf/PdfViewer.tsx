@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, ExternalLink, X } from "lucide-react";
+import { Download, ExternalLink, X, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface PdfViewerProps {
@@ -12,15 +12,35 @@ interface PdfViewerProps {
 }
 
 export function PdfViewer({ isOpen, onClose, pdfBlob, title }: PdfViewerProps) {
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfDataUrl, setPdfDataUrl] = useState<string | null>(null);
+  const [isConverting, setIsConverting] = useState(false);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (pdfBlob && isOpen) {
-      const url = URL.createObjectURL(pdfBlob);
-      setPdfUrl(url);
+      setIsConverting(true);
+      setError(false);
+      
+      // Convert blob to base64 Data URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result as string;
+        setPdfDataUrl(base64data);
+        setIsConverting(false);
+      };
+      reader.onerror = () => {
+        setError(true);
+        setIsConverting(false);
+        toast({
+          title: "Errore caricamento PDF",
+          description: "Impossibile caricare il PDF. Prova a scaricarlo.",
+          variant: "destructive",
+        });
+      };
+      reader.readAsDataURL(pdfBlob);
       
       return () => {
-        URL.revokeObjectURL(url);
+        setPdfDataUrl(null);
       };
     }
   }, [pdfBlob, isOpen]);
@@ -47,8 +67,8 @@ export function PdfViewer({ isOpen, onClose, pdfBlob, title }: PdfViewerProps) {
   };
 
   const handleOpenInNewTab = () => {
-    if (!pdfUrl) return;
-    window.open(pdfUrl, '_blank');
+    if (!pdfDataUrl) return;
+    window.open(pdfDataUrl, '_blank');
   };
 
   return (
@@ -85,16 +105,58 @@ export function PdfViewer({ isOpen, onClose, pdfBlob, title }: PdfViewerProps) {
         </DialogHeader>
         
         <div className="flex-1 p-4 overflow-hidden">
-          {pdfUrl ? (
+          {isConverting ? (
+            <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <p>Preparazione PDF...</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
+              <p>Impossibile visualizzare il PDF nel browser.</p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleDownload}
+                  className="gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Scarica PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleOpenInNewTab}
+                  className="gap-2"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Apri in nuova scheda
+                </Button>
+              </div>
+            </div>
+          ) : pdfDataUrl ? (
             <>
-              <object
-                data={pdfUrl}
+              <embed
+                src={pdfDataUrl}
                 type="application/pdf"
                 className="w-full h-full border rounded-lg"
                 title={title}
-              >
-                <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-                  <p>Il browser non può visualizzare il PDF direttamente.</p>
+              />
+              <iframe
+                src={pdfDataUrl}
+                className="w-full h-full border rounded-lg hidden"
+                title={title}
+                style={{ display: 'none' }}
+              />
+              <div className="hidden flex-col items-center justify-center h-full gap-4 text-muted-foreground">
+                <p>Se il PDF non viene visualizzato:</p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleDownload}
+                    className="gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Scarica
+                  </Button>
                   <Button
                     variant="outline"
                     onClick={handleOpenInNewTab}
@@ -104,11 +166,11 @@ export function PdfViewer({ isOpen, onClose, pdfBlob, title }: PdfViewerProps) {
                     Apri in nuova scheda
                   </Button>
                 </div>
-              </object>
+              </div>
             </>
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground">
-              Caricamento PDF...
+              Nessun PDF da visualizzare
             </div>
           )}
         </div>
