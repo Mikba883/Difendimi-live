@@ -58,6 +58,7 @@ export default function NewCase() {
   const [generationTimer, setGenerationTimer] = useState(0);
   const [showGenerationTimer, setShowGenerationTimer] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [isGenerateFunctionCalled, setIsGenerateFunctionCalled] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -333,11 +334,11 @@ export default function NewCase() {
       }
 
       // FASE 3: Quando riceviamo status 'complete', inizia la generazione
-      if (data.status === 'complete' && !isGeneratingReport) {
-        console.log('Tutte le risposte ricevute, avvio generazione con timer visuale di 5 secondi');
+      if (data.status === 'complete' && !isGeneratingReport && !isGenerateFunctionCalled) {
+        console.log('Tutte le risposte ricevute, avvio generazione immediata');
         setCompleteness(100);
         
-        // Mostra messaggio "Ho raccolto tutto" e inizia timer
+        // Mostra messaggio "Ho raccolto tutto"
         const completionMsg: Message = {
           id: Date.now().toString() + '-completion',
           text: "Ho raccolto tutte le informazioni necessarie. Sto preparando il tuo report legale completo...",
@@ -346,15 +347,13 @@ export default function NewCase() {
         };
         setMessages(prev => [...prev, completionMsg]);
         
-        // Avvia timer visuale e generazione finale
-        setShowGenerationTimer(true);
+        // Avvia generazione immediata senza timer
         setIsGeneratingReport(true);
+        setIsGenerateFunctionCalled(true); // Previene chiamate duplicate
         
-        // Chiama la funzione generate dopo 5 secondi passando i dati corretti
-        setTimeout(() => {
-          console.log('Timer completato, chiamo generate con data:', data);
-          callGenerateFunction(data);
-        }, 5000);
+        // Chiama immediatamente la funzione generate
+        console.log('Chiamo generate immediatamente con data:', data);
+        callGenerateFunction(data);
       }
 
     } catch (error) {

@@ -83,7 +83,8 @@ serve(async (req) => {
       return jsonResponse({ error: "Missing required fields" }, 400);
     }
 
-    console.log(`[GENERATE] Processing job ${job_id} of type ${caseType}`);
+    const startTime = Date.now();
+    console.log(`[GENERATE] Processing job ${job_id} of type ${caseType} - Start time: ${new Date(startTime).toISOString()}`);
     console.log("[GENERATE] Meta received:", JSON.stringify(meta));
 
     // Extract user ID - from direct call or from meta passed by precheck
@@ -230,10 +231,13 @@ Dati dall'analisi preliminare:
 - Istituti rilevanti: ${JSON.stringify(caseData.fromPrecheck?.relevantInstitutes || [])}
 - Documenti raccomandati: ${JSON.stringify(caseData.fromPrecheck?.recommendedDocuments || [])}`;
 
+    console.log(`[GENERATE] Chiamata OpenAI iniziata - ${Date.now() - startTime}ms dall'inizio`);
+    const openAIStartTime = Date.now();
     const result = await callOpenAI(systemPrompt, userPrompt);
+    console.log(`[GENERATE] Chiamata OpenAI completata - Durata: ${Date.now() - openAIStartTime}ms`);
 
     // Check if case already exists with this job_id
-    console.log(`[GENERATE] Checking if case already exists for job_id: ${job_id}`);
+    console.log(`[GENERATE] Checking if case already exists for job_id: ${job_id} - ${Date.now() - startTime}ms dall'inizio`);
     const { data: existingCase, error: checkError } = await supabase
       .from("cases")
       .select()
@@ -332,13 +336,15 @@ Dati dall'analisi preliminare:
       return jsonResponse({ error: "Failed to save case", details: dbError.message }, 500);
     }
 
-    console.log(`[GENERATE] Case ${job_id} successfully created and saved with ID ${caseRecord.id}`);
+    const totalTime = Date.now() - startTime;
+    console.log(`[GENERATE] Case ${job_id} successfully created and saved with ID ${caseRecord.id} - Tempo totale: ${totalTime}ms`);
 
     return jsonResponse({
       success: true,
       job_id,
       case_id: caseRecord.id,
       status: "ready",
+      execution_time_ms: totalTime
     });
   } catch (error) {
     console.error("generate error:", error);
