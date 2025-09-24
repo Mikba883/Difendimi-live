@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -51,7 +51,12 @@ export function PdfViewer({ isOpen, onClose, pdfBlob, title }: PdfViewerProps) {
       <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 py-4 border-b">
           <div className="flex items-center justify-between">
-            <DialogTitle>{title}</DialogTitle>
+            <div>
+              <DialogTitle>{title}</DialogTitle>
+              <DialogDescription className="sr-only">
+                Visualizza e scarica il documento PDF
+              </DialogDescription>
+            </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"

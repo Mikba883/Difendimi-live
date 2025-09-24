@@ -173,12 +173,6 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
                     </div>
                     <Progress value={progress} className="h-4" />
                   </div>
-                  <div className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <p className="text-base text-muted-foreground">
-                      Elaborazione in corso, attendere prego...
-                    </p>
-                  </div>
                 </div>
               )}
               
