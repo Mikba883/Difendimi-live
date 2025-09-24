@@ -84,9 +84,9 @@ export default function Premium() {
 
           {/* Content */}
           <div className="relative p-8">
-            {/* Diagonal Badge - made longer */}
-            <div className="absolute top-1 right-0 w-24 h-24 overflow-hidden">
-              <div className="absolute transform rotate-45 bg-green-500 text-white text-center font-bold py-1 right-[-35px] top-[16px] w-[150px] shadow-lg text-sm">
+            {/* Diagonal Badge - aligned with box top */}
+            <div className="absolute -top-0.5 right-0 w-24 h-24 overflow-hidden">
+              <div className="absolute transform rotate-45 bg-green-500 text-white text-center font-bold py-1.5 right-[-35px] top-[15px] w-[150px] shadow-lg text-sm">
                 Promo -68%
               </div>
             </div>
