@@ -299,11 +299,21 @@ export function ReportSections({ report, caseId, caseStatus }: ReportSectionsPro
                         <td className="p-3 text-sm text-green-600">{row.pro || (row as any).pros}</td>
                         <td className="p-3 text-sm text-red-600">{row.contro || (row as any).cons}</td>
                         <td className="p-3 text-sm">
-                          <Clock className="inline h-3 w-3 mr-1" />
-                          {row.tempi || '-'}
+                          <BlurredContent isPremium={isPremium} label="Sblocca con Premium">
+                            <Clock className="inline h-3 w-3 mr-1" />
+                            {row.tempi || '-'}
+                          </BlurredContent>
                         </td>
-                        <td className="p-3 text-sm">{row.costi || '-'}</td>
-                        <td className="p-3 text-sm">{row.esito || '-'}</td>
+                        <td className="p-3 text-sm">
+                          <BlurredContent isPremium={isPremium} label="Sblocca con Premium">
+                            {row.costi || '-'}
+                          </BlurredContent>
+                        </td>
+                        <td className="p-3 text-sm">
+                          <BlurredContent isPremium={isPremium} label="Sblocca con Premium">
+                            {row.esito || '-'}
+                          </BlurredContent>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -324,18 +334,20 @@ export function ReportSections({ report, caseId, caseStatus }: ReportSectionsPro
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            {normalizedReport.passi_operativi?.checklist?.length ? (
-              <div className="space-y-3">
-                {normalizedReport.passi_operativi.checklist.map((item, idx) => (
-                  <div key={item.id || idx} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors">
-                    <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-muted-foreground flex-1">{item.text}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground">Nessun passo operativo disponibile.</p>
-            )}
+            <BlurredContent isPremium={isPremium} label="Contenuto Premium" className="min-h-[200px]">
+              {normalizedReport.passi_operativi?.checklist?.length ? (
+                <div className="space-y-3">
+                  {normalizedReport.passi_operativi.checklist.map((item, idx) => (
+                    <div key={item.id || idx} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors">
+                      <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-muted-foreground flex-1">{item.text}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground">Nessun passo operativo disponibile.</p>
+              )}
+            </BlurredContent>
           </CardContent>
         </Card>
 
@@ -348,65 +360,67 @@ export function ReportSections({ report, caseId, caseStatus }: ReportSectionsPro
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="space-y-4">
-              {(normalizedReport.termini?.prescription || normalizedReport.termini?.decadenza) && (
-                <div className="space-y-3">
-                  {normalizedReport.termini.prescription && (
-                    <Alert className="border-red-200 bg-red-50">
-                      <AlertCircle className="h-4 w-4 text-red-600" />
-                      <AlertDescription>
-                        <strong className="text-red-800">Prescrizione:</strong> {normalizedReport.termini.prescription}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  {normalizedReport.termini.decadenza && (
-                    <Alert className="border-orange-200 bg-orange-50">
-                      <AlertCircle className="h-4 w-4 text-orange-600" />
-                      <AlertDescription>
-                        <strong className="text-orange-800">Decadenza:</strong> {normalizedReport.termini.decadenza}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              )}
-              
-              {normalizedReport.termini?.deadlines?.length > 0 && 
-                normalizedReport.termini.deadlines.filter(
-                  d => !d.description.toLowerCase().includes('ricorso') && 
-                       !d.description.toLowerCase().includes('comunicazione al proprietario')
-                ).length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="font-medium">Altre scadenze importanti</h4>
-                  {normalizedReport.termini.deadlines
-                    .filter(d => !d.description.toLowerCase().includes('ricorso') && 
-                                !d.description.toLowerCase().includes('comunicazione al proprietario'))
-                    .map((deadline, idx) => (
-                    <div key={idx} className="border rounded-lg p-3 bg-muted/20">
-                      <div className="flex items-start justify-between">
-                        <p className="font-medium text-sm">{deadline.description}</p>
-                        <span className={cn(
-                          "text-xs px-2 py-1 rounded-full",
-                          deadline.type === 'prescription' 
-                            ? 'bg-red-100 text-red-700'
-                            : deadline.type === 'decadenza'
-                            ? 'bg-orange-100 text-orange-700'
-                            : 'bg-gray-100 text-gray-700'
-                        )}>
-                          {deadline.type === 'prescription' ? 'Prescrizione' :
-                           deadline.type === 'decadenza' ? 'Decadenza' : 'Altro'}
-                        </span>
+            <BlurredContent isPremium={isPremium} label="Contenuto Premium" className="min-h-[200px]">
+              <div className="space-y-4">
+                {(normalizedReport.termini?.prescription || normalizedReport.termini?.decadenza) && (
+                  <div className="space-y-3">
+                    {normalizedReport.termini.prescription && (
+                      <Alert className="border-red-200 bg-red-50">
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                        <AlertDescription>
+                          <strong className="text-red-800">Prescrizione:</strong> {normalizedReport.termini.prescription}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    {normalizedReport.termini.decadenza && (
+                      <Alert className="border-orange-200 bg-orange-50">
+                        <AlertCircle className="h-4 w-4 text-orange-600" />
+                        <AlertDescription>
+                          <strong className="text-orange-800">Decadenza:</strong> {normalizedReport.termini.decadenza}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                )}
+                
+                {normalizedReport.termini?.deadlines?.length > 0 && 
+                  normalizedReport.termini.deadlines.filter(
+                    d => !d.description.toLowerCase().includes('ricorso') && 
+                         !d.description.toLowerCase().includes('comunicazione al proprietario')
+                  ).length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="font-medium">Altre scadenze importanti</h4>
+                    {normalizedReport.termini.deadlines
+                      .filter(d => !d.description.toLowerCase().includes('ricorso') && 
+                                  !d.description.toLowerCase().includes('comunicazione al proprietario'))
+                      .map((deadline, idx) => (
+                      <div key={idx} className="border rounded-lg p-3 bg-muted/20">
+                        <div className="flex items-start justify-between">
+                          <p className="font-medium text-sm">{deadline.description}</p>
+                          <span className={cn(
+                            "text-xs px-2 py-1 rounded-full",
+                            deadline.type === 'prescription' 
+                              ? 'bg-red-100 text-red-700'
+                              : deadline.type === 'decadenza'
+                              ? 'bg-orange-100 text-orange-700'
+                              : 'bg-gray-100 text-gray-700'
+                          )}>
+                            {deadline.type === 'prescription' ? 'Prescrizione' :
+                             deadline.type === 'decadenza' ? 'Decadenza' : 'Altro'}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              {!normalizedReport.termini?.prescription && 
-               !normalizedReport.termini?.decadenza && 
-               (!normalizedReport.termini?.deadlines || normalizedReport.termini.deadlines.length === 0) && (
-                <p className="text-muted-foreground">Nessuna scadenza da segnalare.</p>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+                
+                {!normalizedReport.termini?.prescription && 
+                 !normalizedReport.termini?.decadenza && 
+                 (!normalizedReport.termini?.deadlines || normalizedReport.termini.deadlines.length === 0) && (
+                  <p className="text-muted-foreground">Nessuna scadenza da segnalare.</p>
+                )}
+              </div>
+            </BlurredContent>
           </CardContent>
         </Card>
 
@@ -419,36 +433,37 @@ export function ReportSections({ report, caseId, caseStatus }: ReportSectionsPro
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            {normalizedReport.allegati ? (
-              <div className="space-y-4">
-                {normalizedReport.allegati.present?.length > 0 && (
-                  <div className="p-4 bg-green-50 rounded-lg">
-                    <h4 className="font-medium text-green-800 mb-2">✓ Documenti Presenti</h4>
-                    <ul className="list-disc pl-5 space-y-1">
-                      {normalizedReport.allegati.present.map((doc, idx) => (
-                        <li key={idx} className="text-green-700">{doc}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {normalizedReport.allegati.missing?.length > 0 && (
-                  <div className="p-4 bg-red-50 rounded-lg">
-                    <h4 className="font-medium text-red-800 mb-2">✗ Documenti Mancanti</h4>
-                    <ul className="list-disc pl-5 space-y-1">
-                      {normalizedReport.allegati.missing.map((doc, idx) => (
-                        <li key={idx} className="text-red-700">{doc}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {normalizedReport.allegati.nice_to_have?.length > 0 && (
-                  <div className="p-4 bg-yellow-50 rounded-lg">
-                    <h4 className="font-medium text-yellow-800 mb-2">○ Documenti Opzionali</h4>
-                    <ul className="list-disc pl-5 space-y-1">
-                      {normalizedReport.allegati.nice_to_have.map((doc, idx) => (
-                        <li key={idx} className="text-yellow-700">{doc}</li>
+            <BlurredContent isPremium={isPremium} label="Contenuto Premium" className="min-h-[200px]">
+              {normalizedReport.allegati ? (
+                <div className="space-y-4">
+                  {normalizedReport.allegati.present?.length > 0 && (
+                    <div className="p-4 bg-green-50 rounded-lg">
+                      <h4 className="font-medium text-green-800 mb-2">✓ Documenti Presenti</h4>
+                      <ul className="list-disc pl-5 space-y-1">
+                        {normalizedReport.allegati.present.map((doc, idx) => (
+                          <li key={idx} className="text-green-700">{doc}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {normalizedReport.allegati.missing?.length > 0 && (
+                    <div className="p-4 bg-red-50 rounded-lg">
+                      <h4 className="font-medium text-red-800 mb-2">✗ Documenti Mancanti</h4>
+                      <ul className="list-disc pl-5 space-y-1">
+                        {normalizedReport.allegati.missing.map((doc, idx) => (
+                          <li key={idx} className="text-red-700">{doc}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {normalizedReport.allegati.nice_to_have?.length > 0 && (
+                    <div className="p-4 bg-yellow-50 rounded-lg">
+                      <h4 className="font-medium text-yellow-800 mb-2">○ Documenti Opzionali</h4>
+                      <ul className="list-disc pl-5 space-y-1">
+                        {normalizedReport.allegati.nice_to_have.map((doc, idx) => (
+                          <li key={idx} className="text-yellow-700">{doc}</li>
                       ))}
                     </ul>
                   </div>
@@ -457,6 +472,7 @@ export function ReportSections({ report, caseId, caseStatus }: ReportSectionsPro
             ) : (
               <p className="text-muted-foreground">Nessuna informazione sugli allegati.</p>
             )}
+            </BlurredContent>
           </CardContent>
         </Card>
       </div>

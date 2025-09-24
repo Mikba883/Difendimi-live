@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { CountdownTimer } from "@/components/premium/CountdownTimer";
 import { usePremiumStatus } from "@/hooks/usePremiumStatus";
 import { useToast } from "@/hooks/use-toast";
@@ -65,12 +65,11 @@ export default function Premium() {
         {/* Back button */}
         <Button
           variant="ghost"
-          size="sm"
+          size="icon"
           onClick={() => navigate(-1)}
           className="mb-6"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Torna al caso
+          <ArrowLeft className="h-4 w-4" />
         </Button>
 
         <div className="bg-card rounded-xl shadow-lg overflow-hidden">
@@ -81,10 +80,12 @@ export default function Premium() {
 
           {/* Content */}
           <div className="relative p-8">
-            {/* Badge */}
-            <Badge className="absolute top-4 right-4 bg-green-500 text-white border-0 px-3 py-1 text-lg font-bold">
-              -68%
-            </Badge>
+            {/* Diagonal Badge */}
+            <div className="absolute -top-2 -right-2 w-24 h-24 overflow-hidden">
+              <div className="absolute transform rotate-45 bg-green-500 text-white text-center font-bold py-1 right-[-35px] top-[15px] w-[120px] shadow-lg">
+                Promo -68%
+              </div>
+            </div>
 
             {/* Header */}
             <div className="text-center mb-8 mt-4">
@@ -99,7 +100,7 @@ export default function Premium() {
             {/* Pricing */}
             <div className="text-center mb-8">
               <div className="flex items-baseline justify-center gap-2 mb-2">
-                <span className="text-5xl font-bold text-primary">4,13€</span>
+                <span className="text-5xl font-bold text-violet-600">4,13€</span>
                 <span className="text-muted-foreground">/mese</span>
               </div>
               <p className="text-sm text-muted-foreground mb-2">
@@ -158,6 +159,14 @@ export default function Premium() {
 
             {/* Footer */}
             <div className="text-center space-y-3">
+              {/* Discount Applied Badge */}
+              <div className="flex justify-center">
+                <Badge variant="secondary" className="gap-2">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Sconto 68% applicato
+                </Badge>
+              </div>
+              
               <Button 
                 variant="ghost" 
                 size="sm" 

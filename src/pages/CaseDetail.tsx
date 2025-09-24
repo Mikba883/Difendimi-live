@@ -7,11 +7,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { CaseStatusBadge } from "@/components/case/CaseStatusBadge";
 import { ReportSections } from "@/components/case/ReportSections";
+import { usePremiumStatus } from "@/hooks/usePremiumStatus";
 import type { Case } from "@/types/case";
 
 export default function CaseDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isPremium } = usePremiumStatus();
   const [caseData, setCaseData] = useState<Case | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,6 +21,17 @@ export default function CaseDetail() {
   useEffect(() => {
     loadCase();
   }, [id]);
+
+  // Auto-redirect to premium after 20 seconds for non-premium users
+  useEffect(() => {
+    if (!isPremium && caseData?.report) {
+      const timer = setTimeout(() => {
+        navigate('/premium');
+      }, 20000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isPremium, caseData, navigate]);
 
   const loadCase = async () => {
     try {
