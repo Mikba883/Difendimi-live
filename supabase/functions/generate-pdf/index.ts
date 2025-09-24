@@ -42,13 +42,8 @@ async function savePdfToStorage(
   
   console.log(`PDF saved successfully: ${publicUrl}`);
   
-  // Convert to base64 for direct access
-  let base64String = '';
-  const bytes = new Uint8Array(pdfBytes);
-  for (let i = 0; i < bytes.length; i++) {
-    base64String += String.fromCharCode(bytes[i]);
-  }
-  const base64Content = btoa(base64String);
+  // Convert to base64 for direct access - using proper conversion
+  const base64Content = btoa(String.fromCharCode.apply(null, Array.from(pdfBytes)));
   
   return {
     url: publicUrl,

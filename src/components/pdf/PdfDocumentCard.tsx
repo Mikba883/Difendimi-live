@@ -42,41 +42,49 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
         // Estrai il contenuto base64 dal data URL
         const base64Data = document.content.split(',')[1] || document.content;
         
-        // Converti base64 in blob
-        const binaryString = atob(base64Data);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
+        // Converti base64 in blob con gestione errori migliorata
+        let blob: Blob;
+        try {
+          const binaryString = atob(base64Data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          blob = new Blob([bytes], { type: 'application/pdf' });
+        } catch (decodeError) {
+          console.error('Errore decodifica base64:', decodeError);
+          throw new Error('Impossibile decodificare il PDF');
         }
-        const blob = new Blob([bytes], { type: 'application/pdf' });
         
-        // Crea URL temporaneo e scarica
+        // Crea URL temporaneo e scarica immediatamente
         const url = URL.createObjectURL(blob);
         const link = window.document.createElement('a');
         link.href = url;
         link.download = `${document.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+        // Rimuovo target="_blank" perché non serve per il download
         link.style.display = 'none';
         
         window.document.body.appendChild(link);
         link.click();
         
-        // Pulizia
+        // Pulizia con timeout più lungo per assicurare il download
         setTimeout(() => {
           window.document.body.removeChild(link);
           URL.revokeObjectURL(url);
           setIsDownloading(false);
-        }, 100);
+          
+          toast({
+            title: "Download completato",
+            description: "Il PDF è stato scaricato con successo",
+          });
+        }, 2000);
         
-        toast({
-          title: "Download completato",
-          description: "Il PDF è stato scaricato con successo",
-        });
       } else if (document.url) {
         // Fallback all'URL se non c'è base64
         const link = window.document.createElement('a');
         link.href = document.url;
         link.download = `${document.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-        link.target = '_blank';
+        // Rimuovo target="_blank" anche qui
         link.style.display = 'none';
         
         window.document.body.appendChild(link);
@@ -85,12 +93,13 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
         setTimeout(() => {
           window.document.body.removeChild(link);
           setIsDownloading(false);
-        }, 1000);
+          
+          toast({
+            title: "Download avviato",
+            description: "Il PDF è in download...",
+          });
+        }, 2000);
         
-        toast({
-          title: "Download avviato",
-          description: "Il PDF è in download...",
-        });
       } else {
         throw new Error("Nessun contenuto disponibile");
       }
@@ -98,7 +107,7 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
       console.error('Error downloading PDF:', error);
       toast({
         title: "Errore nel download",
-        description: "Si è verificato un errore durante il download del PDF",
+        description: error instanceof Error ? error.message : "Si è verificato un errore durante il download del PDF",
         variant: "destructive",
       });
       setIsDownloading(false);
@@ -119,23 +128,33 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
         // Estrai il contenuto base64 dal data URL
         const base64Data = document.content.split(',')[1] || document.content;
         
-        // Converti base64 in blob
-        const binaryString = atob(base64Data);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
+        // Converti base64 in blob con gestione errori
+        let blob: Blob;
+        try {
+          const binaryString = atob(base64Data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          blob = new Blob([bytes], { type: 'application/pdf' });
+        } catch (decodeError) {
+          console.error('Errore decodifica base64:', decodeError);
+          throw new Error('Impossibile decodificare il PDF');
         }
-        const blob = new Blob([bytes], { type: 'application/pdf' });
         
         // Crea URL temporaneo e apri in nuova scheda
         const url = URL.createObjectURL(blob);
         const newWindow = window.open(url, '_blank');
         
-        // Rilascia l'URL dopo un breve ritardo
+        // NON rilasciare l'URL troppo presto - lasciamo più tempo
+        setTimeout(() => {
+          setIsViewing(false);
+        }, 500);
+        
+        // Rilascia l'URL solo dopo molto tempo per assicurarsi che la scheda sia caricata
         setTimeout(() => {
           URL.revokeObjectURL(url);
-          setIsViewing(false);
-        }, 1000);
+        }, 30000); // 30 secondi
         
         if (!newWindow) {
           toast({
@@ -149,7 +168,7 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
         window.open(document.url, '_blank');
         setTimeout(() => {
           setIsViewing(false);
-        }, 1000);
+        }, 500);
       } else {
         throw new Error("Nessun contenuto disponibile per la visualizzazione");
       }
@@ -157,7 +176,7 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
       console.error('Error viewing PDF:', error);
       toast({
         title: "Errore nella visualizzazione",
-        description: "Non è possibile visualizzare il PDF al momento",
+        description: error instanceof Error ? error.message : "Non è possibile visualizzare il PDF al momento",
         variant: "destructive",
       });
       setIsViewing(false);
