@@ -129,28 +129,38 @@ function determineDocuments(caseData: any): {
 
 // Clean and format content for PDF
 function cleanContent(content: string): string {
-  // Remove markdown symbols and format text
+  // Process text while preserving structure
   let cleaned = content
+    // First preserve paragraph structure
+    .replace(/\n\n+/g, '§PARAGRAPH§')
+    // Preserve single newlines after sentences
+    .replace(/([.!?:])\s*\n/g, '$1§LINEBREAK§')
     // Remove markdown bold/italic
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/__([^_]+)__/g, '$1')
     .replace(/_([^_]+)_/g, '$1')
-    // Convert markdown headers to plain text with proper spacing
+    // Convert markdown headers to uppercase text with spacing
     .replace(/^#{1,6}\s+(.+)$/gm, '\n$1\n')
+    // Remove code blocks
+    .replace(/```[^`]*```/g, '')
+    .replace(/`([^`]+)`/g, '$1')
     // Convert bullet points to proper format
     .replace(/^[\*\-]\s+/gm, '• ')
-    // Convert numbered lists
-    .replace(/^\d+\.\s+/gm, (match, offset, string) => {
-      const lines = string.substring(0, offset).split('\n');
-      const lastLine = lines[lines.length - 1];
-      const num = (lastLine.match(/^\d+/) || ['0'])[0];
-      return `${parseInt(num) + 1}. `;
-    })
-    // Remove extra spaces
-    .replace(/\s+/g, ' ')
-    // Preserve paragraph breaks
-    .replace(/\n\n+/g, '\n\n')
+    // Handle numbered lists
+    .replace(/^\d+\.\s+/gm, (match) => match)
+    // Remove extra horizontal spaces
+    .replace(/[ \t]+/g, ' ')
+    // Restore paragraph breaks
+    .replace(/§PARAGRAPH§/g, '\n\n')
+    // Restore line breaks after sentences
+    .replace(/§LINEBREAK§/g, '\n')
+    // Add space after punctuation if missing
+    .replace(/([.!?,;:])([A-Z])/g, '$1 $2')
+    // Clean up multiple spaces
+    .replace(/ {2,}/g, ' ')
+    // Ensure proper spacing after bullet points
+    .replace(/•\s*/g, '• ')
     .trim();
   
   return cleaned;
@@ -223,7 +233,8 @@ async function createPDF(title: string, content: string): Promise<Uint8Array> {
   // Process content paragraphs
   const paragraphs = cleanedContent.split('\n\n');
   
-  for (const paragraph of paragraphs) {
+  for (let pIndex = 0; pIndex < paragraphs.length; pIndex++) {
+    const paragraph = paragraphs[pIndex];
     const lines = paragraph.split('\n');
     
     for (const line of lines) {
@@ -349,8 +360,10 @@ async function createPDF(title: string, content: string): Promise<Uint8Array> {
       }
     }
     
-    // Space between paragraphs
-    yPosition -= paragraphSpacing;
+    // Add significant space between paragraphs
+    if (pIndex < paragraphs.length - 1) {
+      yPosition -= paragraphSpacing * 2;
+    }
   }
   
   // Add final page number

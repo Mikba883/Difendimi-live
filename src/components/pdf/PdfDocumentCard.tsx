@@ -57,46 +57,57 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     }
   }, [document.content]);
 
-  // Create and maintain blob URL
-  const blobUrl = useMemo(() => {
-    if (!pdfBlob) return null;
-    return URL.createObjectURL(pdfBlob);
-  }, [pdfBlob]);
-
-  // Clean up blob URL when component unmounts
-  useEffect(() => {
-    return () => {
-      if (blobUrl) {
-        URL.revokeObjectURL(blobUrl);
-      }
-    };
-  }, [blobUrl]);
-
   const handleOpenInNewTab = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (!blobUrl) {
+    if (!document.content) {
       toast({
         title: "Errore",
-        description: "Il PDF non è ancora pronto. Riprova tra qualche secondo.",
+        description: "Il PDF non è ancora pronto.",
         variant: "destructive",
       });
       return;
     }
     
-    // Use window.open with the pre-created blob URL
-    const newWindow = window.open(blobUrl, '_blank');
+    // Create data URL directly from base64
+    const dataUrl = `data:application/pdf;base64,${document.content}`;
+    
+    // Try to open in new window
+    const newWindow = window.open(dataUrl, '_blank');
     
     if (!newWindow) {
-      // Fallback: create a link and simulate click
-      const link = window.document.createElement('a');
-      link.href = blobUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      window.document.body.appendChild(link);
-      link.click();
-      window.document.body.removeChild(link);
+      // Fallback: create iframe in a new window
+      const html = `
+        <!DOCTYPE html>
+        <html style="height: 100%; margin: 0;">
+        <head>
+          <title>${document.title}</title>
+        </head>
+        <body style="height: 100%; margin: 0;">
+          <iframe 
+            src="${dataUrl}" 
+            style="width: 100%; height: 100%; border: none;"
+            title="${document.title}"
+          ></iframe>
+        </body>
+        </html>
+      `;
+      
+      const blob = new Blob([html], { type: 'text/html' });
+      const htmlUrl = URL.createObjectURL(blob);
+      const fallbackWindow = window.open(htmlUrl, '_blank');
+      
+      // Clean up after a delay
+      setTimeout(() => URL.revokeObjectURL(htmlUrl), 1000);
+      
+      if (!fallbackWindow) {
+        toast({
+          title: "Popup bloccato",
+          description: "Abilita i popup per aprire il PDF in una nuova scheda.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
