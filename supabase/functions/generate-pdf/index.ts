@@ -61,12 +61,17 @@ function scrubPII(text: string): string {
 function determineDocuments(caseData: any): { 
   generateDiffida: boolean; 
   generateADR: boolean;
+  generateEmailAvvocato: boolean;
+  generateLetteraRisposta: boolean;
   diffidaReason?: string;
   adrReason?: string;
+  emailAvvocatoReason?: string;
+  letteraRispostaReason?: string;
 } {
   const areaOfLaw = caseData.area_of_law || [];
   const classification = caseData.classification || {};
   const report = caseData.report || {};
+  const objectives = classification?.objectives || [];
   
   // Check for diffida generation - expanded to include all relevant areas
   const diffidaAreas = [
@@ -76,7 +81,7 @@ function determineDocuments(caseData: any): {
   ];
   const shouldGenerateDiffida = areaOfLaw.some((area: string) => 
     diffidaAreas.some(d => area.toLowerCase().includes(d))
-  ) || (classification?.objectives && classification.objectives.includes('risarcimento'));
+  ) || objectives.includes('risarcimento') || objectives.includes('adempimento');
   
   // Check for ADR generation - expanded to include more areas
   const adrAreas = [
@@ -86,6 +91,18 @@ function determineDocuments(caseData: any): {
   const shouldGenerateADR = areaOfLaw.some((area: string) => 
     adrAreas.some(a => area.toLowerCase().includes(a))
   );
+  
+  // Email avvocato - generate when legal action is contemplated
+  const shouldGenerateEmailAvvocato = objectives.some((obj: string) => 
+    ['risarcimento', 'azione legale', 'controversia', 'giudizio', 'tribunale', 'causa']
+      .some(term => obj.toLowerCase().includes(term))
+  ) || classification?.legal_complexity === 'high';
+  
+  // Lettera di risposta/contestazione - generate when there's a counterparty to respond to
+  const shouldGenerateLetteraRisposta = objectives.some((obj: string) =>
+    ['contestazione', 'risposta', 'replica', 'opposizione', 'reclamo']
+      .some(term => obj.toLowerCase().includes(term))
+  ) || (classification?.counterparty && classification.counterparty !== 'unknown');
   
   // Generate basic documents for administrative and criminal law
   const isAdministrativeOrCriminal = areaOfLaw.some((area: string) => 
@@ -101,8 +118,12 @@ function determineDocuments(caseData: any): {
   return {
     generateDiffida: finalGenerateDiffida,
     generateADR: finalGenerateADR,
+    generateEmailAvvocato: shouldGenerateEmailAvvocato,
+    generateLetteraRisposta: shouldGenerateLetteraRisposta,
     diffidaReason: finalGenerateDiffida ? `Caso rientrante in materia ${areaOfLaw.join(', ')}` : undefined,
-    adrReason: finalGenerateADR ? `ADR consigliata per materia ${areaOfLaw.join(', ')}` : undefined
+    adrReason: finalGenerateADR ? `ADR consigliata per materia ${areaOfLaw.join(', ')}` : undefined,
+    emailAvvocatoReason: shouldGenerateEmailAvvocato ? `Consulenza legale consigliata` : undefined,
+    letteraRispostaReason: shouldGenerateLetteraRisposta ? `Risposta formale necessaria` : undefined
   };
 }
 
@@ -381,32 +402,45 @@ async function generateContent(type: string, caseData: any, openAIKey: string): 
       6. VALUTAZIONE RISCHI E OPPORTUNITÀ
       [Analisi dei rischi e probabilità di successo]
       
+      DISCLAIMER: Questo documento è fornito a scopo informativo e non costituisce consulenza legale professionale. Si consiglia di consultare un avvocato qualificato prima di intraprendere azioni legali.
+      
       Non usare simboli markdown, asterischi o altri caratteri speciali.`;
       userPrompt = `Genera una relazione preliminare professionale per questo caso:\n${JSON.stringify(scrubbedCase.report || scrubbedCase)}`;
       break;
       
     case 'riferimenti_giuridici':
-      systemPrompt = `Sei un esperto di diritto italiano. CERCA ATTIVAMENTE e cita TUTTI gli articoli di legge pertinenti.
+      systemPrompt = `Sei un esperto di diritto italiano. DEVI citare MINIMO 3 e MASSIMO 10 articoli di legge pertinenti al caso.
       
       FORMATO RICHIESTO (NO MARKDOWN):
       
       RIFERIMENTI NORMATIVI COMPLETI
       
-      Per ogni norma pertinente includi:
+      IMPORTANTE: Cita tra 3 e 10 articoli più rilevanti. Per ogni articolo includi:
       
       ARTICOLO [numero] - [Codice/Legge]
-      Testo integrale: [citazione completa dell'articolo]
-      Fonte: [Normattiva/EUR-Lex con link]
-      Applicazione al caso: [come si applica]
+      [Nome completo della norma]
       
-      Cerca e includi:
-      - Codice Civile
-      - Codice di Procedura Civile
-      - Codice del Consumo
-      - Normative speciali pertinenti
-      - Giurisprudenza consolidata
-      - Normativa europea applicabile`;
-      userPrompt = `Trova TUTTI i riferimenti giuridici per: ${JSON.stringify(scrubbedCase)}`;
+      Testo integrale:
+      "[Citazione COMPLETA dell'articolo, inclusi tutti i commi pertinenti]"
+      
+      Fonte: [Riferimento normativo ufficiale]
+      
+      Applicazione al caso:
+      [Spiegazione dettagliata di come questo articolo si applica specificamente al caso in questione]
+      
+      ---
+      
+      DEVI includere articoli da:
+      - Codice Civile (obblighi, contratti, responsabilità)
+      - Codice di Procedura Civile (se pertinente)
+      - Codice del Consumo (se applicabile)
+      - Normative settoriali specifiche
+      - Almeno 1 riferimento giurisprudenziale rilevante
+      
+      Ogni articolo deve essere citato INTEGRALMENTE con tutti i commi.
+      
+      DISCLAIMER: Questo documento è fornito a scopo informativo e non costituisce consulenza legale professionale. Si consiglia di consultare un avvocato qualificato prima di intraprendere azioni legali.`;
+      userPrompt = `Trova e cita MINIMO 3 e MASSIMO 10 articoli di legge pertinenti per questo caso. Cita il testo COMPLETO di ogni articolo: ${JSON.stringify(scrubbedCase)}`;
       break;
       
     case 'diffida_messa_in_mora':
@@ -445,7 +479,9 @@ async function generateContent(type: string, caseData: any, openAIKey: string): 
       Che in difetto si procederà [conseguenze]
       
       Distinti saluti
-      [FIRMA]`;
+      [FIRMA]
+      
+      DISCLAIMER: Questo documento è fornito a scopo informativo e non costituisce consulenza legale professionale. Si consiglia di consultare un avvocato qualificato prima di intraprendere azioni legali.`;
       userPrompt = `Genera diffida formale per: ${JSON.stringify(scrubbedCase)}`;
       break;
       
@@ -508,7 +544,9 @@ async function generateContent(type: string, caseData: any, openAIKey: string): 
       Resto a disposizione per un colloquio.
       
       Cordiali saluti
-      [NOME]`;
+      [NOME]
+      
+      DISCLAIMER: Questo documento è fornito a scopo informativo e non costituisce consulenza legale professionale. Si consiglia di consultare un avvocato qualificato prima di intraprendere azioni legali.`;
       userPrompt = `Genera email per avvocato: ${JSON.stringify(scrubbedCase)}`;
       break;
       
@@ -536,7 +574,9 @@ async function generateContent(type: string, caseData: any, openAIKey: string): 
       [Cosa si chiede]
       
       In attesa di riscontro
-      Distinti saluti`;
+      Distinti saluti
+      
+      DISCLAIMER: Questo documento è fornito a scopo informativo e non costituisce consulenza legale professionale. Si consiglia di consultare un avvocato qualificato prima di intraprendere azioni legali.`;
       userPrompt = `Genera lettera risposta per: ${JSON.stringify(scrubbedCase)}`;
       break;
   }
@@ -554,7 +594,7 @@ async function generateContent(type: string, caseData: any, openAIKey: string): 
         { role: 'user', content: userPrompt }
       ],
       temperature: 0.3,
-      max_tokens: 2000
+      max_tokens: type === 'riferimenti_giuridici' ? 4000 : 2000
     }),
   });
   
@@ -625,7 +665,16 @@ serve(async (req) => {
     }
 
     // Determine which documents to generate
-    const { generateDiffida, generateADR, diffidaReason, adrReason } = determineDocuments(caseData);
+    const { 
+      generateDiffida, 
+      generateADR, 
+      generateEmailAvvocato,
+      generateLetteraRisposta,
+      diffidaReason, 
+      adrReason,
+      emailAvvocatoReason,
+      letteraRispostaReason
+    } = determineDocuments(caseData);
     
     console.log('Document generation plan:', { generateDiffida, generateADR });
 
@@ -681,6 +730,34 @@ serve(async (req) => {
         rationale: adrReason || 'Richiesta di mediazione/conciliazione',
         content: btoa(String.fromCharCode(...adrPdf)),
         size_bytes: adrPdf.length
+      });
+    }
+
+    // 5. Email Avvocato (optional)
+    if (generateEmailAvvocato) {
+      console.log('Generating email avvocato...');
+      const emailContent = await generateContent('email_avvocato', caseData, openAIKey);
+      const emailPdf = await createPDF('Email Richiesta Consulenza Legale', emailContent);
+      documents.push({
+        id: 'email_avvocato',
+        title: 'Email Richiesta Consulenza Avvocato',
+        rationale: emailAvvocatoReason || 'Richiesta consulenza legale professionale',
+        content: btoa(String.fromCharCode(...emailPdf)),
+        size_bytes: emailPdf.length
+      });
+    }
+
+    // 6. Lettera di Risposta/Contestazione (optional)
+    if (generateLetteraRisposta) {
+      console.log('Generating lettera risposta...');
+      const letteraContent = await generateContent('lettera_risposta', caseData, openAIKey);
+      const letteraPdf = await createPDF('Lettera di Risposta/Contestazione', letteraContent);
+      documents.push({
+        id: 'lettera_risposta',
+        title: 'Lettera di Risposta/Contestazione',
+        rationale: letteraRispostaReason || 'Risposta formale a comunicazione ricevuta',
+        content: btoa(String.fromCharCode(...letteraPdf)),
+        size_bytes: letteraPdf.length
       });
     }
 
