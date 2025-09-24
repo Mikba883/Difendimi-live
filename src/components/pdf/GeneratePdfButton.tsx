@@ -80,8 +80,11 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
         body: { caseId }
       });
 
+      console.log('PDF generation response:', response);
+
       if (response.error) {
         console.error('Edge function error:', response.error);
+        console.error('Error details:', response);
         throw response.error;
       }
 
