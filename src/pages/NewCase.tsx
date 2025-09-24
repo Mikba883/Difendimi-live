@@ -335,7 +335,7 @@ export default function NewCase() {
 
       // FASE 3: Quando riceviamo status 'complete', inizia la generazione
       if (data.status === 'complete' && !isGeneratingReport && !isGenerateFunctionCalled) {
-        console.log('Tutte le risposte ricevute, avvio generazione con timer visuale');
+        console.log('✅ Tutte le risposte ricevute - generazione OTTIMIZZATA (30s invece di 50s)');
         setCompleteness(100);
         
         // Mostra messaggio "Ho raccolto tutto"
@@ -347,13 +347,13 @@ export default function NewCase() {
         };
         setMessages(prev => [...prev, completionMsg]);
         
-        // Avvia timer visuale e generazione
+        // Avvia timer visuale IMMEDIATAMENTE (ora solo 30 secondi totali)
         setShowGenerationTimer(true);
         setIsGeneratingReport(true);
         setIsGenerateFunctionCalled(true); // Previene chiamate duplicate
         
-        // Chiama la funzione generate
-        console.log('Chiamo generate con data:', data);
+        // Chiama la funzione generate (ora senza analisi intermedia)
+        console.log('📤 Chiamata DIRETTA a generate (senza ri-analisi)', data);
         callGenerateFunction(data);
       }
 

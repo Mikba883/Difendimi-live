@@ -282,44 +282,32 @@ IMPORTANTE:
       
       // Se il frontend dice che tutte le domande sono state risposte O abbiamo ricevuto abbastanza risposte
       if (allQuestionsAnswered || numberOfResponses >= numberOfQuestions || numberOfResponses >= 6) {
-        console.log('✅ Tutte le domande hanno ricevuto risposta - procedo con generate');
+        console.log('✅ Tutte le domande hanno ricevuto risposta - procedo DIRETTAMENTE con generate');
         
         // Prepara il caso completo per la generazione
         const job_id = makeJobId();
         const fullCaseText = userResponses.join('\n\n');
         
-        const systemPromptFinal = `Analizza il caso completo e estrai le informazioni chiave per il report legale.
-
-Rispondi in formato JSON:
-{
-  "caseType": "tipo di caso",
-  "keyFacts": ["fatto 1", "fatto 2"],
-  "legalIssues": ["questione legale 1", "questione legale 2"],
-  "suggestedKeywords": ["keyword1", "keyword2"],
-  "recommendedDocuments": ["documento1", "documento2"],
-  "summary": "riassunto breve del caso"
-}`;
-
-        const finalAnalysis = await callOpenAI(
-          openAIApiKey,
-          systemPromptFinal,
-          `Caso completo:\n${fullCaseText}`
-        );
-        
-        console.log('📤 Handoff a generate function');
+        // OTTIMIZZAZIONE: Passa direttamente i dati grezzi a generate senza ri-analisi
+        console.log('📤 Handoff DIRETTO a generate function (senza analisi intermedia)');
         
         const generatePayload = {
           job_id,
-          caseType: finalAnalysis?.caseType || "general",
+          caseType: "general", // Lasciamo che generate determini il tipo
           caseData: {
             previousContext: conversationHistory,
             caseText: fullCaseText,
             fromPrecheck: {
-              keyFacts: finalAnalysis?.keyFacts || [],
-              legalIssues: finalAnalysis?.legalIssues || [],
-              suggestedKeywords: finalAnalysis?.suggestedKeywords || [],
-              recommendedDocuments: finalAnalysis?.recommendedDocuments || [],
-              summary: finalAnalysis?.summary || ""
+              // Passa le domande e risposte grezze
+              questions: currentQuestions.map((q: any, idx: number) => ({
+                question: q.question,
+                category: q.category || "generale",
+                answer: userResponses[idx] || ""
+              })),
+              // Include il caso originale
+              originalCase: conversationHistory.length > 0 ? conversationHistory[0] : fullCaseText,
+              // Timestamp per tracking
+              collectedAt: new Date().toISOString()
             },
           },
           meta: {
@@ -330,11 +318,11 @@ Rispondi in formato JSON:
           },
         };
 
-        console.log("📤 Calling generate with payload:", JSON.stringify(generatePayload));
+        console.log("📤 Calling generate DIRETTAMENTE con dati grezzi:", JSON.stringify(generatePayload));
         
         try {
           await handoffToGenerate(projectRef, serviceRoleKey, generatePayload);
-          console.log("✅ Generate function called successfully");
+          console.log("✅ Generate function chiamata con successo (risparmio ~20 secondi)");
         } catch (handoffError) {
           console.error("❌ Error calling generate function:", handoffError);
           return jsonResponse({
@@ -347,7 +335,7 @@ Rispondi in formato JSON:
           status: "complete",
           job_id,
           message: "Ho raccolto tutte le informazioni necessarie. Sto preparando il tuo report legale completo...",
-          analysis: finalAnalysis
+          // Non includiamo più analysis per evitare confusione
         };
         
       } else {
