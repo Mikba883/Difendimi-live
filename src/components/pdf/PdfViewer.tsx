@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import {
   Dialog,
@@ -31,18 +31,22 @@ export function PdfViewer({ isOpen, onClose, pdfBlob, title, onDownload }: PdfVi
   const [pdfFile, setPdfFile] = useState<string | null>(null);
 
   // Convert blob to data URL when modal opens
-  useState(() => {
+  useEffect(() => {
     if (pdfBlob && isOpen) {
+      console.log('Converting blob to data URL, blob size:', pdfBlob.size);
       const reader = new FileReader();
       reader.onloadend = () => {
+        console.log('Data URL created successfully');
         setPdfFile(reader.result as string);
       };
+      reader.onerror = (error) => {
+        console.error('Error reading blob:', error);
+      };
       reader.readAsDataURL(pdfBlob);
-    }
-    return () => {
+    } else {
       setPdfFile(null);
-    };
-  });
+    }
+  }, [pdfBlob, isOpen]);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
