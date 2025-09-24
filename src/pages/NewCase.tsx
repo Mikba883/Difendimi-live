@@ -55,11 +55,9 @@ export default function NewCase() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedCaseId, setSavedCaseId] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [generationTimer, setGenerationTimer] = useState(0);
   const [showGenerationTimer, setShowGenerationTimer] = useState(false);
-  const [isProcessingFinalGeneration, setIsProcessingFinalGeneration] = useState(false);
-  const [generationError, setGenerationError] = useState(false);
+  const [finalGenerationTriggered, setFinalGenerationTriggered] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -78,28 +76,12 @@ export default function NewCase() {
     }]);
   }, []);
 
-  // Timer per la generazione del report con timeout di sicurezza
+  // Timer visuale per la generazione del report (solo grafico)
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isGenerating) {
+    if (showGenerationTimer) {
       interval = setInterval(() => {
-        setGenerationTimer(prev => {
-          const newTimer = prev + 1;
-          // Timeout di sicurezza dopo 60 secondi
-          if (newTimer >= 60 && !isComplete) {
-            setGenerationError(true);
-            toast({
-              title: "Errore generazione",
-              description: "La generazione del report sta impiegando troppo tempo. Riprova più tardi.",
-              variant: "destructive",
-            });
-            // Reset e torna alla home dopo 3 secondi
-            setTimeout(() => {
-              navigate('/');
-            }, 3000);
-          }
-          return newTimer;
-        });
+        setGenerationTimer(prev => prev + 1);
       }, 1000);
     } else {
       setGenerationTimer(0);
@@ -107,56 +89,9 @@ export default function NewCase() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isGenerating, isComplete, navigate, toast]);
+  }, [showGenerationTimer]);
   
-  // Auto-start generation after all questions are answered with delay
-  const [questionsComplete, setQuestionsComplete] = useState(false);
-  const [autoGenerateTimer, setAutoGenerateTimer] = useState<NodeJS.Timeout | null>(null);
-  const [showCompletionMessage, setShowCompletionMessage] = useState(false);
-  
-  useEffect(() => {
-    // Check if all questions have been answered
-    // NOTA: currentQuestionIndex parte da 1, quindi quando è > allQuestions.length
-    // significa che l'utente ha risposto all'ultima domanda
-    if (currentQuestionIndex > allQuestions.length && allQuestions.length > 0 && !questionsComplete && !isGenerating && !isProcessingFinalGeneration) {
-      console.log('All questions answered, starting generation');
-      setQuestionsComplete(true);
-      setCompleteness(100);
-      setIsProcessingFinalGeneration(true); // Flag per evitare doppio avvio
-      
-      // Mostra immediatamente l'indicatore di "pensiero"
-      setIsAnalyzing(true);
-      setIsGenerating(true);
-      
-      // Dopo 5 secondi mostra il messaggio di completamento E il timer
-      const timer = setTimeout(() => {
-        const completionMsg: Message = {
-          id: Date.now().toString() + '-completion',
-          text: "Ho raccolto tutto! Ora mi prendo un minuto per elaborare il tuo report completo...",
-          sender: 'assistant',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, completionMsg]);
-        setShowCompletionMessage(true);
-        setShowGenerationTimer(true); // Mostra il timer solo dopo 5 secondi
-        setIsAnalyzing(false); // Nasconde i puntini di "pensiero"
-        
-        // Ora chiama la generazione finale
-        analyzeCase("__COMPLETED__");
-      }, 5000); // 5 seconds after starting generation
-      
-      setAutoGenerateTimer(timer);
-    }
-  }, [currentQuestionIndex, allQuestions.length, questionsComplete, isGenerating, isProcessingFinalGeneration]);
-  
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (autoGenerateTimer) {
-        clearTimeout(autoGenerateTimer);
-      }
-    };
-  }, [autoGenerateTimer]);
+  // Pulisci completamente il vecchio codice di gestione automatica
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
@@ -417,13 +352,33 @@ export default function NewCase() {
         return;
       }
 
-      // FASE 3: Caso completo - incrementa l'indice per triggerare la generazione
+      // FASE 3: Caso completo - genera immediatamente quando tutte le risposte sono state raccolte
       if (data.status === 'complete' || data.status === 'queued') {
-        // Se siamo all'ultima domanda, incrementa l'indice per triggerare il useEffect
-        if (currentQuestionIndex === allQuestions.length && !isProcessingFinalGeneration && allQuestions.length > 0) {
-          console.log('Ultima domanda risposta, incremento indice per triggerare generazione');
-          setCurrentQuestionIndex(prev => prev + 1);
-          // Non fare altro qui - il useEffect gestirà la generazione
+        // Se siamo all'ultima domanda e non abbiamo ancora triggato la generazione finale
+        if (currentQuestionIndex === allQuestions.length && !finalGenerationTriggered && allQuestions.length > 0) {
+          console.log('Tutte le risposte ricevute, avvio generazione con timer visuale di 5 secondi');
+          setFinalGenerationTriggered(true);
+          setCompleteness(100);
+          
+          // Mostra immediatamente l'indicatore di "pensiero" per 5 secondi (solo visuale)
+          setIsAnalyzing(true);
+          
+          // Dopo 5 secondi mostra il messaggio e chiama la generazione vera
+          setTimeout(() => {
+            const completionMsg: Message = {
+              id: Date.now().toString() + '-completion',
+              text: "Ho raccolto tutto! Ora mi prendo un minuto per elaborare il tuo report completo...",
+              sender: 'assistant',
+              timestamp: new Date()
+            };
+            setMessages(prev => [...prev, completionMsg]);
+            setShowGenerationTimer(true);
+            setIsAnalyzing(false);
+            
+            // Chiama la generazione finale UNA SOLA VOLTA
+            analyzeCase("__COMPLETED__");
+          }, 5000);
+          
           return;
         }
         
@@ -450,9 +405,7 @@ export default function NewCase() {
       console.error('Error analyzing case:', error);
       
       // Se c'è un errore durante la generazione finale, gestiscilo
-      if (isGenerating || questionsComplete) {
-        setGenerationError(true);
-        setIsGenerating(false);
+      if (finalGenerationTriggered || showGenerationTimer) {
         setShowGenerationTimer(false);
         
         toast({
@@ -683,11 +636,11 @@ export default function NewCase() {
               
               {isAnalyzing && <TypingIndicator />}
               
-              {isGenerating && (
+              {showGenerationTimer && (
                 <div className="flex items-center justify-center space-x-2 p-4">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                   <span className="text-sm text-muted-foreground">
-                    Elaborazione in corso... {showGenerationTimer && generationTimer > 0 && `(${generationTimer}s)`}
+                    Elaborazione in corso... {generationTimer > 0 && `(${generationTimer}s)`}
                   </span>
                 </div>
               )}
