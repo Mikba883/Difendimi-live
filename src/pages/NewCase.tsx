@@ -97,13 +97,16 @@ export default function NewCase() {
   
   useEffect(() => {
     // Check if all questions have been answered
-    if (currentQuestionIndex >= allQuestions.length && allQuestions.length > 0 && !questionsComplete) {
+    // NOTA: currentQuestionIndex parte da 1, quindi quando è > allQuestions.length
+    // significa che l'utente ha risposto all'ultima domanda
+    if (currentQuestionIndex > allQuestions.length && allQuestions.length > 0 && !questionsComplete) {
+      console.log('All questions answered, starting generation');
       setQuestionsComplete(true);
       setCompleteness(100);
       
       // Avvia IMMEDIATAMENTE la generazione
       setIsGenerating(true);
-      analyzeCase("");
+      analyzeCase("__COMPLETED__"); // Flag speciale per indicare completamento
       
       // Dopo 5 secondi mostra il messaggio di completamento
       const timer = setTimeout(() => {
@@ -273,7 +276,8 @@ export default function NewCase() {
   };
 
   const analyzeCase = async (latestResponse: string) => {
-    if (!latestResponse.trim()) {
+    // Accetta il flag speciale "__COMPLETED__" per la generazione finale
+    if (!latestResponse.trim() && latestResponse !== "__COMPLETED__") {
       toast({
         title: "Attenzione",
         description: "Inserisci o detta le informazioni del caso",
@@ -302,8 +306,11 @@ export default function NewCase() {
       console.log('Current question index:', currentQuestionIndex);
       
       // Verifica se tutte le domande hanno ricevuto risposta
-      const allQuestionsAnswered = currentQuestionIndex >= allQuestions.length && allQuestions.length > 0;
+      // Se latestResponse è "__COMPLETED__", significa che tutte le domande sono state risposte
+      const allQuestionsAnswered = latestResponse === "__COMPLETED__" || 
+                                   (currentQuestionIndex > allQuestions.length && allQuestions.length > 0);
       console.log('All questions answered:', allQuestionsAnswered);
+      console.log('Latest response:', latestResponse);
 
       const { data, error } = await supabase.functions.invoke('precheck', {
         body: { 
