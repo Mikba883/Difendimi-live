@@ -19,9 +19,12 @@ import { cn } from "@/lib/utils";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { GeneratePdfButton } from "@/components/pdf/GeneratePdfButton";
 
 interface ReportSectionsProps {
   report: TabbedLegalReport;
+  caseId?: string;
+  caseStatus?: string;
 }
 
 const sectionIcons = {
@@ -33,7 +36,7 @@ const sectionIcons = {
   allegati: { icon: Paperclip, label: "Documenti e Allegati", color: "text-gray-600" }
 };
 
-export function ReportSections({ report }: ReportSectionsProps) {
+export function ReportSections({ report, caseId, caseStatus }: ReportSectionsProps) {
   const [activeSection, setActiveSection] = useState<string>("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -89,6 +92,16 @@ export function ReportSections({ report }: ReportSectionsProps) {
 
   return (
     <div className="relative">
+      {/* Disclaimer - Moved before navigation */}
+      {normalizedReport.disclaimer && (
+        <Alert className="border-yellow-200 bg-yellow-50 mb-4">
+          <AlertCircle className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            {normalizedReport.disclaimer}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Desktop Horizontal Navigation */}
       {!isMobile && (
         <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b mb-6">
@@ -162,14 +175,6 @@ export function ReportSections({ report }: ReportSectionsProps) {
 
       {/* Main Content */}
       <div className="space-y-8">
-        {normalizedReport.disclaimer && (
-          <Alert className="border-yellow-200 bg-yellow-50">
-            <AlertCircle className="h-4 w-4 text-yellow-600" />
-            <AlertDescription className="text-yellow-800">
-              {normalizedReport.disclaimer}
-            </AlertDescription>
-          </Alert>
-        )}
 
         {/* Executive Summary */}
         <Card id="section-executive" className="animate-fade-in">
@@ -200,6 +205,14 @@ export function ReportSections({ report }: ReportSectionsProps) {
             )}
           </CardContent>
         </Card>
+
+        {/* Generate PDF Button - After Executive Summary, Before Qualificazione */}
+        {caseId && caseStatus === 'ready' && (
+          <GeneratePdfButton 
+            caseId={caseId} 
+            caseStatus={caseStatus} 
+          />
+        )}
 
         {/* Qualificazione Giuridica (with integrated Fonti) */}
         <Card id="section-qualificazione" className="animate-fade-in">

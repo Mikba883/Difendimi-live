@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,14 +18,13 @@ interface PdfDocumentCardProps {
 }
 
 export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
-
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
     else if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
     else return Math.round(bytes / 1048576) + ' MB';
   };
 
-  // Memoize PDF URL to avoid recreating it on each render
+  // Create and memoize PDF URL
   const pdfUrl = useMemo(() => {
     try {
       // Remove any data URL prefix if present
@@ -56,6 +55,15 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     }
   }, [document.content]);
 
+  // Clean up blob URL when component unmounts
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+    };
+  }, [pdfUrl]);
+
   const handleOpenInNewTab = () => {
     if (pdfUrl) {
       window.open(pdfUrl, '_blank');
@@ -66,7 +74,7 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     if (pdfUrl) {
       const a = window.document.createElement('a');
       a.href = pdfUrl;
-      a.download = `${document.id}.pdf`;
+      a.download = `${document.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
       window.document.body.appendChild(a);
       a.click();
       window.document.body.removeChild(a);
