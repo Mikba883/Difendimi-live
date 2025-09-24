@@ -299,20 +299,14 @@ export function ReportSections({ report, caseId, caseStatus }: ReportSectionsPro
                         <td className="p-3 text-sm text-green-600">{row.pro || (row as any).pros}</td>
                         <td className="p-3 text-sm text-red-600">{row.contro || (row as any).cons}</td>
                         <td className="p-3 text-sm">
-                          <BlurredContent isPremium={isPremium} label="Sblocca con Premium">
-                            <Clock className="inline h-3 w-3 mr-1" />
-                            {row.tempi || '-'}
-                          </BlurredContent>
+                          <Clock className="inline h-3 w-3 mr-1" />
+                          {row.tempi || '-'}
                         </td>
                         <td className="p-3 text-sm">
-                          <BlurredContent isPremium={isPremium} label="Sblocca con Premium">
-                            {row.costi || '-'}
-                          </BlurredContent>
+                          {row.costi || '-'}
                         </td>
                         <td className="p-3 text-sm">
-                          <BlurredContent isPremium={isPremium} label="Sblocca con Premium">
-                            {row.esito || '-'}
-                          </BlurredContent>
+                          {row.esito || '-'}
                         </td>
                       </tr>
                     ))}

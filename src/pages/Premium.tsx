@@ -62,27 +62,31 @@ export default function Premium() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container max-w-2xl mx-auto px-4 py-8">
-        {/* Back button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate(-1)}
-          className="mb-6"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
+        {/* Header with back button and offer text */}
+        <div className="flex items-center justify-between mb-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <p className="text-sm text-muted-foreground flex-1 text-center">Offerta valida solo per</p>
+          <div className="w-10" /> {/* Spacer for centering */}
+        </div>
+
+        {/* Timer Section */}
+        <div className="mb-6">
+          <CountdownTimer timeRemaining={timeRemaining} className="justify-center" />
+        </div>
 
         <div className="bg-card rounded-xl shadow-lg overflow-hidden">
-          {/* Timer Section */}
-          <div className="bg-muted/50 p-4 border-b">
-            <CountdownTimer timeRemaining={timeRemaining} className="justify-center" />
-          </div>
 
           {/* Content */}
           <div className="relative p-8">
             {/* Diagonal Badge */}
-            <div className="absolute -top-2 -right-2 w-24 h-24 overflow-hidden">
-              <div className="absolute transform rotate-45 bg-green-500 text-white text-center font-bold py-1 right-[-35px] top-[15px] w-[120px] shadow-lg">
+            <div className="absolute top-8 right-0 w-24 h-24 overflow-hidden">
+              <div className="absolute transform rotate-45 bg-green-500 text-white text-center font-bold py-1 right-[-30px] top-[18px] w-[120px] shadow-lg text-sm">
                 Promo -68%
               </div>
             </div>
@@ -103,11 +107,9 @@ export default function Premium() {
                 <span className="text-5xl font-bold text-violet-600">4,13€</span>
                 <span className="text-muted-foreground">/mese</span>
               </div>
-              <p className="text-sm text-muted-foreground mb-2">
-                fatturati 49,50€ all'anno
-              </p>
               <div className="flex items-center justify-center gap-2">
-                <span className="text-base font-semibold">Pagamento unico 49,50€</span>
+                <span className="text-base">Pagamento unico</span>
+                <span className="text-base font-semibold">49,50€</span>
                 <span className="text-base text-muted-foreground line-through">154€</span>
               </div>
             </div>

@@ -25,11 +25,19 @@ export default function CaseDetail() {
   // Auto-redirect to premium after 20 seconds for non-premium users
   useEffect(() => {
     if (!isPremium && caseData?.report) {
-      const timer = setTimeout(() => {
-        navigate('/premium');
-      }, 20000);
+      // Check if we've already redirected for this case
+      const redirectedCases = JSON.parse(localStorage.getItem('redirectedCases') || '[]');
+      
+      if (!redirectedCases.includes(caseData.id)) {
+        const timer = setTimeout(() => {
+          // Mark this case as redirected
+          redirectedCases.push(caseData.id);
+          localStorage.setItem('redirectedCases', JSON.stringify(redirectedCases));
+          navigate('/premium');
+        }, 20000);
 
-      return () => clearTimeout(timer);
+        return () => clearTimeout(timer);
+      }
     }
   }, [isPremium, caseData, navigate]);
 
