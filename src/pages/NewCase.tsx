@@ -57,7 +57,7 @@ export default function NewCase() {
   const [savedCaseId, setSavedCaseId] = useState<string | null>(null);
   const [generationTimer, setGenerationTimer] = useState(0);
   const [showGenerationTimer, setShowGenerationTimer] = useState(false);
-  const [finalGenerationTriggered, setFinalGenerationTriggered] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -236,8 +236,7 @@ export default function NewCase() {
   };
 
   const analyzeCase = async (latestResponse: string) => {
-    // Accetta il flag speciale "__COMPLETED__" per la generazione finale
-    if (!latestResponse.trim() && latestResponse !== "__COMPLETED__") {
+    if (!latestResponse.trim()) {
       toast({
         title: "Attenzione",
         description: "Inserisci o detta le informazioni del caso",
@@ -248,10 +247,7 @@ export default function NewCase() {
 
     setIsAnalyzing(true);
     
-    // Non mostriamo più il messaggio di "pensiero" - solo l'indicatore di caricamento
-    
     try {
-      // Prepara il contesto precedente (escluso l'ultimo messaggio appena aggiunto e il messaggio di thinking se presente)
       const previousMessages = messages
         .filter(m => !m.id.startsWith('thinking-'))
         .slice(0, -1)
@@ -264,20 +260,13 @@ export default function NewCase() {
       console.log('Phase:', allQuestions.length === 0 ? 'initial' : 'answering');
       console.log('Current questions:', allQuestions.length);
       console.log('Current question index:', currentQuestionIndex);
-      
-      // Verifica se tutte le domande hanno ricevuto risposta
-      // Se latestResponse è "__COMPLETED__", significa che tutte le domande sono state risposte
-      const allQuestionsAnswered = latestResponse === "__COMPLETED__" || 
-                                   (currentQuestionIndex > allQuestions.length && allQuestions.length > 0);
-      console.log('All questions answered:', allQuestionsAnswered);
-      console.log('Latest response:', latestResponse);
 
       const { data, error } = await supabase.functions.invoke('precheck', {
         body: { 
           latestResponse,
           previousContext: previousMessages,
           currentQuestions: allQuestions,
-          allQuestionsAnswered // Passa questo flag a precheck
+          allQuestionsAnswered: false
         }
       });
 
@@ -287,13 +276,11 @@ export default function NewCase() {
 
       // Se è un messaggio di benvenuto (input non valido)
       if (data.status === 'welcome_message') {
-        // Rimuovi il messaggio dell'utente dall'elenco (non salviamo se non è valido)
         setMessages(prev => prev.slice(0, -1));
-        // Mostra il dialog invece di aggiungere alla chat
         setInvalidCaseMessage(data.message);
         setShowInvalidCaseDialog(true);
         setIsAnalyzing(false);
-        setCurrentText(""); // Reset del testo
+        setCurrentText("");
         return;
       }
 
@@ -303,10 +290,8 @@ export default function NewCase() {
         setAllQuestions(data.questions);
         setCompleteness(data.estimatedCompleteness || 20);
         
-        // Rimuovi il messaggio di "pensiero" e mostra le domande
         setMessages(prev => prev.filter(m => !m.id.startsWith('thinking-')));
         
-        // Mostra la prima domanda dopo un breve delay
         setTimeout(() => {
           if (data.questions.length > 0) {
             const firstQuestion: Message = {
@@ -327,7 +312,6 @@ export default function NewCase() {
 
       // FASE 2: Gestione risposte alle domande
       if (data.status === 'waiting_responses') {
-        // NON incrementare l'indice se siamo all'ultima domanda
         const nextIndex = currentQuestionIndex;
         if (nextIndex < allQuestions.length) {
           const nextQuestion = allQuestions[nextIndex];
@@ -342,91 +326,98 @@ export default function NewCase() {
           setMessages(prev => [...prev, questionMessage]);
           setCurrentQuestionIndex(nextIndex + 1);
           
-          // Aggiorna completezza progressivamente
           const progress = Math.round(20 + (80 * (nextIndex + 1) / allQuestions.length));
           setCompleteness(progress);
-        } else {
-          // ATTENZIONE: Non incrementare più qui! Il useEffect lo gestirà
-          console.log('Ultima domanda risposta, non incremento più l\'indice');
         }
         return;
       }
 
-      // FASE 3: Caso completo - genera immediatamente quando tutte le risposte sono state raccolte
-      if (data.status === 'complete' || data.status === 'queued') {
-        // Se siamo all'ultima domanda e non abbiamo ancora triggato la generazione finale
-        if (currentQuestionIndex === allQuestions.length && !finalGenerationTriggered && allQuestions.length > 0) {
-          console.log('Tutte le risposte ricevute, avvio generazione con timer visuale di 5 secondi');
-          setFinalGenerationTriggered(true);
-          setCompleteness(100);
-          
-          // Mostra immediatamente l'indicatore di "pensiero" per 5 secondi (solo visuale)
-          setIsAnalyzing(true);
-          
-          // Dopo 5 secondi mostra il messaggio e chiama la generazione vera
-          setTimeout(() => {
-            const completionMsg: Message = {
-              id: Date.now().toString() + '-completion',
-              text: "Ho raccolto tutto! Ora mi prendo un minuto per elaborare il tuo report completo...",
-              sender: 'assistant',
-              timestamp: new Date()
-            };
-            setMessages(prev => [...prev, completionMsg]);
-            setShowGenerationTimer(true);
-            setIsAnalyzing(false);
-            
-            // Chiama la generazione finale UNA SOLA VOLTA
-            analyzeCase("__COMPLETED__");
-          }, 5000);
-          
-          return;
-        }
+      // FASE 3: Quando riceviamo status 'complete', inizia la generazione
+      if (data.status === 'complete' && !isGeneratingReport) {
+        console.log('Tutte le risposte ricevute, avvio generazione finale');
+        setCompleteness(100);
         
-        // Se arriviamo qui con __COMPLETED__, è la vera generazione finale
-        if (latestResponse === "__COMPLETED__") {
-          console.log('Generazione finale completata');
-          setIsComplete(true);
-          
-          // Salva il caso solo se non è già stato salvato
-          if (!isSaving && !savedCaseId) {
-            setTimeout(async () => {
-              await saveCase({
-                ...data,
-                caseAnalysis,
-                allQuestions,
-                messages
-              });
-            }, 2000);
-          }
-        }
+        // Mostra messaggio "Ho raccolto tutto" e inizia timer
+        const completionMsg: Message = {
+          id: Date.now().toString() + '-completion',
+          text: "Ho raccolto tutte le informazioni necessarie. Sto preparando il tuo report legale completo...",
+          sender: 'assistant',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, completionMsg]);
+        
+        // Avvia timer visuale e generazione finale
+        setShowGenerationTimer(true);
+        setIsGeneratingReport(true);
+        
+        // Chiama la funzione generate dopo 5 secondi
+        setTimeout(() => {
+          callGenerateFunction(data);
+        }, 5000);
       }
 
     } catch (error) {
       console.error('Error analyzing case:', error);
-      
-      // Se c'è un errore durante la generazione finale, gestiscilo
-      if (finalGenerationTriggered || showGenerationTimer) {
-        setShowGenerationTimer(false);
-        
-        toast({
-          title: "Errore generazione report",
-          description: "Si è verificato un errore durante la generazione del report. Torniamo alla home...",
-          variant: "destructive",
-        });
-        
-        // Torna alla home dopo 3 secondi
-        setTimeout(() => {
-          navigate('/');
-        }, 3000);
-      } else {
-        toast({
-          title: "Errore",
-          description: "Impossibile analizzare il caso",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Errore",
+        description: "Impossibile analizzare il caso",
+        variant: "destructive",
+      });
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const callGenerateFunction = async (analysisData: any) => {
+    if (!isGeneratingReport) return;
+    
+    console.log('=== CHIAMATA FUNZIONE GENERATE ===');
+    
+    try {
+      // Prepara il contesto per la generazione
+      const allMessages = messages.map(m => ({
+        role: m.sender === 'user' ? 'user' : 'assistant',
+        content: m.text
+      }));
+
+      const { data: generateData, error: generateError } = await supabase.functions.invoke('generate', {
+        body: {
+          caseAnalysis: analysisData.analysis || caseAnalysis,
+          questions: allQuestions,
+          conversation: allMessages,
+          originalText: currentText
+        }
+      });
+
+      if (generateError) throw generateError;
+
+      console.log('Generazione completata:', generateData);
+      
+      // Salva il caso e reindirizza
+      setIsComplete(true);
+      setShowGenerationTimer(false);
+      
+      await saveCase({
+        ...analysisData,
+        report: generateData,
+        caseAnalysis: analysisData.analysis || caseAnalysis,
+        allQuestions,
+        messages
+      });
+      
+    } catch (error) {
+      console.error('Errore durante la generazione:', error);
+      setShowGenerationTimer(false);
+      
+      toast({
+        title: "Errore generazione report",
+        description: "Si è verificato un errore durante la generazione del report. Reindirizzamento...",
+        variant: "destructive",
+      });
+      
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 3000);
     }
   };
 
