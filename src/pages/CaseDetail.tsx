@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { CaseStatusBadge } from "@/components/case/CaseStatusBadge";
 import { ReportSections } from "@/components/case/ReportSections";
+import { GeneratePdfButton } from "@/components/pdf/GeneratePdfButton";
 import type { Case } from "@/types/case";
 
 export default function CaseDetail() {
@@ -165,6 +166,14 @@ export default function CaseDetail() {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Generate PDF Button */}
+          {caseData.id && (
+            <GeneratePdfButton 
+              caseId={caseData.id} 
+              caseStatus={caseData.status} 
+            />
           )}
 
           {/* Report Sections */}
