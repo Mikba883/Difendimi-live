@@ -377,14 +377,14 @@ export default function NewCase() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No session');
 
-      // Prepara i parametri corretti per la funzione generate
+      // Prepara i parametri corretti per la funzione generate (senza analysis)
       const requestBody = {
         job_id: analysisData.job_id,
-        caseType: analysisData.analysis.caseType,
+        caseType: "general", // Fissiamo a general, sarà generate a determinarlo
         caseData: {
           previousContext: messages.map(m => `${m.sender === 'user' ? 'Utente' : 'Assistente'}: ${m.text}`).join('\n'),
           caseText: currentText,
-          fromPrecheck: analysisData.analysis
+          // Non c'è più fromPrecheck.analysis, i dati sono già nel backend
         },
         meta: {
           authToken: `Bearer ${session.access_token}`,
