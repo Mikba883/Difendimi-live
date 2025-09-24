@@ -103,28 +103,52 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     e?.stopPropagation();
     
     // Prevent double download
-    if (isDownloading || !pdfBlob) return;
+    if (isDownloading || !pdfBlob) {
+      if (!pdfBlob) {
+        toast({
+          title: "Errore",
+          description: "Il PDF non è ancora pronto. Riprova tra qualche secondo.",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
     
     setIsDownloading(true);
     
-    // Create a temporary URL for the blob
-    const url = URL.createObjectURL(pdfBlob);
-    
-    // Download solo
-    const link = window.document.createElement('a');
-    link.href = url;
-    link.download = `${document.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-    link.style.display = 'none';
-    
-    window.document.body.appendChild(link);
-    link.click();
-    window.document.body.removeChild(link);
-    
-    // Cleanup dopo il download
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
+    try {
+      // Create a temporary URL for the blob
+      const url = URL.createObjectURL(pdfBlob);
+      
+      // Create download link
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = `${document.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      link.style.display = 'none';
+      
+      window.document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup dopo il download
+      setTimeout(() => {
+        window.document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        setIsDownloading(false);
+      }, 100);
+      
+      toast({
+        title: "Download avviato",
+        description: "Il PDF è in download...",
+      });
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast({
+        title: "Errore nel download",
+        description: "Si è verificato un errore durante il download del PDF",
+        variant: "destructive",
+      });
       setIsDownloading(false);
-    }, 1000);
+    }
   };
 
   return (

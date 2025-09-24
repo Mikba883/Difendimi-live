@@ -7,6 +7,32 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to encode large PDFs to base64 using chunks
+async function encodeBase64(pdfBytes: Uint8Array): Promise<string> {
+  // For small PDFs (< 1MB), use direct conversion
+  if (pdfBytes.length < 1048576) {
+    try {
+      return btoa(String.fromCharCode(...pdfBytes));
+    } catch (e) {
+      console.log('Direct conversion failed, using chunked method');
+    }
+  }
+  
+  // For larger PDFs or if direct fails, use chunked conversion
+  const chunkSize = 8192; // 8KB chunks
+  let result = '';
+  
+  for (let i = 0; i < pdfBytes.length; i += chunkSize) {
+    const chunk = pdfBytes.slice(i, i + chunkSize);
+    const binaryString = Array.from(chunk)
+      .map(byte => String.fromCharCode(byte))
+      .join('');
+    result += binaryString;
+  }
+  
+  return btoa(result);
+}
+
 // PII Scrubbing function
 function scrubPII(text: string): string {
   if (!text) return '';
@@ -740,7 +766,7 @@ serve(async (req) => {
           const pdf = await createPDF('Relazione Preliminare', content);
           console.log('Relazione preliminare PDF created successfully');
           // Use chunked base64 encoding for large PDFs
-          const base64 = btoa(Array.from(pdf).map(byte => String.fromCharCode(byte)).join(''));
+          const base64 = await encodeBase64(pdf);
           return {
             id: 'relazione_preliminare',
             title: 'Relazione Preliminare',
@@ -761,7 +787,7 @@ serve(async (req) => {
           console.log('Riferimenti content generated, creating PDF...');
           const pdf = await createPDF('Riferimenti Giuridici', content);
           console.log('Riferimenti giuridici PDF created successfully');
-          const base64 = btoa(Array.from(pdf).map(byte => String.fromCharCode(byte)).join(''));
+          const base64 = await encodeBase64(pdf);
           return {
             id: 'riferimenti_giuridici',
             title: 'Riferimenti Giuridici',
@@ -785,7 +811,7 @@ serve(async (req) => {
             console.log('Diffida content generated, creating PDF...');
             const pdf = await createPDF('Diffida e Messa in Mora', content);
             console.log('Diffida PDF created successfully');
-            const base64 = btoa(Array.from(pdf).map(byte => String.fromCharCode(byte)).join(''));
+            const base64 = await encodeBase64(pdf);
             return {
               id: 'diffida_messa_in_mora',
               title: 'Diffida e Messa in Mora',
@@ -811,7 +837,7 @@ serve(async (req) => {
             console.log('ADR content generated, creating PDF...');
             const pdf = await createPDF('Istanza ADR/ODR', content);
             console.log('ADR PDF created successfully');
-            const base64 = btoa(Array.from(pdf).map(byte => String.fromCharCode(byte)).join(''));
+            const base64 = await encodeBase64(pdf);
             return {
               id: 'istanza_adr_odr',
               title: 'Istanza ADR/ODR/Conciliazione',
@@ -837,7 +863,7 @@ serve(async (req) => {
             console.log('Email content generated, creating PDF...');
             const pdf = await createPDF('Email Richiesta Consulenza Legale', content);
             console.log('Email avvocato PDF created successfully');
-            const base64 = btoa(Array.from(pdf).map(byte => String.fromCharCode(byte)).join(''));
+            const base64 = await encodeBase64(pdf);
             return {
               id: 'email_avvocato',
               title: 'Email Richiesta Consulenza Avvocato',
@@ -863,7 +889,7 @@ serve(async (req) => {
             console.log('Lettera content generated, creating PDF...');
             const pdf = await createPDF('Lettera di Risposta/Contestazione', content);
             console.log('Lettera risposta PDF created successfully');
-            const base64 = btoa(Array.from(pdf).map(byte => String.fromCharCode(byte)).join(''));
+            const base64 = await encodeBase64(pdf);
             return {
               id: 'lettera_risposta',
               title: 'Lettera di Risposta/Contestazione',
