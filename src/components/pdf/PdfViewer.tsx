@@ -110,44 +110,47 @@ export function PdfViewer({ isOpen, onClose, pdfBlob, title }: PdfViewerProps) {
               <Loader2 className="h-8 w-8 animate-spin" />
               <p>Preparazione PDF...</p>
             </div>
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-              <p>Impossibile visualizzare il PDF nel browser.</p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={handleDownload}
-                  className="gap-2"
-                >
-                  <Download className="h-4 w-4" />
-                  Scarica PDF
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleOpenInNewTab}
-                  className="gap-2"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  Apri in nuova scheda
-                </Button>
-              </div>
+          ) : error || !pdfDataUrl ? (
+            <div className="flex flex-col items-center justify-center h-full gap-4">
+              <p className="text-muted-foreground">
+                {error ? "Impossibile visualizzare il PDF nel browser." : "Nessun PDF da visualizzare"}
+              </p>
+              {pdfBlob && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleDownload}
+                    className="gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Scarica PDF
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const url = URL.createObjectURL(pdfBlob);
+                      window.open(url, '_blank');
+                      setTimeout(() => URL.revokeObjectURL(url), 1000);
+                    }}
+                    className="gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Apri in nuova scheda
+                  </Button>
+                </div>
+              )}
             </div>
-          ) : pdfDataUrl ? (
-            <>
-              <embed
-                src={pdfDataUrl}
-                type="application/pdf"
-                className="w-full h-full border rounded-lg"
-                title={title}
-              />
+          ) : (
+            <div className="w-full h-full relative">
               <iframe
                 src={pdfDataUrl}
-                className="w-full h-full border rounded-lg hidden"
+                className="w-full h-full border-0 rounded-lg"
                 title={title}
-                style={{ display: 'none' }}
+                style={{ minHeight: '600px' }}
               />
-              <div className="hidden flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-                <p>Se il PDF non viene visualizzato:</p>
+              {/* Fallback overlay shown only if iframe fails */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/95 opacity-0 hover:opacity-100 transition-opacity">
+                <p className="text-muted-foreground mb-4">Problemi di visualizzazione?</p>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -159,18 +162,18 @@ export function PdfViewer({ isOpen, onClose, pdfBlob, title }: PdfViewerProps) {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={handleOpenInNewTab}
+                    onClick={() => {
+                      const url = URL.createObjectURL(pdfBlob!);
+                      window.open(url, '_blank');
+                      setTimeout(() => URL.revokeObjectURL(url), 1000);
+                    }}
                     className="gap-2"
                   >
                     <ExternalLink className="h-4 w-4" />
-                    Apri in nuova scheda
+                    Apri esternamente
                   </Button>
                 </div>
               </div>
-            </>
-          ) : (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-              Nessun PDF da visualizzare
             </div>
           )}
         </div>
