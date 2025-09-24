@@ -334,7 +334,7 @@ export default function NewCase() {
 
       // FASE 3: Quando riceviamo status 'complete', inizia la generazione
       if (data.status === 'complete' && !isGeneratingReport) {
-        console.log('Tutte le risposte ricevute, avvio generazione finale');
+        console.log('Tutte le risposte ricevute, avvio generazione con timer visuale di 5 secondi');
         setCompleteness(100);
         
         // Mostra messaggio "Ho raccolto tutto" e inizia timer
@@ -350,8 +350,9 @@ export default function NewCase() {
         setShowGenerationTimer(true);
         setIsGeneratingReport(true);
         
-        // Chiama la funzione generate dopo 5 secondi
+        // Chiama la funzione generate dopo 5 secondi passando i dati corretti
         setTimeout(() => {
+          console.log('Timer completato, chiamo generate con data:', data);
           callGenerateFunction(data);
         }, 5000);
       }
