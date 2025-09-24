@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, ExternalLink } from "lucide-react";
+import { Download, ExternalLink, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface PdfViewerProps {
@@ -78,7 +78,7 @@ export function PdfViewer({ isOpen, onClose, pdfBlob, title }: PdfViewerProps) {
                 onClick={onClose}
                 className="h-8 w-8"
               >
-                ✕
+                <X className="h-4 w-4" />
               </Button>
             </div>
           </div>
