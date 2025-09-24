@@ -156,11 +156,20 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
               
               {/* Progress indicator */}
               {isGenerating && (
-                <div className="w-full max-w-md space-y-2">
-                  <Progress value={progress} className="h-2" />
-                  <p className="text-sm text-muted-foreground text-center">
-                    {progressMessage}
-                  </p>
+                <div className="w-full max-w-xl space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm font-medium">
+                      <span className="text-primary">{progressMessage}</span>
+                      <span className="text-primary text-lg font-bold">{progress}%</span>
+                    </div>
+                    <Progress value={progress} className="h-4" />
+                  </div>
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <p className="text-base text-muted-foreground">
+                      Elaborazione in corso, attendere prego...
+                    </p>
+                  </div>
                 </div>
               )}
               

@@ -877,6 +877,9 @@ serve(async (req) => {
     // Execute all generation tasks in parallel with timeout
     console.log(`Executing ${generationTasks.length} generation tasks in parallel...`);
     
+    // Declare documents variable outside try block
+    let documents: any[] = [];
+    
     try {
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Generation timeout exceeded')), totalTimeout);
@@ -888,7 +891,7 @@ serve(async (req) => {
       ]) as any[];
       
       // Filter out null results (failed generations) and add to documents
-      const documents = results.filter(doc => doc !== null);
+      documents = results.filter(doc => doc !== null);
       
       const elapsedTime = ((Date.now() - startTime) / 1000).toFixed(3);
       console.log(`Successfully generated ${documents.length} documents in ${elapsedTime} seconds`);
@@ -903,15 +906,12 @@ serve(async (req) => {
     const endTime = Date.now();
     const elapsedTime = (endTime - startTime) / 1000;
     
-    // Filter out null values from documents array
-    const validDocuments = documents.filter(Boolean);
-    
-    console.log(`Successfully generated ${validDocuments.length} documents in ${elapsedTime} seconds`);
+    console.log(`Successfully generated ${documents.length} documents in ${elapsedTime} seconds`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        documents: validDocuments,
+        documents,
         summary: summary.substring(0, 200) + '...',
         caseId
       }),
