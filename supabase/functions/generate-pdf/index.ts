@@ -381,6 +381,7 @@ async function createPDF(title: string, content: string): Promise<Uint8Array> {
 
 // Generate content using OpenAI
 async function generateContent(type: string, caseData: any, openAIKey: string): Promise<string> {
+  console.log(`Starting content generation for type: ${type}`);
   const scrubbedCase = {
     ...caseData,
     case_text: scrubPII(caseData.case_text || ''),
@@ -594,6 +595,7 @@ async function generateContent(type: string, caseData: any, openAIKey: string): 
       break;
   }
   
+  console.log(`Calling OpenAI API for ${type}...`);
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -612,10 +614,13 @@ async function generateContent(type: string, caseData: any, openAIKey: string): 
   });
   
   if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.statusText}`);
+    const errorData = await response.text();
+    console.error(`OpenAI API error for ${type}:`, response.status, errorData);
+    throw new Error(`OpenAI API error: ${response.statusText} - ${errorData}`);
   }
   
   const data = await response.json();
+  console.log(`OpenAI API response received for ${type}`);
   return data.choices[0].message.content;
 }
 
@@ -629,8 +634,11 @@ serve(async (req) => {
     // Get authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('Missing authorization header');
       throw new Error('Missing authorization header');
     }
+
+    console.log('Starting PDF generation request...');
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -650,12 +658,14 @@ serve(async (req) => {
     // Get case ID from request
     const { caseId } = await req.json();
     if (!caseId) {
+      console.error('Case ID is missing in request');
       throw new Error('Case ID is required');
     }
 
     console.log('Generating PDFs for case:', caseId);
 
     // Fetch case data
+    console.log('Fetching case data from database...');
     const { data: caseData, error: caseError } = await supabase
       .from('cases')
       .select('*')
@@ -664,20 +674,33 @@ serve(async (req) => {
 
     if (caseError) {
       console.error('Error fetching case:', caseError);
-      throw new Error('Failed to fetch case data');
+      throw new Error(`Failed to fetch case data: ${caseError.message}`);
     }
 
     if (!caseData) {
+      console.error('Case not found for ID:', caseId);
       throw new Error('Case not found');
     }
+
+    console.log('Case data retrieved:', {
+      id: caseData.id,
+      status: caseData.status,
+      area_of_law: caseData.area_of_law,
+      classification: caseData.classification ? 'present' : 'missing',
+      report: caseData.report ? 'present' : 'missing',
+      case_objectives: caseData.case_objectives
+    });
 
     // Get OpenAI API key
     const openAIKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIKey) {
+      console.error('OpenAI API key not configured in environment');
       throw new Error('OpenAI API key not configured');
     }
+    console.log('OpenAI API key found');
 
     // Determine which documents to generate
+    console.log('Determining which documents to generate...');
     const { 
       generateDiffida, 
       generateADR, 
@@ -689,95 +712,148 @@ serve(async (req) => {
       letteraRispostaReason
     } = determineDocuments(caseData);
     
-    console.log('Document generation plan:', { generateDiffida, generateADR });
+    console.log('Document generation plan:', { 
+      generateDiffida, 
+      generateADR, 
+      generateEmailAvvocato,
+      generateLetteraRisposta,
+      diffidaReason,
+      adrReason,
+      emailAvvocatoReason,
+      letteraRispostaReason
+    });
 
     // Generate documents
     const documents = [];
+    const startTime = Date.now();
 
-    // 1. Relazione Preliminare (always)
-    console.log('Generating relazione preliminare...');
-    const relazioneContent = await generateContent('relazione_preliminare', caseData, openAIKey);
-    const relazionePdf = await createPDF('Relazione Preliminare', relazioneContent);
-    documents.push({
-      id: 'relazione_preliminare',
-      title: 'Relazione Preliminare',
-      rationale: 'Documento di sintesi del caso con analisi e raccomandazioni',
-      content: btoa(String.fromCharCode(...relazionePdf)),
-      size_bytes: relazionePdf.length
-    });
-
-    // 2. Riferimenti Giuridici (always)
-    console.log('Generating riferimenti giuridici...');
-    const riferimentiContent = await generateContent('riferimenti_giuridici', caseData, openAIKey);
-    const riferimentiPdf = await createPDF('Riferimenti Giuridici', riferimentiContent);
-    documents.push({
-      id: 'riferimenti_giuridici',
-      title: 'Riferimenti Giuridici',
-      rationale: 'Raccolta completa delle norme applicabili con testo integrale',
-      content: btoa(String.fromCharCode(...riferimentiPdf)),
-      size_bytes: riferimentiPdf.length
-    });
-
-    // 3. Diffida (optional)
-    if (generateDiffida) {
-      console.log('Generating diffida...');
-      const diffidaContent = await generateContent('diffida_messa_in_mora', caseData, openAIKey);
-      const diffidaPdf = await createPDF('Diffida e Messa in Mora', diffidaContent);
+    try {
+      // 1. Relazione Preliminare (always)
+      console.log('Generating relazione preliminare...');
+      const relazioneContent = await generateContent('relazione_preliminare', caseData, openAIKey);
+      console.log('Relazione content generated, creating PDF...');
+      const relazionePdf = await createPDF('Relazione Preliminare', relazioneContent);
       documents.push({
-        id: 'diffida_messa_in_mora',
-        title: 'Diffida e Messa in Mora',
-        rationale: diffidaReason || 'Documento formale di diffida',
-        content: btoa(String.fromCharCode(...diffidaPdf)),
-        size_bytes: diffidaPdf.length
+        id: 'relazione_preliminare',
+        title: 'Relazione Preliminare',
+        rationale: 'Documento di sintesi del caso con analisi e raccomandazioni',
+        content: btoa(String.fromCharCode(...relazionePdf)),
+        size_bytes: relazionePdf.length
       });
-    }
+      console.log('Relazione preliminare PDF created successfully');
 
-    // 4. Istanza ADR/ODR (optional)
-    if (generateADR) {
-      console.log('Generating istanza ADR...');
-      const adrContent = await generateContent('istanza_adr_odr', caseData, openAIKey);
-      const adrPdf = await createPDF('Istanza ADR/ODR', adrContent);
+      // 2. Riferimenti Giuridici (always)
+      console.log('Generating riferimenti giuridici...');
+      const riferimentiContent = await generateContent('riferimenti_giuridici', caseData, openAIKey);
+      console.log('Riferimenti content generated, creating PDF...');
+      const riferimentiPdf = await createPDF('Riferimenti Giuridici', riferimentiContent);
       documents.push({
-        id: 'istanza_adr_odr',
-        title: 'Istanza ADR/ODR/Conciliazione',
-        rationale: adrReason || 'Richiesta di mediazione/conciliazione',
-        content: btoa(String.fromCharCode(...adrPdf)),
-        size_bytes: adrPdf.length
+        id: 'riferimenti_giuridici',
+        title: 'Riferimenti Giuridici',
+        rationale: 'Raccolta completa delle norme applicabili con testo integrale',
+        content: btoa(String.fromCharCode(...riferimentiPdf)),
+        size_bytes: riferimentiPdf.length
       });
-    }
+      console.log('Riferimenti giuridici PDF created successfully');
 
-    // 5. Email Avvocato (optional)
-    if (generateEmailAvvocato) {
-      console.log('Generating email avvocato...');
-      const emailContent = await generateContent('email_avvocato', caseData, openAIKey);
-      const emailPdf = await createPDF('Email Richiesta Consulenza Legale', emailContent);
-      documents.push({
-        id: 'email_avvocato',
-        title: 'Email Richiesta Consulenza Avvocato',
-        rationale: emailAvvocatoReason || 'Richiesta consulenza legale professionale',
-        content: btoa(String.fromCharCode(...emailPdf)),
-        size_bytes: emailPdf.length
-      });
-    }
+      // 3. Diffida (optional)
+      if (generateDiffida) {
+        console.log('Generating diffida e messa in mora...');
+        try {
+          const diffidaContent = await generateContent('diffida_messa_in_mora', caseData, openAIKey);
+          console.log('Diffida content generated, creating PDF...');
+          const diffidaPdf = await createPDF('Diffida e Messa in Mora', diffidaContent);
+          documents.push({
+            id: 'diffida_messa_in_mora',
+            title: 'Diffida e Messa in Mora',
+            rationale: diffidaReason || 'Documento formale di diffida',
+            content: btoa(String.fromCharCode(...diffidaPdf)),
+            size_bytes: diffidaPdf.length
+          });
+          console.log('Diffida PDF created successfully');
+        } catch (error) {
+          console.error('Error generating diffida:', error);
+        }
+      } else {
+        console.log('Skipping diffida - not applicable for this case');
+      }
 
-    // 6. Lettera di Risposta/Contestazione (optional)
-    if (generateLetteraRisposta) {
-      console.log('Generating lettera risposta...');
-      const letteraContent = await generateContent('lettera_risposta', caseData, openAIKey);
-      const letteraPdf = await createPDF('Lettera di Risposta/Contestazione', letteraContent);
-      documents.push({
-        id: 'lettera_risposta',
-        title: 'Lettera di Risposta/Contestazione',
-        rationale: letteraRispostaReason || 'Risposta formale a comunicazione ricevuta',
-        content: btoa(String.fromCharCode(...letteraPdf)),
-        size_bytes: letteraPdf.length
-      });
+      // 4. Istanza ADR/ODR (optional)
+      if (generateADR) {
+        console.log('Generating istanza ADR/ODR...');
+        try {
+          const adrContent = await generateContent('istanza_adr_odr', caseData, openAIKey);
+          console.log('ADR content generated, creating PDF...');
+          const adrPdf = await createPDF('Istanza ADR/ODR', adrContent);
+          documents.push({
+            id: 'istanza_adr_odr',
+            title: 'Istanza ADR/ODR/Conciliazione',
+            rationale: adrReason || 'Richiesta di mediazione/conciliazione',
+            content: btoa(String.fromCharCode(...adrPdf)),
+            size_bytes: adrPdf.length
+          });
+          console.log('ADR PDF created successfully');
+        } catch (error) {
+          console.error('Error generating ADR:', error);
+        }
+      } else {
+        console.log('Skipping ADR - not applicable for this case');
+      }
+
+      // 5. Email Avvocato (optional)
+      if (generateEmailAvvocato) {
+        console.log('Generating email avvocato...');
+        try {
+          const emailContent = await generateContent('email_avvocato', caseData, openAIKey);
+          console.log('Email content generated, creating PDF...');
+          const emailPdf = await createPDF('Email Richiesta Consulenza Legale', emailContent);
+          documents.push({
+            id: 'email_avvocato',
+            title: 'Email Richiesta Consulenza Avvocato',
+            rationale: emailAvvocatoReason || 'Richiesta consulenza legale professionale',
+            content: btoa(String.fromCharCode(...emailPdf)),
+            size_bytes: emailPdf.length
+          });
+          console.log('Email avvocato PDF created successfully');
+        } catch (error) {
+          console.error('Error generating email avvocato:', error);
+        }
+      } else {
+        console.log('Skipping email avvocato - not needed for this case');
+      }
+
+      // 6. Lettera di Risposta/Contestazione (optional)
+      if (generateLetteraRisposta) {
+        console.log('Generating lettera risposta/contestazione...');
+        try {
+          const letteraContent = await generateContent('lettera_risposta', caseData, openAIKey);
+          console.log('Lettera content generated, creating PDF...');
+          const letteraPdf = await createPDF('Lettera di Risposta/Contestazione', letteraContent);
+          documents.push({
+            id: 'lettera_risposta',
+            title: 'Lettera di Risposta/Contestazione',
+            rationale: letteraRispostaReason || 'Risposta formale a comunicazione ricevuta',
+            content: btoa(String.fromCharCode(...letteraPdf)),
+            size_bytes: letteraPdf.length
+          });
+          console.log('Lettera risposta PDF created successfully');
+        } catch (error) {
+          console.error('Error generating lettera risposta:', error);
+        }
+      } else {
+        console.log('Skipping lettera risposta - not needed for this case');
+      }
+    } catch (error) {
+      console.error('Error during document generation:', error);
+      throw error;
     }
 
     // Prepare summary
     const summary = scrubPII(caseData.case_text || caseData.previous_context || 'Caso senza descrizione testuale');
 
-    console.log(`Successfully generated ${documents.length} documents`);
+    const endTime = Date.now();
+    const elapsedTime = (endTime - startTime) / 1000;
+    console.log(`Successfully generated ${documents.length} documents in ${elapsedTime} seconds`);
 
     return new Response(
       JSON.stringify({
@@ -792,10 +868,12 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Error in generate-pdf function:', error);
+    console.error('Error stack:', error.stack);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || 'Failed to generate PDFs' 
+        error: error.message || 'Failed to generate PDFs',
+        details: error.toString()
       }),
       {
         status: 500,

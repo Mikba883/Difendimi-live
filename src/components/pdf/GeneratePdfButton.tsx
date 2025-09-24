@@ -52,11 +52,14 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
         throw new Error('Nessun dato ricevuto dalla funzione');
       }
 
-      const { documents: generatedDocs, summary, success } = response.data;
+      const { documents: generatedDocs, summary, success, error, details } = response.data;
       
       // Validate response structure
       if (!success) {
-        throw new Error(response.data.error || 'Errore nella generazione dei PDF');
+        console.error('PDF generation failed:', response.data);
+        const errorMessage = error || 'Errore nella generazione dei PDF';
+        const fullError = details ? `${errorMessage}\n\nDettagli: ${details}` : errorMessage;
+        throw new Error(fullError);
       }
       
       // Validate documents
