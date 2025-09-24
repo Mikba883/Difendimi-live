@@ -80,6 +80,9 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     e.preventDefault();
     e.stopPropagation();
     
+    console.log('Opening PDF viewer, blob available:', !!pdfBlob);
+    console.log('Blob size:', pdfBlob?.size);
+    
     if (!pdfBlob) {
       console.error('PDF blob is not available');
       toast({
@@ -91,6 +94,7 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     }
     
     // Apri il viewer modal
+    console.log('Setting showPdfViewer to true');
     setShowPdfViewer(true);
   };
 
