@@ -94,8 +94,10 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          is_premium: boolean | null
           privacy_consent: boolean | null
           privacy_consent_date: string | null
+          trial_started_at: string | null
           updated_at: string
           user_id: string
         }
@@ -103,8 +105,10 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_premium?: boolean | null
           privacy_consent?: boolean | null
           privacy_consent_date?: string | null
+          trial_started_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -112,8 +116,10 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_premium?: boolean | null
           privacy_consent?: boolean | null
           privacy_consent_date?: string | null
+          trial_started_at?: string | null
           updated_at?: string
           user_id?: string
         }

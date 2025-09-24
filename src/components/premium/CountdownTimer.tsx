@@ -39,9 +39,13 @@ export function CountdownTimer({ timeRemaining, className = "" }: CountdownTimer
     </div>
   );
 
+  // Hide timer completely when it reaches 0
+  if (timeRemaining === "00:00:00") {
+    return null;
+  }
+
   return (
     <div className={`flex flex-col items-center gap-3 ${className}`}>
-      <p className="text-sm text-muted-foreground">Offerta valida solo per</p>
       <div className="flex items-center gap-2">
         <TimeBox value={days} label="Giorni" />
         <span className="text-2xl font-bold text-muted-foreground self-start mt-3">:</span>

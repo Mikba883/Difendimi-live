@@ -63,9 +63,15 @@ export function usePremiumStatus(): PremiumStatus {
         .single();
 
       if (profile) {
-        // Temporarily use false until migration is applied
         setIsPremium((profile as any).is_premium || false);
-        setTrialStartedAt((profile as any).trial_started_at ? new Date((profile as any).trial_started_at) : new Date());
+        // Use the trial_started_at from the database, never overwrite with new Date()
+        if ((profile as any).trial_started_at) {
+          setTrialStartedAt(new Date((profile as any).trial_started_at));
+        } else {
+          // If no trial_started_at in DB, it means the user just started their trial
+          // You could optionally save this to the database here
+          setTrialStartedAt(new Date());
+        }
       }
     } catch (error) {
       console.error("Error checking premium status:", error);
