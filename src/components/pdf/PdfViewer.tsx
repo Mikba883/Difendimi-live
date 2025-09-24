@@ -50,32 +50,22 @@ export function PdfViewer({ isOpen, onClose, pdfBlob, title }: PdfViewerProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 py-4 border-b">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between w-full">
             <div>
               <DialogTitle>{title}</DialogTitle>
-              <DialogDescription className="sr-only">
+              <DialogDescription>
                 Visualizza e scarica il documento PDF
               </DialogDescription>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownload}
-                className="gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Scarica
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onClose}
-                className="h-8 w-8"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownload}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Scarica
+            </Button>
           </div>
         </DialogHeader>
         
