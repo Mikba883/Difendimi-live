@@ -2,9 +2,14 @@ import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Eye, Download } from "lucide-react";
+import { FileText, Eye, Download, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { PdfViewer } from "./PdfViewer";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface PdfDocument {
   id: string;
@@ -20,7 +25,8 @@ interface PdfDocumentCardProps {
 
 export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
   const [isDownloading, setIsDownloading] = useState(false);
-  const [showViewer, setShowViewer] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
@@ -90,7 +96,19 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
       return;
     }
     
-    setShowViewer(true);
+    // Create blob URL when opening modal
+    const url = URL.createObjectURL(pdfBlob);
+    setBlobUrl(url);
+    setShowModal(true);
+  };
+  
+  const handleCloseModal = () => {
+    setShowModal(false);
+    // Clean up blob URL
+    if (blobUrl) {
+      URL.revokeObjectURL(blobUrl);
+      setBlobUrl(null);
+    }
   };
 
   const handleDownload = (e: React.MouseEvent) => {
@@ -164,13 +182,57 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
         </div>
       </CardContent>
       
-      {/* PDF Viewer Modal */}
-      <PdfViewer
-        isOpen={showViewer}
-        onClose={() => setShowViewer(false)}
-        pdfBlob={pdfBlob}
-        title={document.title}
-      />
+      {/* Simple PDF Modal with <object> */}
+      <Dialog open={showModal} onOpenChange={handleCloseModal}>
+        <DialogContent className="max-w-5xl h-[90vh] p-0">
+          <DialogHeader className="p-6 pb-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle>{document.title}</DialogTitle>
+              <div className="flex gap-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleDownload}
+                  className="gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Scarica
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCloseModal}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 p-6 pt-4">
+            {blobUrl && (
+              <object
+                data={blobUrl}
+                type="application/pdf"
+                width="100%"
+                height="100%"
+                className="min-h-[600px]"
+              >
+                <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
+                  <p>Il browser non supporta la visualizzazione PDF inline.</p>
+                  <Button
+                    variant="outline"
+                    onClick={handleDownload}
+                    className="gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Scarica il PDF
+                  </Button>
+                </div>
+              </object>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
