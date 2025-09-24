@@ -2,8 +2,9 @@ import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, ExternalLink, Download } from "lucide-react";
+import { FileText, Eye, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { PdfViewer } from "./PdfViewer";
 
 interface PdfDocument {
   id: string;
@@ -19,6 +20,7 @@ interface PdfDocumentCardProps {
 
 export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showViewer, setShowViewer] = useState(false);
   
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
@@ -88,34 +90,7 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
       return;
     }
     
-    try {
-      // Create blob URL for opening in new tab
-      const blobUrl = URL.createObjectURL(pdfBlob);
-      console.log('Opening PDF with URL:', blobUrl);
-      
-      // Try to open in new tab
-      const newWindow = window.open(blobUrl, '_blank');
-      
-      if (!newWindow) {
-        // Popup was blocked, show message instead of auto-clicking
-        toast({
-          title: "Popup bloccato", 
-          description: "Usa il pulsante 'Scarica' per salvare il PDF",
-        });
-        // Clean up immediately if popup was blocked
-        URL.revokeObjectURL(blobUrl);
-      } else {
-        // Clean up blob URL after a delay if opened successfully
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-      }
-    } catch (error) {
-      console.error('Error opening PDF:', error);
-      toast({
-        title: "Errore apertura PDF",
-        description: "Impossibile aprire il PDF. Prova a scaricarlo.",
-        variant: "destructive",
-      });
-    }
+    setShowViewer(true);
   };
 
   const handleDownload = (e: React.MouseEvent) => {
@@ -172,8 +147,8 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
             className="gap-2"
             disabled={!pdfBlob}
           >
-            <ExternalLink className="h-4 w-4" />
-            Apri PDF
+            <Eye className="h-4 w-4" />
+            Visualizza PDF
           </Button>
           
           <Button
@@ -188,6 +163,14 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
           </Button>
         </div>
       </CardContent>
+      
+      {/* PDF Viewer Modal */}
+      <PdfViewer
+        isOpen={showViewer}
+        onClose={() => setShowViewer(false)}
+        pdfBlob={pdfBlob}
+        title={document.title}
+      />
     </Card>
   );
 }
