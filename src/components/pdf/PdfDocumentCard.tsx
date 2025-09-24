@@ -10,7 +10,7 @@ interface PdfDocument {
   id: string;
   title: string;
   rationale: string;
-  content: string;
+  url: string;
   size_bytes: number;
 }
 
@@ -28,73 +28,9 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     else return Math.round(bytes / 1048576) + ' MB';
   };
 
-  // Create and memoize PDF blob with improved validation
-  const pdfBlob = useMemo(() => {
-    try {
-      // Remove any data URL prefix and clean whitespace
-      const cleanContent = document.content
-        .replace(/^data:application\/pdf;base64,/, '')
-        .replace(/[\s\n\r]/g, '');
-      
-      // Validate base64 string
-      if (!cleanContent || cleanContent.length === 0) {
-        console.error('Empty PDF content');
-        return null;
-      }
-      
-      // Check for valid base64 format
-      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(cleanContent)) {
-        console.error('Invalid base64 format');
-        return null;
-      }
-      
-      // Decode base64
-      const binaryString = atob(cleanContent);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      
-      // Validate PDF magic number (%PDF)
-      if (bytes.length > 4) {
-        const isPDF = bytes[0] === 0x25 && bytes[1] === 0x50 && 
-                     bytes[2] === 0x44 && bytes[3] === 0x46;
-        if (!isPDF) {
-          console.warn('File does not appear to be a valid PDF');
-        }
-      }
-      
-      return new Blob([bytes], { type: 'application/pdf' });
-    } catch (error) {
-      console.error('Error creating PDF blob:', error);
-      toast({
-        title: "Errore visualizzazione PDF",
-        description: "Impossibile visualizzare il PDF. Il contenuto potrebbe essere corrotto.",
-        variant: "destructive",
-      });
-      return null;
-    }
-  }, [document.content]);
-
   const handleOpenPdf = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    console.log('Opening PDF viewer, blob available:', !!pdfBlob);
-    console.log('Blob size:', pdfBlob?.size);
-    
-    if (!pdfBlob) {
-      console.error('PDF blob is not available');
-      toast({
-        title: "PDF non disponibile",
-        description: "Il contenuto del PDF non è ancora pronto",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Apri il viewer modal
-    console.log('Setting showPdfViewer to true');
     setShowPdfViewer(true);
   };
 
@@ -102,53 +38,19 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     e?.preventDefault();
     e?.stopPropagation();
     
-    // Prevent double download
-    if (isDownloading || !pdfBlob) {
-      if (!pdfBlob) {
-        toast({
-          title: "Errore",
-          description: "Il PDF non è ancora pronto. Riprova tra qualche secondo.",
-          variant: "destructive",
-        });
-      }
-      return;
-    }
+    if (isDownloading) return;
     
     setIsDownloading(true);
+    window.open(document.url, '_blank');
     
-    try {
-      // Create a temporary URL for the blob
-      const url = URL.createObjectURL(pdfBlob);
-      
-      // Create download link
-      const link = window.document.createElement('a');
-      link.href = url;
-      link.download = `${document.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-      link.style.display = 'none';
-      
-      window.document.body.appendChild(link);
-      link.click();
-      
-      // Cleanup dopo il download
-      setTimeout(() => {
-        window.document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        setIsDownloading(false);
-      }, 100);
-      
-      toast({
-        title: "Download avviato",
-        description: "Il PDF è in download...",
-      });
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
-      toast({
-        title: "Errore nel download",
-        description: "Si è verificato un errore durante il download del PDF",
-        variant: "destructive",
-      });
+    setTimeout(() => {
       setIsDownloading(false);
-    }
+    }, 1000);
+    
+    toast({
+      title: "Download avviato",
+      description: "Il PDF è in download...",
+    });
   };
 
   return (
@@ -175,7 +77,6 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
             size="sm"
             onClick={handleOpenPdf}
             className="gap-2"
-            disabled={!pdfBlob}
           >
             <Eye className="h-4 w-4" />
             Visualizza PDF
@@ -186,7 +87,7 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
             size="sm"
             onClick={handleDownload}
             className="gap-2"
-            disabled={!pdfBlob || isDownloading}
+            disabled={isDownloading}
           >
             <Download className="h-4 w-4" />
             {isDownloading ? "Download..." : "Scarica"}
@@ -198,7 +99,7 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
       <PdfViewer
         isOpen={showPdfViewer}
         onClose={() => setShowPdfViewer(false)}
-        pdfBlob={pdfBlob}
+        pdfUrl={document.url}
         title={document.title}
         onDownload={handleDownload}
       />

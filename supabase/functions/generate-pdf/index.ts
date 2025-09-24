@@ -7,30 +7,54 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper function to encode large PDFs to base64 using chunks
-async function encodeBase64(pdfBytes: Uint8Array): Promise<string> {
-  // For small PDFs (< 1MB), use direct conversion
-  if (pdfBytes.length < 1048576) {
-    try {
-      return btoa(String.fromCharCode(...pdfBytes));
-    } catch (e) {
-      console.log('Direct conversion failed, using chunked method');
-    }
+// Helper function to save PDF to Supabase Storage and return URL
+async function savePdfToStorage(
+  supabase: any,
+  pdfBytes: Uint8Array,
+  caseId: string,
+  documentId: string,
+  documentTitle: string
+): Promise<{ url: string; path: string }> {
+  const timestamp = Date.now();
+  const fileName = `${documentId}_${timestamp}.pdf`;
+  const filePath = `cases/${caseId}/${fileName}`;
+  
+  console.log(`Saving PDF to storage: ${filePath}`);
+  
+  // Upload to storage
+  const { data: uploadData, error: uploadError } = await supabase.storage
+    .from('legal-docs')
+    .upload(filePath, pdfBytes, {
+      contentType: 'application/pdf',
+      cacheControl: '3600',
+      upsert: false
+    });
+  
+  if (uploadError) {
+    console.error('Error uploading PDF to storage:', uploadError);
+    throw new Error(`Failed to upload PDF: ${uploadError.message}`);
   }
   
-  // For larger PDFs or if direct fails, use chunked conversion
-  const chunkSize = 8192; // 8KB chunks
-  let result = '';
+  // Get public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from('legal-docs')
+    .getPublicUrl(filePath);
   
-  for (let i = 0; i < pdfBytes.length; i += chunkSize) {
-    const chunk = pdfBytes.slice(i, i + chunkSize);
-    const binaryString = Array.from(chunk)
-      .map(byte => String.fromCharCode(byte))
-      .join('');
-    result += binaryString;
-  }
+  console.log(`PDF saved successfully: ${publicUrl}`);
   
-  return btoa(result);
+  return {
+    url: publicUrl,
+    path: filePath
+  };
+}
+
+// Interface for generated documents
+interface GeneratedDocument {
+  id: string;
+  title: string;
+  rationale: string;
+  url: string;
+  size_bytes: number;
 }
 
 // PII Scrubbing function
@@ -315,7 +339,7 @@ async function createPDF(title: string, content: string): Promise<Uint8Array> {
           
           // Draw bullet/number only on first line
           if (isFirstLine && (isBullet || isNumbered)) {
-            const bulletOrNumber = isBullet ? '•' : line.match(/^\d+\./)[0];
+            const bulletOrNumber = isBullet ? '•' : line.match(/^\d+\./)?.[0] || '';
             page.drawText(bulletOrNumber, {
               x: margin,
               y: yPosition,
@@ -765,13 +789,19 @@ serve(async (req) => {
           console.log('Relazione content generated, creating PDF...');
           const pdf = await createPDF('Relazione Preliminare', content);
           console.log('Relazione preliminare PDF created successfully');
-          // Use chunked base64 encoding for large PDFs
-          const base64 = await encodeBase64(pdf);
+          // Save to storage
+          const { url } = await savePdfToStorage(
+            supabase,
+            pdf,
+            caseId,
+            'relazione_preliminare',
+            'Relazione Preliminare'
+          );
           return {
             id: 'relazione_preliminare',
             title: 'Relazione Preliminare',
             rationale: 'Documento di sintesi del caso con analisi e raccomandazioni',
-            content: base64,
+            url,
             size_bytes: pdf.length
           };
         })
@@ -787,12 +817,19 @@ serve(async (req) => {
           console.log('Riferimenti content generated, creating PDF...');
           const pdf = await createPDF('Riferimenti Giuridici', content);
           console.log('Riferimenti giuridici PDF created successfully');
-          const base64 = await encodeBase64(pdf);
+          // Save to storage
+          const { url } = await savePdfToStorage(
+            supabase,
+            pdf,
+            caseId,
+            'riferimenti_giuridici',
+            'Riferimenti Giuridici'
+          );
           return {
             id: 'riferimenti_giuridici',
             title: 'Riferimenti Giuridici',
             rationale: 'Raccolta completa delle norme applicabili con testo integrale',
-            content: base64,
+            url,
             size_bytes: pdf.length
           };
         })
@@ -811,12 +848,19 @@ serve(async (req) => {
             console.log('Diffida content generated, creating PDF...');
             const pdf = await createPDF('Diffida e Messa in Mora', content);
             console.log('Diffida PDF created successfully');
-            const base64 = await encodeBase64(pdf);
+            // Save to storage
+            const { url } = await savePdfToStorage(
+              supabase,
+              pdf,
+              caseId,
+              'diffida_messa_in_mora',
+              'Diffida e Messa in Mora'
+            );
             return {
               id: 'diffida_messa_in_mora',
               title: 'Diffida e Messa in Mora',
               rationale: diffidaReason || 'Documento formale di diffida',
-              content: base64,
+              url,
               size_bytes: pdf.length
             };
           })
@@ -837,12 +881,19 @@ serve(async (req) => {
             console.log('ADR content generated, creating PDF...');
             const pdf = await createPDF('Istanza ADR/ODR', content);
             console.log('ADR PDF created successfully');
-            const base64 = await encodeBase64(pdf);
+            // Save to storage
+            const { url } = await savePdfToStorage(
+              supabase,
+              pdf,
+              caseId,
+              'istanza_adr_odr',
+              'Istanza ADR/ODR'
+            );
             return {
               id: 'istanza_adr_odr',
               title: 'Istanza ADR/ODR/Conciliazione',
               rationale: adrReason || 'Richiesta di mediazione/conciliazione',
-              content: base64,
+              url,
               size_bytes: pdf.length
             };
           })
@@ -863,12 +914,19 @@ serve(async (req) => {
             console.log('Email content generated, creating PDF...');
             const pdf = await createPDF('Email Richiesta Consulenza Legale', content);
             console.log('Email avvocato PDF created successfully');
-            const base64 = await encodeBase64(pdf);
+            // Save to storage
+            const { url } = await savePdfToStorage(
+              supabase,
+              pdf,
+              caseId,
+              'email_avvocato',
+              'Email Richiesta Consulenza Avvocato'
+            );
             return {
               id: 'email_avvocato',
               title: 'Email Richiesta Consulenza Avvocato',
               rationale: emailAvvocatoReason || 'Richiesta consulenza legale professionale',
-              content: base64,
+              url,
               size_bytes: pdf.length
             };
           })
@@ -889,12 +947,19 @@ serve(async (req) => {
             console.log('Lettera content generated, creating PDF...');
             const pdf = await createPDF('Lettera di Risposta/Contestazione', content);
             console.log('Lettera risposta PDF created successfully');
-            const base64 = await encodeBase64(pdf);
+            // Save to storage
+            const { url } = await savePdfToStorage(
+              supabase,
+              pdf,
+              caseId,
+              'lettera_risposta',
+              'Lettera di Risposta/Contestazione'
+            );
             return {
               id: 'lettera_risposta',
               title: 'Lettera di Risposta/Contestazione',
               rationale: letteraRispostaReason || 'Risposta formale a comunicazione ricevuta',
-              content: base64,
+              url,
               size_bytes: pdf.length
             };
           })
@@ -952,14 +1017,14 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in generate-pdf function:', error);
-    console.error('Error stack:', error.stack);
+    console.error('Error stack:', error?.stack);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || 'Failed to generate PDFs',
-        details: error.toString()
+        error: error?.message || 'Failed to generate PDFs',
+        details: error?.toString()
       }),
       {
         status: 500,

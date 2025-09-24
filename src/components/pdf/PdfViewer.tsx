@@ -18,12 +18,13 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 interface PdfViewerProps {
   isOpen: boolean;
   onClose: () => void;
-  pdfBlob: Blob | null;
+  pdfUrl?: string;
+  pdfBlob?: Blob | null;
   title: string;
   onDownload: () => void;
 }
 
-export function PdfViewer({ isOpen, onClose, pdfBlob, title, onDownload }: PdfViewerProps) {
+export function PdfViewer({ isOpen, onClose, pdfUrl, pdfBlob, title, onDownload }: PdfViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
