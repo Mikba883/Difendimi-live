@@ -369,24 +369,33 @@ export default function NewCase() {
   };
 
   const callGenerateFunction = async (analysisData: any) => {
-    if (!isGeneratingReport) return;
-    
     console.log('=== CHIAMATA FUNZIONE GENERATE ===');
+    console.log('analysisData:', analysisData);
     
     try {
-      // Prepara il contesto per la generazione
-      const allMessages = messages.map(m => ({
-        role: m.sender === 'user' ? 'user' : 'assistant',
-        content: m.text
-      }));
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+
+      // Prepara i parametri corretti per la funzione generate
+      const requestBody = {
+        job_id: analysisData.job_id,
+        caseType: analysisData.analysis.caseType,
+        caseData: {
+          previousContext: messages.map(m => `${m.sender === 'user' ? 'Utente' : 'Assistente'}: ${m.text}`).join('\n'),
+          caseText: currentText,
+          fromPrecheck: analysisData.analysis
+        },
+        meta: {
+          authToken: `Bearer ${session.access_token}`,
+          source: 'precheck',
+          requestedAt: new Date().toISOString()
+        }
+      };
+
+      console.log('Chiamata generate con parametri:', requestBody);
 
       const { data: generateData, error: generateError } = await supabase.functions.invoke('generate', {
-        body: {
-          caseAnalysis: analysisData.analysis || caseAnalysis,
-          questions: allQuestions,
-          conversation: allMessages,
-          originalText: currentText
-        }
+        body: requestBody
       });
 
       if (generateError) throw generateError;
