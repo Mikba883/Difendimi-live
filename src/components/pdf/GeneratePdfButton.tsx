@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -30,38 +30,44 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
   const [progressMessage, setProgressMessage] = useState("");
   const { isPremium, loading } = usePremiumStatus();
   const navigate = useNavigate();
+  const progressRef = useRef(0);
 
   // Simulate progress updates
   useEffect(() => {
     if (isGenerating) {
+      progressRef.current = 0;
       setProgress(0);
       setProgressMessage("Inizializzazione...");
       
       const interval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 90) {
-            clearInterval(interval);
-            return 90;
-          }
-          const increment = prev < 20 ? 5 : prev < 60 ? 3 : 2;
-          return Math.min(prev + increment, 90);
-        });
+        progressRef.current = Math.min(progressRef.current + (progressRef.current < 20 ? 5 : progressRef.current < 60 ? 3 : 2), 90);
+        setProgress(progressRef.current);
         
-        setProgressMessage((prev) => {
-          if (progress < 20) return "Analisi del caso...";
-          if (progress < 40) return "Generazione documenti legali...";
-          if (progress < 60) return "Creazione riferimenti giuridici...";
-          if (progress < 80) return "Finalizzazione PDF...";
-          return "Quasi completato...";
-        });
+        // Update message based on current progress
+        if (progressRef.current < 20) {
+          setProgressMessage("Analisi del caso...");
+        } else if (progressRef.current < 40) {
+          setProgressMessage("Generazione documenti legali...");
+        } else if (progressRef.current < 60) {
+          setProgressMessage("Creazione riferimenti giuridici...");
+        } else if (progressRef.current < 80) {
+          setProgressMessage("Finalizzazione PDF...");
+        } else {
+          setProgressMessage("Quasi completato...");
+        }
+        
+        if (progressRef.current >= 90) {
+          clearInterval(interval);
+        }
       }, 800);
       
       return () => clearInterval(interval);
     } else {
+      progressRef.current = 0;
       setProgress(0);
       setProgressMessage("");
     }
-  }, [isGenerating, progress]);
+  }, [isGenerating]);
 
   const handleGeneratePdf = async () => {
     // Check premium status first

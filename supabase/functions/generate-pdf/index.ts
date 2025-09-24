@@ -739,11 +739,13 @@ serve(async (req) => {
           console.log('Relazione content generated, creating PDF...');
           const pdf = await createPDF('Relazione Preliminare', content);
           console.log('Relazione preliminare PDF created successfully');
+          // Use chunked base64 encoding for large PDFs
+          const base64 = btoa(Array.from(pdf).map(byte => String.fromCharCode(byte)).join(''));
           return {
             id: 'relazione_preliminare',
             title: 'Relazione Preliminare',
             rationale: 'Documento di sintesi del caso con analisi e raccomandazioni',
-            content: btoa(String.fromCharCode(...pdf)),
+            content: base64,
             size_bytes: pdf.length
           };
         })
@@ -759,11 +761,12 @@ serve(async (req) => {
           console.log('Riferimenti content generated, creating PDF...');
           const pdf = await createPDF('Riferimenti Giuridici', content);
           console.log('Riferimenti giuridici PDF created successfully');
+          const base64 = btoa(Array.from(pdf).map(byte => String.fromCharCode(byte)).join(''));
           return {
             id: 'riferimenti_giuridici',
             title: 'Riferimenti Giuridici',
             rationale: 'Raccolta completa delle norme applicabili con testo integrale',
-            content: btoa(String.fromCharCode(...pdf)),
+            content: base64,
             size_bytes: pdf.length
           };
         })
@@ -782,11 +785,12 @@ serve(async (req) => {
             console.log('Diffida content generated, creating PDF...');
             const pdf = await createPDF('Diffida e Messa in Mora', content);
             console.log('Diffida PDF created successfully');
+            const base64 = btoa(Array.from(pdf).map(byte => String.fromCharCode(byte)).join(''));
             return {
               id: 'diffida_messa_in_mora',
               title: 'Diffida e Messa in Mora',
               rationale: diffidaReason || 'Documento formale di diffida',
-              content: btoa(String.fromCharCode(...pdf)),
+              content: base64,
               size_bytes: pdf.length
             };
           })
@@ -807,11 +811,12 @@ serve(async (req) => {
             console.log('ADR content generated, creating PDF...');
             const pdf = await createPDF('Istanza ADR/ODR', content);
             console.log('ADR PDF created successfully');
+            const base64 = btoa(Array.from(pdf).map(byte => String.fromCharCode(byte)).join(''));
             return {
               id: 'istanza_adr_odr',
               title: 'Istanza ADR/ODR/Conciliazione',
               rationale: adrReason || 'Richiesta di mediazione/conciliazione',
-              content: btoa(String.fromCharCode(...pdf)),
+              content: base64,
               size_bytes: pdf.length
             };
           })
@@ -832,11 +837,12 @@ serve(async (req) => {
             console.log('Email content generated, creating PDF...');
             const pdf = await createPDF('Email Richiesta Consulenza Legale', content);
             console.log('Email avvocato PDF created successfully');
+            const base64 = btoa(Array.from(pdf).map(byte => String.fromCharCode(byte)).join(''));
             return {
               id: 'email_avvocato',
               title: 'Email Richiesta Consulenza Avvocato',
               rationale: emailAvvocatoReason || 'Richiesta consulenza legale professionale',
-              content: btoa(String.fromCharCode(...pdf)),
+              content: base64,
               size_bytes: pdf.length
             };
           })
@@ -857,11 +863,12 @@ serve(async (req) => {
             console.log('Lettera content generated, creating PDF...');
             const pdf = await createPDF('Lettera di Risposta/Contestazione', content);
             console.log('Lettera risposta PDF created successfully');
+            const base64 = btoa(Array.from(pdf).map(byte => String.fromCharCode(byte)).join(''));
             return {
               id: 'lettera_risposta',
               title: 'Lettera di Risposta/Contestazione',
               rationale: letteraRispostaReason || 'Risposta formale a comunicazione ricevuta',
-              content: btoa(String.fromCharCode(...pdf)),
+              content: base64,
               size_bytes: pdf.length
             };
           })
