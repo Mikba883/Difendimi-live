@@ -100,14 +100,14 @@ export default function NewCase() {
     // Check if all questions have been answered
     // NOTA: currentQuestionIndex parte da 1, quindi quando è > allQuestions.length
     // significa che l'utente ha risposto all'ultima domanda
-    if (currentQuestionIndex > allQuestions.length && allQuestions.length > 0 && !questionsComplete) {
+    if (currentQuestionIndex > allQuestions.length && allQuestions.length > 0 && !questionsComplete && !isGenerating) {
       console.log('All questions answered, starting generation');
       setQuestionsComplete(true);
       setCompleteness(100);
       
-      // Avvia IMMEDIATAMENTE la generazione
+      // Mostra immediatamente l'indicatore di "pensiero"
+      setIsAnalyzing(true);
       setIsGenerating(true);
-      analyzeCase("__COMPLETED__"); // Flag speciale per indicare completamento
       
       // Dopo 5 secondi mostra il messaggio di completamento E il timer
       const timer = setTimeout(() => {
@@ -120,6 +120,10 @@ export default function NewCase() {
         setMessages(prev => [...prev, completionMsg]);
         setShowCompletionMessage(true);
         setShowGenerationTimer(true); // Mostra il timer solo dopo 5 secondi
+        setIsAnalyzing(false); // Nasconde i puntini di "pensiero"
+        
+        // Ora chiama la generazione finale
+        analyzeCase("__COMPLETED__");
       }, 5000); // 5 seconds after starting generation
       
       setAutoGenerateTimer(timer);
@@ -387,12 +391,24 @@ export default function NewCase() {
           // Aggiorna completezza progressivamente
           const progress = Math.round(20 + (80 * (nextIndex + 1) / allQuestions.length));
           setCompleteness(progress);
+        } else {
+          // Se non ci sono più domande, incrementa comunque l'indice per triggerare il useEffect
+          setCurrentQuestionIndex(prev => prev + 1);
         }
         return;
       }
 
-      // FASE 3: Caso completo
+      // FASE 3: Caso completo - MA dobbiamo verificare se è l'ultima domanda
       if (data.status === 'complete' || data.status === 'queued') {
+        // Se siamo all'ultima domanda e non abbiamo ancora completato
+        if (currentQuestionIndex <= allQuestions.length && !questionsComplete && allQuestions.length > 0) {
+          // Incrementa l'indice per triggerare il useEffect
+          setCurrentQuestionIndex(prev => prev + 1);
+          // Non fare altro, lascia che il useEffect gestisca la generazione
+          return;
+        }
+        
+        // Altrimenti, se è veramente completo (chiamata da __COMPLETED__)
         setIsComplete(true);
         
         // Salva il caso solo se non è già stato salvato
