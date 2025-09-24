@@ -159,7 +159,7 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold">Genera il Dossier Completo</h2>
                 <p className="text-muted-foreground max-w-md">
-                  Trasforma il tuo caso in un pacchetto di documenti PDF ordinati e completi: con bozze pronte (email, diffide, istanze, ecc..)
+                  Trasforma il tuo caso in un pacchetto di documenti PDF ordinati e completi: con bozze pronte <span className="whitespace-nowrap">(email, diffide, istanze, ecc..)</span>
                 </p>
               </div>
               

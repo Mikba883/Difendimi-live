@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, X } from "lucide-react";
+import { Download, ExternalLink } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface PdfViewerProps {
@@ -46,36 +46,66 @@ export function PdfViewer({ isOpen, onClose, pdfBlob, title }: PdfViewerProps) {
     });
   };
 
+  const handleOpenInNewTab = () => {
+    if (!pdfUrl) return;
+    window.open(pdfUrl, '_blank');
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 py-4 border-b">
           <div className="flex items-center justify-between w-full">
-            <div>
+            <div className="flex-1">
               <DialogTitle>{title}</DialogTitle>
               <DialogDescription>
                 Visualizza e scarica il documento PDF
               </DialogDescription>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownload}
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Scarica
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownload}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Scarica
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="h-8 w-8"
+              >
+                ✕
+              </Button>
+            </div>
           </div>
         </DialogHeader>
         
         <div className="flex-1 p-4 overflow-hidden">
           {pdfUrl ? (
-            <iframe
-              src={pdfUrl}
-              className="w-full h-full border rounded-lg"
-              title={title}
-            />
+            <>
+              <object
+                data={pdfUrl}
+                type="application/pdf"
+                className="w-full h-full border rounded-lg"
+                title={title}
+              >
+                <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
+                  <p>Il browser non può visualizzare il PDF direttamente.</p>
+                  <Button
+                    variant="outline"
+                    onClick={handleOpenInNewTab}
+                    className="gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Apri in nuova scheda
+                  </Button>
+                </div>
+              </object>
+            </>
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground">
               Caricamento PDF...
