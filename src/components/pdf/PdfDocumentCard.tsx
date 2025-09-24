@@ -79,6 +79,7 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     e.stopPropagation();
     
     if (!pdfBlob) {
+      console.error('PDF blob is not available');
       toast({
         title: "PDF non disponibile",
         description: "Il contenuto del PDF non è ancora pronto",
@@ -87,30 +88,34 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
       return;
     }
     
-    // Create blob URL for opening in new tab
-    const blobUrl = URL.createObjectURL(pdfBlob);
-    
-    // Open in new tab
-    const newWindow = window.open(blobUrl, '_blank');
-    
-    if (!newWindow) {
-      // If popup blocked, create temporary link
-      const link = window.document.createElement('a');
-      link.href = blobUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      window.document.body.appendChild(link);
-      link.click();
-      window.document.body.removeChild(link);
+    try {
+      // Create blob URL for opening in new tab
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      console.log('Opening PDF with URL:', blobUrl);
       
+      // Try to open in new tab
+      const newWindow = window.open(blobUrl, '_blank');
+      
+      if (!newWindow) {
+        // Popup was blocked, show message instead of auto-clicking
+        toast({
+          title: "Popup bloccato", 
+          description: "Usa il pulsante 'Scarica' per salvare il PDF",
+        });
+        // Clean up immediately if popup was blocked
+        URL.revokeObjectURL(blobUrl);
+      } else {
+        // Clean up blob URL after a delay if opened successfully
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      }
+    } catch (error) {
+      console.error('Error opening PDF:', error);
       toast({
-        title: "Popup bloccato", 
-        description: "Clicca di nuovo per aprire il PDF",
+        title: "Errore apertura PDF",
+        description: "Impossibile aprire il PDF. Prova a scaricarlo.",
+        variant: "destructive",
       });
     }
-    
-    // Clean up blob URL after delay
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
   };
 
   const handleDownload = (e: React.MouseEvent) => {
