@@ -2,10 +2,8 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Crown, Sparkles, Timer, TrendingDown } from "lucide-react";
-import { CountdownTimer } from "./CountdownTimer";
-import { FeatureComparison } from "./FeatureComparison";
-import { usePremiumStatus } from "@/hooks/usePremiumStatus";
+import { Sparkles } from "lucide-react";
+import { SimpleFeatureList } from "./SimpleFeatureList";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -15,7 +13,6 @@ interface PremiumPaywallProps {
 }
 
 export function PremiumPaywall({ open, onOpenChange }: PremiumPaywallProps) {
-  const { timeRemaining } = usePremiumStatus();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -56,77 +53,68 @@ export function PremiumPaywall({ open, onOpenChange }: PremiumPaywallProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden">
-        <div className="bg-gradient-to-br from-yellow-500/10 via-orange-500/10 to-red-500/10 p-6">
-          <DialogHeader>
-            <div className="flex items-center justify-between mb-4">
-              <Badge className="bg-red-500 text-white border-0 animate-pulse">
-                <Timer className="h-3 w-3 mr-1" />
-                Offerta Limitata
-              </Badge>
-              <CountdownTimer timeRemaining={timeRemaining} />
-            </div>
-            
-            <DialogTitle className="text-3xl font-bold flex items-center gap-2">
-              <Crown className="h-8 w-8 text-yellow-500" />
-              Sblocca l'Accesso Premium
+      <DialogContent className="max-w-md w-[95vw] max-h-[90vh] overflow-y-auto p-0">
+        {/* Header con Badge Promo */}
+        <div className="relative p-6 pb-4">
+          <Badge className="absolute top-4 right-4 bg-green-500 text-white border-0 px-3 py-1">
+            Promo -50%
+          </Badge>
+          
+          <DialogHeader className="mt-2">
+            <DialogTitle className="text-2xl font-bold text-center">
+              LegalAI Premium
             </DialogTitle>
+            <p className="text-sm text-center text-muted-foreground mt-2">
+              Sblocca tutte le funzionalità avanzate per i tuoi casi legali
+            </p>
           </DialogHeader>
         </div>
 
-        <div className="p-6 space-y-6">
-          <div className="text-center space-y-2">
-            <p className="text-lg text-muted-foreground">
-              Accedi a tutte le funzionalità avanzate per gestire i tuoi casi legali
-            </p>
-            
-            {/* Pricing */}
-            <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-lg p-6 my-6">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Badge className="bg-green-500 text-white">
-                  <TrendingDown className="h-3 w-3 mr-1" />
-                  Risparmia il 68%
-                </Badge>
-              </div>
-              
-              <div className="flex items-end justify-center gap-2">
-                <span className="text-4xl font-bold text-primary">4,13€</span>
-                <span className="text-muted-foreground">/mese</span>
-              </div>
-              
-              <p className="text-sm text-muted-foreground mt-2">
-                Pagamento annuale di 49,50€ invece di <span className="line-through">154,50€</span>
-              </p>
+        <div className="px-6 pb-6 space-y-6">
+          {/* Pricing Section */}
+          <div className="text-center space-y-1">
+            <div className="flex items-baseline justify-center gap-2">
+              <span className="text-4xl font-bold">4,13€</span>
+              <span className="text-muted-foreground text-sm">/mese</span>
             </div>
+            <p className="text-xs text-muted-foreground">
+              fatturati 49,50€ all'anno
+            </p>
+            <p className="text-xs text-green-600 font-medium">
+              Risparmi il 50% rispetto al piano mensile
+            </p>
           </div>
 
-          {/* Features Comparison */}
-          <FeatureComparison />
+          {/* Features List */}
+          <div>
+            <h3 className="text-sm font-semibold mb-3">Cosa include Premium:</h3>
+            <SimpleFeatureList />
+          </div>
 
           {/* CTA Buttons */}
           <div className="space-y-3">
             <Button 
               size="lg" 
-              className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white"
+              className="w-full bg-red-500 hover:bg-red-600 text-white"
               onClick={handleUpgrade}
               disabled={isProcessing}
             >
-              <Sparkles className="h-5 w-5 mr-2" />
-              {isProcessing ? "Elaborazione..." : "Diventa Premium Ora"}
+              <Sparkles className="h-4 w-4 mr-2" />
+              {isProcessing ? "Elaborazione..." : "Abbonati ora"}
             </Button>
             
             <Button 
               variant="ghost" 
-              size="lg" 
-              className="w-full"
+              size="sm" 
+              className="w-full text-xs"
               onClick={() => onOpenChange(false)}
             >
-              Continua con il piano Free
+              Continua con il piano gratuito
             </Button>
           </div>
 
-          <p className="text-xs text-center text-muted-foreground">
-            Cancellazione disponibile in qualsiasi momento. Nessun vincolo.
+          <p className="text-[10px] text-center text-muted-foreground">
+            Puoi cancellare in qualsiasi momento. Nessun vincolo.
           </p>
         </div>
       </DialogContent>
