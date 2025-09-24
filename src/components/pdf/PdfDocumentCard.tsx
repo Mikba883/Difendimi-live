@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,14 +18,17 @@ interface PdfDocumentCardProps {
 }
 
 export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
+  const [isDownloading, setIsDownloading] = useState(false);
+  const downloadLinkRef = useRef<HTMLAnchorElement | null>(null);
+  
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
     else if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
     else return Math.round(bytes / 1048576) + ' MB';
   };
 
-  // Create and memoize PDF URL
-  const pdfUrl = useMemo(() => {
+  // Create and memoize PDF blob
+  const pdfBlob = useMemo(() => {
     try {
       // Remove any data URL prefix if present
       const base64Data = document.content.replace(/^data:application\/pdf;base64,/, '');
@@ -33,7 +36,7 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
       // Validate base64 string
       if (!base64Data || base64Data.length === 0) {
         console.error('Empty PDF content');
-        return '';
+        return null;
       }
       
       // Decode base64
@@ -42,43 +45,69 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
-      const blob = new Blob([bytes], { type: 'application/pdf' });
-      return URL.createObjectURL(blob);
+      return new Blob([bytes], { type: 'application/pdf' });
     } catch (error) {
-      console.error('Error creating PDF URL:', error);
+      console.error('Error creating PDF blob:', error);
       toast({
         title: "Errore visualizzazione PDF",
         description: "Impossibile visualizzare il PDF. Il contenuto potrebbe essere corrotto.",
         variant: "destructive",
       });
-      return '';
+      return null;
     }
   }, [document.content]);
 
-  // Clean up blob URL when component unmounts
-  useEffect(() => {
-    return () => {
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
-      }
-    };
-  }, [pdfUrl]);
-
-  const handleOpenInNewTab = () => {
-    if (pdfUrl) {
-      window.open(pdfUrl, '_blank');
-    }
+  const handleOpenInNewTab = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!pdfBlob) return;
+    
+    // Create a temporary URL for the blob
+    const url = URL.createObjectURL(pdfBlob);
+    
+    // Create an anchor element with target="_blank"
+    const link = window.document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.style.display = 'none';
+    
+    // Add to body, click, and remove
+    window.document.body.appendChild(link);
+    link.click();
+    window.document.body.removeChild(link);
+    
+    // Clean up the URL after a short delay
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  const handleDownload = () => {
-    if (pdfUrl) {
-      const a = window.document.createElement('a');
-      a.href = pdfUrl;
-      a.download = `${document.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-      window.document.body.appendChild(a);
-      a.click();
-      window.document.body.removeChild(a);
-    }
+  const handleDownload = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Prevent double download
+    if (isDownloading || !pdfBlob) return;
+    
+    setIsDownloading(true);
+    
+    // Create a temporary URL for the blob
+    const url = URL.createObjectURL(pdfBlob);
+    
+    const link = window.document.createElement('a');
+    link.href = url;
+    link.download = `${document.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+    link.style.display = 'none';
+    
+    window.document.body.appendChild(link);
+    link.click();
+    window.document.body.removeChild(link);
+    
+    // Clean up and reset state
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      setIsDownloading(false);
+    }, 1000);
   };
 
   return (
@@ -105,7 +134,7 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
             size="sm"
             onClick={handleOpenInNewTab}
             className="gap-2"
-            disabled={!pdfUrl}
+            disabled={!pdfBlob}
           >
             <ExternalLink className="h-4 w-4" />
             Apri in nuova scheda
@@ -116,7 +145,7 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
             size="sm"
             onClick={handleDownload}
             className="gap-2"
-            disabled={!pdfUrl}
+            disabled={!pdfBlob || isDownloading}
           >
             <Download className="h-4 w-4" />
             Scarica

@@ -106,97 +106,241 @@ function determineDocuments(caseData: any): {
   };
 }
 
-// Create PDF from content
+// Clean and format content for PDF
+function cleanContent(content: string): string {
+  // Remove markdown symbols and format text
+  let cleaned = content
+    // Remove markdown bold/italic
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    // Convert markdown headers to plain text with proper spacing
+    .replace(/^#{1,6}\s+(.+)$/gm, '\n$1\n')
+    // Convert bullet points to proper format
+    .replace(/^[\*\-]\s+/gm, '• ')
+    // Convert numbered lists
+    .replace(/^\d+\.\s+/gm, (match, offset, string) => {
+      const lines = string.substring(0, offset).split('\n');
+      const lastLine = lines[lines.length - 1];
+      const num = (lastLine.match(/^\d+/) || ['0'])[0];
+      return `${parseInt(num) + 1}. `;
+    })
+    // Remove extra spaces
+    .replace(/\s+/g, ' ')
+    // Preserve paragraph breaks
+    .replace(/\n\n+/g, '\n\n')
+    .trim();
+  
+  return cleaned;
+}
+
+// Create PDF from content with improved formatting
 async function createPDF(title: string, content: string): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const italicFont = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
   
   // A4 dimensions
   const pageWidth = 595.28;
   const pageHeight = 841.89;
-  const margin = 50;
-  const lineHeight = 14;
+  const margin = 60;
+  const lineHeight = 16;
+  const paragraphSpacing = 8;
   const fontSize = 11;
-  const titleFontSize = 16;
+  const titleFontSize = 18;
+  const headerFontSize = 14;
+  
+  // Clean content
+  const cleanedContent = cleanContent(content);
   
   // Add first page
   let page = pdfDoc.addPage([pageWidth, pageHeight]);
   let yPosition = pageHeight - margin;
   
-  // Title
-  page.drawText(title, {
-    x: margin,
+  // Add date in top right
+  const currentDate = new Date().toLocaleDateString('it-IT', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  const dateWidth = font.widthOfTextAtSize(currentDate, 10);
+  page.drawText(currentDate, {
+    x: pageWidth - margin - dateWidth,
     y: yPosition,
-    size: titleFontSize,
-    font: boldFont,
-    color: rgb(0, 0, 0),
+    size: 10,
+    font: italicFont,
+    color: rgb(0.4, 0.4, 0.4),
   });
   
-  yPosition -= titleFontSize + 20;
+  // Title
+  yPosition -= 30;
+  const titleLines = title.split('\n');
+  for (const titleLine of titleLines) {
+    const titleWidth = boldFont.widthOfTextAtSize(titleLine, titleFontSize);
+    page.drawText(titleLine, {
+      x: (pageWidth - titleWidth) / 2, // Center title
+      y: yPosition,
+      size: titleFontSize,
+      font: boldFont,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= titleFontSize + 5;
+  }
   
-  // Content - split into lines
-  const lines = content.split('\n');
-  for (const line of lines) {
-    // Check if we need a new page
-    if (yPosition < margin + lineHeight) {
-      page = pdfDoc.addPage([pageWidth, pageHeight]);
-      yPosition = pageHeight - margin;
-    }
+  // Separator line
+  yPosition -= 10;
+  page.drawLine({
+    start: { x: margin, y: yPosition },
+    end: { x: pageWidth - margin, y: yPosition },
+    thickness: 1,
+    color: rgb(0.8, 0.8, 0.8),
+  });
+  yPosition -= 20;
+  
+  // Process content paragraphs
+  const paragraphs = cleanedContent.split('\n\n');
+  
+  for (const paragraph of paragraphs) {
+    const lines = paragraph.split('\n');
     
-    // Determine if this is a header (starts with ##)
-    const isHeader = line.startsWith('##');
-    const text = isHeader ? line.replace(/^##\s*/, '') : line;
-    const currentFont = isHeader ? boldFont : font;
-    const currentSize = isHeader ? fontSize + 2 : fontSize;
-    
-    // Word wrap for long lines
-    const maxWidth = pageWidth - (2 * margin);
-    const words = text.split(' ');
-    let currentLine = '';
-    
-    for (const word of words) {
-      const testLine = currentLine + (currentLine ? ' ' : '') + word;
-      const testWidth = currentFont.widthOfTextAtSize(testLine, currentSize);
+    for (const line of lines) {
+      // Check for headers (lines that are all caps or start with specific keywords)
+      const isHeader = line.length < 100 && (
+        line === line.toUpperCase() ||
+        line.startsWith('SEZIONE') ||
+        line.startsWith('ARTICOLO') ||
+        line.startsWith('PARTE')
+      );
       
-      if (testWidth > maxWidth && currentLine) {
+      // Check for bullet points
+      const isBullet = line.startsWith('• ');
+      const isNumbered = /^\d+\.\s/.test(line);
+      
+      // Select font and size
+      const currentFont = isHeader ? boldFont : font;
+      const currentSize = isHeader ? headerFontSize : fontSize;
+      const indent = isBullet || isNumbered ? 20 : 0;
+      
+      // Remove bullet/number for text measurement
+      const textToRender = isBullet ? line.substring(2) : 
+                           isNumbered ? line.replace(/^\d+\.\s/, '') : 
+                           line;
+      
+      // Word wrap
+      const maxWidth = pageWidth - (2 * margin) - indent;
+      const words = textToRender.split(' ');
+      let currentLine = '';
+      let isFirstLine = true;
+      
+      for (const word of words) {
+        const testLine = currentLine + (currentLine ? ' ' : '') + word;
+        const testWidth = currentFont.widthOfTextAtSize(testLine, currentSize);
+        
+        if (testWidth > maxWidth && currentLine) {
+          // Check if we need a new page
+          if (yPosition < margin + lineHeight) {
+            // Add page number
+            const pageNum = pdfDoc.getPageCount().toString();
+            page.drawText(pageNum, {
+              x: pageWidth / 2 - 10,
+              y: margin / 2,
+              size: 10,
+              font: font,
+              color: rgb(0.5, 0.5, 0.5),
+            });
+            
+            page = pdfDoc.addPage([pageWidth, pageHeight]);
+            yPosition = pageHeight - margin;
+          }
+          
+          // Draw bullet/number only on first line
+          if (isFirstLine && (isBullet || isNumbered)) {
+            const bulletOrNumber = isBullet ? '•' : line.match(/^\d+\./)[0];
+            page.drawText(bulletOrNumber, {
+              x: margin,
+              y: yPosition,
+              size: currentSize,
+              font: currentFont,
+              color: rgb(0, 0, 0),
+            });
+          }
+          
+          // Draw the line
+          page.drawText(currentLine, {
+            x: margin + indent,
+            y: yPosition,
+            size: currentSize,
+            font: currentFont,
+            color: rgb(0, 0, 0),
+          });
+          yPosition -= lineHeight;
+          currentLine = word;
+          isFirstLine = false;
+        } else {
+          currentLine = testLine;
+        }
+      }
+      
+      // Draw remaining text
+      if (currentLine) {
+        // Check for new page
+        if (yPosition < margin + lineHeight) {
+          const pageNum = pdfDoc.getPageCount().toString();
+          page.drawText(pageNum, {
+            x: pageWidth / 2 - 10,
+            y: margin / 2,
+            size: 10,
+            font: font,
+            color: rgb(0.5, 0.5, 0.5),
+          });
+          
+          page = pdfDoc.addPage([pageWidth, pageHeight]);
+          yPosition = pageHeight - margin;
+        }
+        
+        // Draw bullet/number only on first line
+        if (isFirstLine && (isBullet || isNumbered)) {
+          const bulletOrNumber = isBullet ? '•' : line.match(/^\d+\./)?.[0] || '';
+          page.drawText(bulletOrNumber, {
+            x: margin,
+            y: yPosition,
+            size: currentSize,
+            font: currentFont,
+            color: rgb(0, 0, 0),
+          });
+        }
+        
         page.drawText(currentLine, {
-          x: margin,
+          x: margin + indent,
           y: yPosition,
           size: currentSize,
           font: currentFont,
           color: rgb(0, 0, 0),
         });
         yPosition -= lineHeight;
-        currentLine = word;
-        
-        // Check for new page
-        if (yPosition < margin + lineHeight) {
-          page = pdfDoc.addPage([pageWidth, pageHeight]);
-          yPosition = pageHeight - margin;
-        }
-      } else {
-        currentLine = testLine;
+      }
+      
+      // Extra space after headers
+      if (isHeader) {
+        yPosition -= paragraphSpacing;
       }
     }
     
-    // Draw remaining text
-    if (currentLine) {
-      page.drawText(currentLine, {
-        x: margin,
-        y: yPosition,
-        size: currentSize,
-        font: currentFont,
-        color: rgb(0, 0, 0),
-      });
-      yPosition -= lineHeight;
-    }
-    
-    // Extra space after headers
-    if (isHeader) {
-      yPosition -= 10;
-    }
+    // Space between paragraphs
+    yPosition -= paragraphSpacing;
   }
+  
+  // Add final page number
+  const pageNum = pdfDoc.getPageCount().toString();
+  page.drawText(pageNum, {
+    x: pageWidth / 2 - 10,
+    y: margin / 2,
+    size: 10,
+    font: font,
+    color: rgb(0.5, 0.5, 0.5),
+  });
   
   return pdfDoc.save();
 }
@@ -214,52 +358,186 @@ async function generateContent(type: string, caseData: any, openAIKey: string): 
   
   switch (type) {
     case 'relazione_preliminare':
-      systemPrompt = `Sei un esperto avvocato italiano. Genera una relazione preliminare professionale basata sul caso fornito.
-      La relazione deve includere:
-      1. Sintesi del problema
-      2. Principali evidenze e fatti rilevanti
-      3. Percorso legale consigliato
-      4. Primi passi operativi
-      5. Valutazione preliminare dei rischi
-      Usa un linguaggio professionale ma accessibile. Non includere dati personali.`;
-      userPrompt = `Genera una relazione preliminare per questo caso:\n${JSON.stringify(scrubbedCase.report || scrubbedCase)}`;
+      systemPrompt = `Sei un esperto avvocato italiano. Genera una relazione preliminare professionale completa.
+      FORMATO RICHIESTO (NO MARKDOWN, SOLO TESTO FORMATTATO):
+      
+      RELAZIONE PRELIMINARE
+      
+      1. SINTESI DEL CASO
+      [Descrizione dettagliata del problema]
+      
+      2. FATTI RILEVANTI E CRONOLOGIA
+      [Elenco cronologico degli eventi]
+      
+      3. ANALISI GIURIDICA PRELIMINARE
+      [Valutazione della posizione legale]
+      
+      4. STRATEGIE CONSIGLIATE
+      [Percorsi legali possibili]
+      
+      5. PROSSIMI PASSI OPERATIVI
+      [Azioni immediate da intraprendere]
+      
+      6. VALUTAZIONE RISCHI E OPPORTUNITÀ
+      [Analisi dei rischi e probabilità di successo]
+      
+      Non usare simboli markdown, asterischi o altri caratteri speciali.`;
+      userPrompt = `Genera una relazione preliminare professionale per questo caso:\n${JSON.stringify(scrubbedCase.report || scrubbedCase)}`;
       break;
       
     case 'riferimenti_giuridici':
-      systemPrompt = `Sei un esperto di diritto italiano ed europeo. Identifica e cita integralmente gli articoli di legge pertinenti.
-      Per ogni norma:
-      1. Cita il testo completo dell'articolo
-      2. Indica la fonte ufficiale (Normattiva per leggi italiane, EUR-Lex per normative EU)
-      3. Spiega la pertinenza al caso
-      Cerca di identificare tutti gli articoli rilevanti, sia di diritto sostanziale che procedurale.`;
-      userPrompt = `Identifica i riferimenti giuridici per questo caso:\n${JSON.stringify(scrubbedCase)}`;
+      systemPrompt = `Sei un esperto di diritto italiano. CERCA ATTIVAMENTE e cita TUTTI gli articoli di legge pertinenti.
+      
+      FORMATO RICHIESTO (NO MARKDOWN):
+      
+      RIFERIMENTI NORMATIVI COMPLETI
+      
+      Per ogni norma pertinente includi:
+      
+      ARTICOLO [numero] - [Codice/Legge]
+      Testo integrale: [citazione completa dell'articolo]
+      Fonte: [Normattiva/EUR-Lex con link]
+      Applicazione al caso: [come si applica]
+      
+      Cerca e includi:
+      - Codice Civile
+      - Codice di Procedura Civile
+      - Codice del Consumo
+      - Normative speciali pertinenti
+      - Giurisprudenza consolidata
+      - Normativa europea applicabile`;
+      userPrompt = `Trova TUTTI i riferimenti giuridici per: ${JSON.stringify(scrubbedCase)}`;
       break;
       
     case 'diffida_messa_in_mora':
-      systemPrompt = `Sei un avvocato italiano. Genera una diffida/messa in mora formale e professionale.
-      La diffida deve contenere:
-      1. Intestazione con placeholder per mittente e destinatario
-      2. Oggetto chiaro
-      3. Esposizione dei fatti
-      4. Richieste specifiche
-      5. Termine per l'adempimento (15 giorni)
-      6. Avvertenze legali
-      Usa placeholder [MITTENTE], [DESTINATARIO], [DATA], etc. per i dati personali.`;
-      userPrompt = `Genera una diffida per questo caso:\n${JSON.stringify(scrubbedCase)}`;
+      systemPrompt = `Genera una diffida formale in formato professionale.
+      
+      FORMATO (NO MARKDOWN):
+      
+      RACCOMANDATA A.R.
+      
+      [MITTENTE]
+      [Indirizzo]
+      
+      Spett.le
+      [DESTINATARIO]
+      [Indirizzo]
+      
+      [LUOGO], [DATA]
+      
+      OGGETTO: DIFFIDA E MESSA IN MORA
+      
+      Il sottoscritto [NOME], con la presente
+      
+      PREMESSO CHE
+      - [fatto 1]
+      - [fatto 2]
+      
+      CONSIDERATO CHE
+      - [considerazione legale]
+      
+      DIFFIDA E INVITA
+      
+      La S.V. a [richiesta specifica] entro 15 giorni
+      
+      AVVERTE
+      
+      Che in difetto si procederà [conseguenze]
+      
+      Distinti saluti
+      [FIRMA]`;
+      userPrompt = `Genera diffida formale per: ${JSON.stringify(scrubbedCase)}`;
       break;
       
     case 'istanza_adr_odr':
-      systemPrompt = `Sei un esperto di ADR/ODR in Italia. Genera un'istanza di conciliazione/mediazione.
-      L'istanza deve includere:
-      1. Intestazione all'organismo di mediazione
-      2. Dati delle parti (con placeholder)
-      3. Oggetto della controversia
-      4. Ricostruzione dei fatti
-      5. Pretese e motivazioni
-      6. Documentazione allegata
-      7. Richiesta di convocazione
-      Identifica l'organismo appropriato per la materia.`;
-      userPrompt = `Genera un'istanza ADR/ODR per questo caso:\n${JSON.stringify(scrubbedCase)}`;
+      systemPrompt = `Genera istanza di mediazione/conciliazione professionale.
+      
+      FORMATO (NO MARKDOWN):
+      
+      All'Organismo di Mediazione
+      [Nome Organismo appropriato per la materia]
+      
+      ISTANZA DI MEDIAZIONE
+      
+      Il sottoscritto [ISTANTE]
+      
+      CHIEDE
+      
+      L'avvio della procedura di mediazione nei confronti di [CONTROPARTE]
+      
+      OGGETTO DELLA CONTROVERSIA
+      [Descrizione]
+      
+      RAGIONI DELLA PRETESA
+      [Motivazioni giuridiche e fattuali]
+      
+      VALORE DELLA CONTROVERSIA
+      Euro [IMPORTO]
+      
+      DOCUMENTI ALLEGATI
+      1. [documento]
+      2. [documento]
+      
+      Data e Firma`;
+      userPrompt = `Genera istanza ADR per: ${JSON.stringify(scrubbedCase)}`;
+      break;
+      
+    case 'email_avvocato':
+      systemPrompt = `Genera email formale per avvocato con il caso.
+      
+      FORMATO (NO MARKDOWN):
+      
+      Oggetto: Richiesta consulenza legale - [TIPO CASO]
+      
+      Gentile Avvocato,
+      
+      Mi rivolgo a Lei per una consulenza legale riguardante [descrizione breve].
+      
+      SITUAZIONE FATTUALE
+      [Esposizione chiara dei fatti]
+      
+      DOCUMENTAZIONE DISPONIBILE
+      [Elenco documenti]
+      
+      OBIETTIVI
+      [Cosa si vuole ottenere]
+      
+      URGENZA
+      [Eventuali scadenze o urgenze]
+      
+      Resto a disposizione per un colloquio.
+      
+      Cordiali saluti
+      [NOME]`;
+      userPrompt = `Genera email per avvocato: ${JSON.stringify(scrubbedCase)}`;
+      break;
+      
+    case 'lettera_risposta':
+      systemPrompt = `Genera lettera di risposta/contestazione formale.
+      
+      FORMATO (NO MARKDOWN):
+      
+      RACCOMANDATA A.R.
+      
+      Oggetto: Riscontro Vs. comunicazione del [DATA]
+      
+      In riferimento alla Vostra del [DATA], con la presente
+      
+      CONTESTO
+      [Riferimenti alla comunicazione ricevuta]
+      
+      OSSERVAZIONI
+      [Punti di contestazione o chiarimento]
+      
+      POSIZIONE
+      [La propria posizione sulla questione]
+      
+      RICHIESTE
+      [Cosa si chiede]
+      
+      In attesa di riscontro
+      Distinti saluti`;
+      userPrompt = `Genera lettera risposta per: ${JSON.stringify(scrubbedCase)}`;
       break;
   }
   
