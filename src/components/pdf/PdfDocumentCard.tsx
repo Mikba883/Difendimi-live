@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, ExternalLink, Eye, Download } from "lucide-react";
-import { PdfViewer } from "./PdfViewer";
+import { FileText, ExternalLink, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface PdfDocument {
@@ -19,7 +18,6 @@ interface PdfDocumentCardProps {
 }
 
 export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
-  const [showPreview, setShowPreview] = useState(false);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
@@ -27,8 +25,8 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     else return Math.round(bytes / 1048576) + ' MB';
   };
 
-  // Convert base64 to blob URL with error handling
-  const getPdfUrl = (): string => {
+  // Memoize PDF URL to avoid recreating it on each render
+  const pdfUrl = useMemo(() => {
     try {
       // Remove any data URL prefix if present
       const base64Data = document.content.replace(/^data:application\/pdf;base64,/, '');
@@ -56,86 +54,67 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
       });
       return '';
     }
-  };
+  }, [document.content]);
 
   const handleOpenInNewTab = () => {
-    const url = getPdfUrl();
-    window.open(url, '_blank');
+    if (pdfUrl) {
+      window.open(pdfUrl, '_blank');
+    }
   };
 
   const handleDownload = () => {
-    const url = getPdfUrl();
-    const a = window.document.createElement('a');
-    a.href = url;
-    a.download = `${document.id}.pdf`;
-    window.document.body.appendChild(a);
-    a.click();
-    window.document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    if (pdfUrl) {
+      const a = window.document.createElement('a');
+      a.href = pdfUrl;
+      a.download = `${document.id}.pdf`;
+      window.document.body.appendChild(a);
+      a.click();
+      window.document.body.removeChild(a);
+    }
   };
 
   return (
-    <>
-      <Card className="hover:shadow-lg transition-shadow">
-        <CardHeader className="space-y-2">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base">{document.title}</CardTitle>
-            </div>
-            <Badge variant="outline" className="text-xs">
-              {formatFileSize(document.size_bytes)}
-            </Badge>
+    <Card className="hover:shadow-lg transition-shadow">
+      <CardHeader className="space-y-2">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base">{document.title}</CardTitle>
           </div>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            {document.rationale}
-          </p>
+          <Badge variant="outline" className="text-xs">
+            {formatFileSize(document.size_bytes)}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground mb-4">
+          {document.rationale}
+        </p>
+        
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleOpenInNewTab}
+            className="gap-2"
+            disabled={!pdfUrl}
+          >
+            <ExternalLink className="h-4 w-4" />
+            Apri in nuova scheda
+          </Button>
           
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setShowPreview(true)}
-              className="gap-2"
-            >
-              <Eye className="h-4 w-4" />
-              Anteprima
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleOpenInNewTab}
-              className="gap-2"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Apri in nuova scheda
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownload}
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Scarica
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* PDF Viewer Dialog */}
-      {showPreview && (
-        <PdfViewer
-          url={getPdfUrl()}
-          title={document.title}
-          isOpen={showPreview}
-          onClose={() => setShowPreview(false)}
-        />
-      )}
-    </>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownload}
+            className="gap-2"
+            disabled={!pdfUrl}
+          >
+            <Download className="h-4 w-4" />
+            Scarica
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

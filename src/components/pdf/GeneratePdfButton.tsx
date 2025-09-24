@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -81,28 +82,43 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
 
   return (
     <div className="space-y-6">
-      {/* Generate button */}
+      {/* Generate button as a beautiful card */}
       {documents.length === 0 && (
-        <div className="flex justify-center">
-          <Button
-            onClick={handleGeneratePdf}
-            disabled={isGenerating}
-            size="lg"
-            className="gap-2"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Generazione PDF in corso...
-              </>
-            ) : (
-              <>
-                <FileText className="h-5 w-5" />
-                Genera PDF
-              </>
-            )}
-          </Button>
-        </div>
+        <Card className="overflow-hidden bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 border-primary/20">
+          <CardContent className="p-8">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="p-4 bg-primary/10 rounded-full">
+                <FileText className="h-10 w-10 text-primary" />
+              </div>
+              
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold">Genera il Dossier Completo</h2>
+                <p className="text-muted-foreground max-w-md">
+                  Trasforma il tuo caso in un pacchetto di documenti PDF ordinati e completi: con bozze pronte (email, diffide, istanze, ecc..)
+                </p>
+              </div>
+              
+              <Button
+                onClick={handleGeneratePdf}
+                disabled={isGenerating}
+                size="lg"
+                className="gap-2 px-8"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Generazione in corso...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-5 w-5" />
+                    Genera Dossier
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Summary */}

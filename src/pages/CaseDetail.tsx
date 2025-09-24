@@ -168,17 +168,17 @@ export default function CaseDetail() {
             </Card>
           )}
 
-          {/* Generate PDF Button */}
+          {/* Report Sections - Executive Summary */}
+          {caseData.report && (
+            <ReportSections report={caseData.report} />
+          )}
+
+          {/* Generate PDF Button - After Executive Summary */}
           {caseData.id && (
             <GeneratePdfButton 
               caseId={caseData.id} 
               caseStatus={caseData.status} 
             />
-          )}
-
-          {/* Report Sections */}
-          {caseData.report && (
-            <ReportSections report={caseData.report} />
           )}
 
           {/* No content message */}
