@@ -68,23 +68,41 @@ function determineDocuments(caseData: any): {
   const classification = caseData.classification || {};
   const report = caseData.report || {};
   
-  // Check for diffida generation
-  const diffidaAreas = ['consumatore', 'commerciale', 'lavoro', 'condominio', 'locazioni'];
+  // Check for diffida generation - expanded to include all relevant areas
+  const diffidaAreas = [
+    'consumatore', 'commerciale', 'lavoro', 'condominio', 'locazioni',
+    'contratti', 'obbligazioni', 'responsabilità', 'risarcimento',
+    'civile', 'societario'
+  ];
   const shouldGenerateDiffida = areaOfLaw.some((area: string) => 
     diffidaAreas.some(d => area.toLowerCase().includes(d))
-  );
+  ) || (classification?.objectives && classification.objectives.includes('risarcimento'));
   
-  // Check for ADR generation
-  const adrAreas = ['consumatore', 'condominio', 'lavoro', 'energia', 'telecomunicazioni'];
+  // Check for ADR generation - expanded to include more areas
+  const adrAreas = [
+    'consumatore', 'condominio', 'lavoro', 'energia', 'telecomunicazioni',
+    'bancario', 'assicurativo', 'civile', 'commerciale', 'sanitario'
+  ];
   const shouldGenerateADR = areaOfLaw.some((area: string) => 
     adrAreas.some(a => area.toLowerCase().includes(a))
   );
   
+  // Generate basic documents for administrative and criminal law
+  const isAdministrativeOrCriminal = areaOfLaw.some((area: string) => 
+    area.toLowerCase().includes('amministrativo') || 
+    area.toLowerCase().includes('penale') ||
+    area.toLowerCase().includes('tributario')
+  );
+  
+  // For administrative/criminal cases, still generate basic documents but not diffida/ADR
+  const finalGenerateDiffida = !isAdministrativeOrCriminal && shouldGenerateDiffida;
+  const finalGenerateADR = !isAdministrativeOrCriminal && shouldGenerateADR;
+  
   return {
-    generateDiffida: shouldGenerateDiffida,
-    generateADR: shouldGenerateADR,
-    diffidaReason: shouldGenerateDiffida ? `Caso rientrante in materia ${areaOfLaw.join(', ')}` : undefined,
-    adrReason: shouldGenerateADR ? `ADR consigliata per materia ${areaOfLaw.join(', ')}` : undefined
+    generateDiffida: finalGenerateDiffida,
+    generateADR: finalGenerateADR,
+    diffidaReason: finalGenerateDiffida ? `Caso rientrante in materia ${areaOfLaw.join(', ')}` : undefined,
+    adrReason: finalGenerateADR ? `ADR consigliata per materia ${areaOfLaw.join(', ')}` : undefined
   };
 }
 

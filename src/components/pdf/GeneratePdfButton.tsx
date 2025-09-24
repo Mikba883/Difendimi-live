@@ -29,22 +29,39 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
       setDocuments([]);
       setSummary("");
 
-      const { data, error } = await supabase.functions.invoke('generate-pdf', {
+      const response = await supabase.functions.invoke('generate-pdf', {
         body: { caseId }
       });
 
-      if (error) throw error;
-
-      if (data?.success && data?.documents) {
-        setDocuments(data.documents);
-        setSummary(data.summary || "");
-        toast({
-          title: "PDF generati con successo",
-          description: `Sono stati generati ${data.documents.length} documenti`,
-        });
-      } else {
-        throw new Error(data?.error || "Errore nella generazione dei PDF");
+      if (response.error) {
+        console.error('Edge function error:', response.error);
+        throw response.error;
       }
+
+      if (!response.data) {
+        throw new Error('Nessun dato ricevuto dalla funzione');
+      }
+
+      const { documents: generatedDocs, summary, success } = response.data;
+      
+      // Validate response structure
+      if (!success) {
+        throw new Error(response.data.error || 'Errore nella generazione dei PDF');
+      }
+      
+      // Validate documents
+      if (!generatedDocs || !Array.isArray(generatedDocs)) {
+        console.error('Invalid documents received:', generatedDocs);
+        throw new Error('Formato documenti non valido');
+      }
+
+      setDocuments(generatedDocs);
+      setSummary(summary || "");
+      
+      toast({
+        title: "PDF generati con successo",
+        description: `Sono stati generati ${generatedDocs.length} documenti`,
+      });
     } catch (error) {
       console.error('Error generating PDFs:', error);
       toast({

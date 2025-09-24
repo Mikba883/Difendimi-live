@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, ExternalLink, Eye, Download } from "lucide-react";
 import { PdfViewer } from "./PdfViewer";
+import { toast } from "@/hooks/use-toast";
 
 interface PdfDocument {
   id: string;
@@ -26,15 +27,35 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     else return Math.round(bytes / 1048576) + ' MB';
   };
 
-  // Convert base64 to blob URL
+  // Convert base64 to blob URL with error handling
   const getPdfUrl = (): string => {
-    const binaryString = atob(document.content);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
+    try {
+      // Remove any data URL prefix if present
+      const base64Data = document.content.replace(/^data:application\/pdf;base64,/, '');
+      
+      // Validate base64 string
+      if (!base64Data || base64Data.length === 0) {
+        console.error('Empty PDF content');
+        return '';
+      }
+      
+      // Decode base64
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      return URL.createObjectURL(blob);
+    } catch (error) {
+      console.error('Error creating PDF URL:', error);
+      toast({
+        title: "Errore visualizzazione PDF",
+        description: "Impossibile visualizzare il PDF. Il contenuto potrebbe essere corrotto.",
+        variant: "destructive",
+      });
+      return '';
     }
-    const blob = new Blob([bytes], { type: 'application/pdf' });
-    return URL.createObjectURL(blob);
   };
 
   const handleOpenInNewTab = () => {
