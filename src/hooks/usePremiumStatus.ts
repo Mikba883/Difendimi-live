@@ -23,7 +23,7 @@ export function usePremiumStatus(): PremiumStatus {
 
     const calculateTimeRemaining = () => {
       const now = new Date();
-      const trialEnd = new Date(trialStartedAt.getTime() + 12 * 60 * 60 * 1000); // 12 hours
+      const trialEnd = new Date(trialStartedAt.getTime() + 11 * 60 * 60 * 1000 + 43 * 60 * 1000); // 11 hours 43 minutes
       const diff = trialEnd.getTime() - now.getTime();
 
       if (diff <= 0) {
@@ -75,7 +75,7 @@ export function usePremiumStatus(): PremiumStatus {
   };
 
   const trialEndsAt = trialStartedAt
-    ? new Date(trialStartedAt.getTime() + 12 * 60 * 60 * 1000)
+    ? new Date(trialStartedAt.getTime() + 11 * 60 * 60 * 1000 + 43 * 60 * 1000)
     : null;
 
   return {

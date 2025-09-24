@@ -62,21 +62,18 @@ export default function Premium() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container max-w-2xl mx-auto px-4 py-8">
-        {/* Header with back button and offer text */}
-        <div className="flex items-center justify-between mb-4">
+        {/* Header with back button and timer */}
+        <div className="mb-6">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate(-1)}
+            className="mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <p className="text-sm text-muted-foreground flex-1 text-center">Offerta valida solo per</p>
-          <div className="w-10" /> {/* Spacer for centering */}
-        </div>
-
-        {/* Timer Section */}
-        <div className="mb-6">
+          
+          {/* Timer Section */}
           <CountdownTimer timeRemaining={timeRemaining} className="justify-center" />
         </div>
 
@@ -85,8 +82,8 @@ export default function Premium() {
           {/* Content */}
           <div className="relative p-8">
             {/* Diagonal Badge */}
-            <div className="absolute top-8 right-0 w-24 h-24 overflow-hidden">
-              <div className="absolute transform rotate-45 bg-green-500 text-white text-center font-bold py-1 right-[-30px] top-[18px] w-[120px] shadow-lg text-sm">
+            <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden">
+              <div className="absolute transform rotate-45 bg-green-500 text-white text-center font-bold py-1 right-[-30px] top-[12px] w-[120px] shadow-lg text-sm">
                 Promo -68%
               </div>
             </div>

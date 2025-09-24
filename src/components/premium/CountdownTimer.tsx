@@ -32,8 +32,8 @@ export function CountdownTimer({ timeRemaining, className = "" }: CountdownTimer
 
   const TimeBox = ({ value, label }: { value: string; label: string }) => (
     <div className="flex flex-col items-center">
-      <div className="bg-pink-100 rounded-lg p-3 min-w-[60px]">
-        <span className="text-2xl font-bold text-gray-900">{value}</span>
+      <div className="bg-pink-100 rounded-lg p-3 min-w-[60px] flex items-center justify-center">
+        <span className="text-2xl font-bold text-gray-900 text-center">{value}</span>
       </div>
       <span className="text-xs text-muted-foreground mt-1">{label}</span>
     </div>
@@ -44,11 +44,11 @@ export function CountdownTimer({ timeRemaining, className = "" }: CountdownTimer
       <p className="text-sm text-muted-foreground">Offerta valida solo per</p>
       <div className="flex items-center gap-2">
         <TimeBox value={days} label="Giorni" />
-        <span className="text-2xl font-bold text-muted-foreground">:</span>
+        <span className="text-2xl font-bold text-muted-foreground self-start mt-3">:</span>
         <TimeBox value={hours} label="Ore" />
-        <span className="text-2xl font-bold text-muted-foreground">:</span>
+        <span className="text-2xl font-bold text-muted-foreground self-start mt-3">:</span>
         <TimeBox value={minutes} label="Minuti" />
-        <span className="text-2xl font-bold text-muted-foreground">:</span>
+        <span className="text-2xl font-bold text-muted-foreground self-start mt-3">:</span>
         <TimeBox value={seconds} label="Secondi" />
       </div>
     </div>
