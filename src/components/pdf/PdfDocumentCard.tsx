@@ -2,9 +2,8 @@ import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Eye, Download } from "lucide-react";
+import { FileText, ExternalLink, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { PdfViewer } from "./PdfViewer";
 
 interface PdfDocument {
   id: string;
@@ -20,7 +19,6 @@ interface PdfDocumentCardProps {
 
 export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isPdfViewerOpen, setIsPdfViewerOpen] = useState(false);
   
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
@@ -58,27 +56,44 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     }
   }, [document.content]);
 
-  const handleViewPdf = (e: React.MouseEvent) => {
+  const handleOpenPdf = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (!document.content) {
+    if (!pdfBlob) {
       toast({
-        title: "Errore",
-        description: "Il PDF non è ancora pronto.",
+        title: "PDF non disponibile",
+        description: "Il contenuto del PDF non è ancora pronto",
         variant: "destructive",
       });
       return;
     }
     
-    setIsPdfViewerOpen(true);
+    // Create blob URL for opening in new tab
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    
+    // Open in new tab
+    const newWindow = window.open(blobUrl, '_blank');
+    
+    if (!newWindow) {
+      // If popup blocked, create temporary link
+      const link = window.document.createElement('a');
+      link.href = blobUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+      
+      toast({
+        title: "Popup bloccato", 
+        description: "Clicca di nuovo per aprire il PDF",
+      });
+    }
+    
+    // Clean up blob URL after delay
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
   };
-  
-  // Create data URL for PDF viewer
-  const pdfDataUrl = useMemo(() => {
-    if (!document.content) return '';
-    return `data:application/pdf;base64,${document.content}`;
-  }, [document.content]);
 
   const handleDownload = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -128,36 +143,28 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
         
         <div className="flex flex-wrap gap-2">
           <Button
-            variant="default"
+            variant="outline"
             size="sm"
-            onClick={handleViewPdf}
+            onClick={handleOpenPdf}
             className="gap-2"
             disabled={!pdfBlob}
           >
-            <Eye className="h-4 w-4" />
-            Visualizza
+            <ExternalLink className="h-4 w-4" />
+            Apri PDF
           </Button>
           
           <Button
-            variant="outline"
+            variant="default"
             size="sm"
             onClick={handleDownload}
             className="gap-2"
             disabled={!pdfBlob || isDownloading}
           >
             <Download className="h-4 w-4" />
-            Scarica
+            {isDownloading ? "Download..." : "Scarica"}
           </Button>
         </div>
       </CardContent>
-      
-      {/* PDF Viewer Dialog */}
-      <PdfViewer
-        url={pdfDataUrl}
-        title={document.title}
-        isOpen={isPdfViewerOpen}
-        onClose={() => setIsPdfViewerOpen(false)}
-      />
     </Card>
   );
 }
