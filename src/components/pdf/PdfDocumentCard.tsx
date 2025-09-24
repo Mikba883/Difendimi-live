@@ -57,29 +57,47 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     }
   }, [document.content]);
 
+  // Create and maintain blob URL
+  const blobUrl = useMemo(() => {
+    if (!pdfBlob) return null;
+    return URL.createObjectURL(pdfBlob);
+  }, [pdfBlob]);
+
+  // Clean up blob URL when component unmounts
+  useEffect(() => {
+    return () => {
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, [blobUrl]);
+
   const handleOpenInNewTab = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (!pdfBlob) return;
+    if (!blobUrl) {
+      toast({
+        title: "Errore",
+        description: "Il PDF non è ancora pronto. Riprova tra qualche secondo.",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    // Create a temporary URL for the blob
-    const url = URL.createObjectURL(pdfBlob);
+    // Use window.open with the pre-created blob URL
+    const newWindow = window.open(blobUrl, '_blank');
     
-    // Create an anchor element with target="_blank"
-    const link = window.document.createElement('a');
-    link.href = url;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.style.display = 'none';
-    
-    // Add to body, click, and remove
-    window.document.body.appendChild(link);
-    link.click();
-    window.document.body.removeChild(link);
-    
-    // Clean up the URL after a short delay
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (!newWindow) {
+      // Fallback: create a link and simulate click
+      const link = window.document.createElement('a');
+      link.href = blobUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+    }
   };
 
   const handleDownload = (e: React.MouseEvent) => {
