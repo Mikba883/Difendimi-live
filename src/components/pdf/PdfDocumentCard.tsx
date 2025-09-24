@@ -1,9 +1,10 @@
-import { useMemo, useEffect, useState, useRef } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, ExternalLink, Download } from "lucide-react";
+import { FileText, Eye, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { PdfViewer } from "./PdfViewer";
 
 interface PdfDocument {
   id: string;
@@ -19,7 +20,7 @@ interface PdfDocumentCardProps {
 
 export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
   const [isDownloading, setIsDownloading] = useState(false);
-  const downloadLinkRef = useRef<HTMLAnchorElement | null>(null);
+  const [isPdfViewerOpen, setIsPdfViewerOpen] = useState(false);
   
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
@@ -57,7 +58,7 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     }
   }, [document.content]);
 
-  const handleOpenInNewTab = (e: React.MouseEvent) => {
+  const handleViewPdf = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -70,46 +71,14 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
       return;
     }
     
-    // Create data URL directly from base64
-    const dataUrl = `data:application/pdf;base64,${document.content}`;
-    
-    // Try to open in new window
-    const newWindow = window.open(dataUrl, '_blank');
-    
-    if (!newWindow) {
-      // Fallback: create iframe in a new window
-      const html = `
-        <!DOCTYPE html>
-        <html style="height: 100%; margin: 0;">
-        <head>
-          <title>${document.title}</title>
-        </head>
-        <body style="height: 100%; margin: 0;">
-          <iframe 
-            src="${dataUrl}" 
-            style="width: 100%; height: 100%; border: none;"
-            title="${document.title}"
-          ></iframe>
-        </body>
-        </html>
-      `;
-      
-      const blob = new Blob([html], { type: 'text/html' });
-      const htmlUrl = URL.createObjectURL(blob);
-      const fallbackWindow = window.open(htmlUrl, '_blank');
-      
-      // Clean up after a delay
-      setTimeout(() => URL.revokeObjectURL(htmlUrl), 1000);
-      
-      if (!fallbackWindow) {
-        toast({
-          title: "Popup bloccato",
-          description: "Abilita i popup per aprire il PDF in una nuova scheda.",
-          variant: "destructive",
-        });
-      }
-    }
+    setIsPdfViewerOpen(true);
   };
+  
+  // Create data URL for PDF viewer
+  const pdfDataUrl = useMemo(() => {
+    if (!document.content) return '';
+    return `data:application/pdf;base64,${document.content}`;
+  }, [document.content]);
 
   const handleDownload = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -161,12 +130,12 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
           <Button
             variant="default"
             size="sm"
-            onClick={handleOpenInNewTab}
+            onClick={handleViewPdf}
             className="gap-2"
             disabled={!pdfBlob}
           >
-            <ExternalLink className="h-4 w-4" />
-            Apri in nuova scheda
+            <Eye className="h-4 w-4" />
+            Visualizza
           </Button>
           
           <Button
@@ -181,6 +150,14 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
           </Button>
         </div>
       </CardContent>
+      
+      {/* PDF Viewer Dialog */}
+      <PdfViewer
+        url={pdfDataUrl}
+        title={document.title}
+        isOpen={isPdfViewerOpen}
+        onClose={() => setIsPdfViewerOpen(false)}
+      />
     </Card>
   );
 }
