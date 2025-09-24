@@ -58,7 +58,7 @@ export default function NewCase() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationTimer, setGenerationTimer] = useState(0);
   const [showGenerationTimer, setShowGenerationTimer] = useState(false);
-  const [generationStarted, setGenerationStarted] = useState(false); // Flag per evitare doppio avvio
+  const [isProcessingFinalGeneration, setIsProcessingFinalGeneration] = useState(false);
   const [generationError, setGenerationError] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -118,11 +118,11 @@ export default function NewCase() {
     // Check if all questions have been answered
     // NOTA: currentQuestionIndex parte da 1, quindi quando è > allQuestions.length
     // significa che l'utente ha risposto all'ultima domanda
-    if (currentQuestionIndex > allQuestions.length && allQuestions.length > 0 && !questionsComplete && !isGenerating && !generationStarted) {
+    if (currentQuestionIndex > allQuestions.length && allQuestions.length > 0 && !questionsComplete && !isGenerating && !isProcessingFinalGeneration) {
       console.log('All questions answered, starting generation');
       setQuestionsComplete(true);
       setCompleteness(100);
-      setGenerationStarted(true); // Flag per evitare doppio avvio
+      setIsProcessingFinalGeneration(true); // Flag per evitare doppio avvio
       
       // Mostra immediatamente l'indicatore di "pensiero"
       setIsAnalyzing(true);
@@ -147,7 +147,7 @@ export default function NewCase() {
       
       setAutoGenerateTimer(timer);
     }
-  }, [currentQuestionIndex, allQuestions.length, questionsComplete, isGenerating, generationStarted]);
+  }, [currentQuestionIndex, allQuestions.length, questionsComplete, isGenerating, isProcessingFinalGeneration]);
   
   // Cleanup timer on unmount
   useEffect(() => {
@@ -392,7 +392,7 @@ export default function NewCase() {
 
       // FASE 2: Gestione risposte alle domande
       if (data.status === 'waiting_responses') {
-        // Incrementa l'indice e mostra la prossima domanda
+        // NON incrementare l'indice se siamo all'ultima domanda
         const nextIndex = currentQuestionIndex;
         if (nextIndex < allQuestions.length) {
           const nextQuestion = allQuestions[nextIndex];
@@ -411,35 +411,38 @@ export default function NewCase() {
           const progress = Math.round(20 + (80 * (nextIndex + 1) / allQuestions.length));
           setCompleteness(progress);
         } else {
-          // Se non ci sono più domande, incrementa comunque l'indice per triggerare il useEffect
-          setCurrentQuestionIndex(prev => prev + 1);
+          // ATTENZIONE: Non incrementare più qui! Il useEffect lo gestirà
+          console.log('Ultima domanda risposta, non incremento più l\'indice');
         }
         return;
       }
 
-      // FASE 3: Caso completo - MA dobbiamo verificare se è l'ultima domanda
+      // FASE 3: Caso completo - incrementa l'indice per triggerare la generazione
       if (data.status === 'complete' || data.status === 'queued') {
-        // Se siamo all'ultima domanda e non abbiamo ancora completato
-        if (currentQuestionIndex <= allQuestions.length && !questionsComplete && allQuestions.length > 0) {
-          // Incrementa l'indice per triggerare il useEffect
+        // Se siamo all'ultima domanda, incrementa l'indice per triggerare il useEffect
+        if (currentQuestionIndex === allQuestions.length && !isProcessingFinalGeneration && allQuestions.length > 0) {
+          console.log('Ultima domanda risposta, incremento indice per triggerare generazione');
           setCurrentQuestionIndex(prev => prev + 1);
-          // Non fare altro, lascia che il useEffect gestisca la generazione
+          // Non fare altro qui - il useEffect gestirà la generazione
           return;
         }
         
-        // Altrimenti, se è veramente completo (chiamata da __COMPLETED__)
-        setIsComplete(true);
-        
-        // Salva il caso solo se non è già stato salvato
-        if (!isSaving && !savedCaseId) {
-          setTimeout(async () => {
-            await saveCase({
-              ...data,
-              caseAnalysis,
-              allQuestions,
-              messages
-            });
-          }, 2000);
+        // Se arriviamo qui con __COMPLETED__, è la vera generazione finale
+        if (latestResponse === "__COMPLETED__") {
+          console.log('Generazione finale completata');
+          setIsComplete(true);
+          
+          // Salva il caso solo se non è già stato salvato
+          if (!isSaving && !savedCaseId) {
+            setTimeout(async () => {
+              await saveCase({
+                ...data,
+                caseAnalysis,
+                allQuestions,
+                messages
+              });
+            }, 2000);
+          }
         }
       }
 
