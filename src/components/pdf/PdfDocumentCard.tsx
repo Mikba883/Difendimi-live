@@ -10,7 +10,8 @@ interface PdfDocument {
   id: string;
   title: string;
   rationale: string;
-  url: string;
+  url?: string;
+  content?: string;  // Supporta entrambi per retrocompatibilità
   size_bytes: number;
 }
 
@@ -31,6 +32,14 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
   const handleOpenPdf = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!document.url && !document.content) {
+      toast({
+        title: "PDF non disponibile",
+        description: "Il PDF non è ancora pronto",
+        variant: "destructive",
+      });
+      return;
+    }
     setShowPdfViewer(true);
   };
 
@@ -41,11 +50,51 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     if (isDownloading) return;
     
     setIsDownloading(true);
-    window.open(document.url, '_blank');
     
-    setTimeout(() => {
-      setIsDownloading(false);
-    }, 1000);
+    // Se abbiamo un URL, lo usiamo direttamente
+    if (document.url) {
+      window.open(document.url, '_blank');
+      setTimeout(() => {
+        setIsDownloading(false);
+      }, 1000);
+    } else if (document.content) {
+      // Fallback per base64 content
+      try {
+        const cleanContent = document.content
+          .replace(/^data:application\/pdf;base64,/, '')
+          .replace(/[\s\n\r]/g, '');
+        const binaryString = atob(cleanContent);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = window.document.createElement('a');
+        link.href = url;
+        link.download = `${document.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+        link.style.display = 'none';
+        
+        window.document.body.appendChild(link);
+        link.click();
+        
+        setTimeout(() => {
+          window.document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          setIsDownloading(false);
+        }, 100);
+      } catch (error) {
+        console.error('Error downloading PDF:', error);
+        toast({
+          title: "Errore nel download",
+          description: "Si è verificato un errore durante il download del PDF",
+          variant: "destructive",
+        });
+        setIsDownloading(false);
+        return;
+      }
+    }
     
     toast({
       title: "Download avviato",

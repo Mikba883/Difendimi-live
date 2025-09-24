@@ -690,19 +690,14 @@ serve(async (req) => {
 
     console.log('Starting PDF generation request...');
 
-    // Initialize Supabase client
+    // Initialize Supabase client with service role for storage operations
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
-      },
-      global: {
-        headers: {
-          Authorization: authHeader,
-        },
-      },
+      }
     });
 
     // Get case ID from request

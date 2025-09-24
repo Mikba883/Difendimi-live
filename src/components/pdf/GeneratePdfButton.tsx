@@ -18,7 +18,8 @@ interface PdfDocument {
   id: string;
   title: string;
   rationale: string;
-  content: string;
+  url?: string;
+  content?: string;  // Manteniamo entrambi per retrocompatibilità
   size_bytes: number;
 }
 
