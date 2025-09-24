@@ -58,6 +58,8 @@ export default function NewCase() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationTimer, setGenerationTimer] = useState(0);
   const [showGenerationTimer, setShowGenerationTimer] = useState(false);
+  const [generationStarted, setGenerationStarted] = useState(false); // Flag per evitare doppio avvio
+  const [generationError, setGenerationError] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -76,12 +78,28 @@ export default function NewCase() {
     }]);
   }, []);
 
-  // Timer per la generazione del report
+  // Timer per la generazione del report con timeout di sicurezza
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isGenerating) {
       interval = setInterval(() => {
-        setGenerationTimer(prev => prev + 1);
+        setGenerationTimer(prev => {
+          const newTimer = prev + 1;
+          // Timeout di sicurezza dopo 60 secondi
+          if (newTimer >= 60 && !isComplete) {
+            setGenerationError(true);
+            toast({
+              title: "Errore generazione",
+              description: "La generazione del report sta impiegando troppo tempo. Riprova più tardi.",
+              variant: "destructive",
+            });
+            // Reset e torna alla home dopo 3 secondi
+            setTimeout(() => {
+              navigate('/');
+            }, 3000);
+          }
+          return newTimer;
+        });
       }, 1000);
     } else {
       setGenerationTimer(0);
@@ -89,7 +107,7 @@ export default function NewCase() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isGenerating]);
+  }, [isGenerating, isComplete, navigate, toast]);
   
   // Auto-start generation after all questions are answered with delay
   const [questionsComplete, setQuestionsComplete] = useState(false);
@@ -100,10 +118,11 @@ export default function NewCase() {
     // Check if all questions have been answered
     // NOTA: currentQuestionIndex parte da 1, quindi quando è > allQuestions.length
     // significa che l'utente ha risposto all'ultima domanda
-    if (currentQuestionIndex > allQuestions.length && allQuestions.length > 0 && !questionsComplete && !isGenerating) {
+    if (currentQuestionIndex > allQuestions.length && allQuestions.length > 0 && !questionsComplete && !isGenerating && !generationStarted) {
       console.log('All questions answered, starting generation');
       setQuestionsComplete(true);
       setCompleteness(100);
+      setGenerationStarted(true); // Flag per evitare doppio avvio
       
       // Mostra immediatamente l'indicatore di "pensiero"
       setIsAnalyzing(true);
@@ -128,7 +147,7 @@ export default function NewCase() {
       
       setAutoGenerateTimer(timer);
     }
-  }, [currentQuestionIndex, allQuestions.length]);
+  }, [currentQuestionIndex, allQuestions.length, questionsComplete, isGenerating, generationStarted]);
   
   // Cleanup timer on unmount
   useEffect(() => {
@@ -426,11 +445,30 @@ export default function NewCase() {
 
     } catch (error) {
       console.error('Error analyzing case:', error);
-      toast({
-        title: "Errore",
-        description: "Impossibile analizzare il caso",
-        variant: "destructive",
-      });
+      
+      // Se c'è un errore durante la generazione finale, gestiscilo
+      if (isGenerating || questionsComplete) {
+        setGenerationError(true);
+        setIsGenerating(false);
+        setShowGenerationTimer(false);
+        
+        toast({
+          title: "Errore generazione report",
+          description: "Si è verificato un errore durante la generazione del report. Torniamo alla home...",
+          variant: "destructive",
+        });
+        
+        // Torna alla home dopo 3 secondi
+        setTimeout(() => {
+          navigate('/');
+        }, 3000);
+      } else {
+        toast({
+          title: "Errore",
+          description: "Impossibile analizzare il caso",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsAnalyzing(false);
     }
@@ -558,35 +596,34 @@ export default function NewCase() {
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-background to-muted/5">
-      {/* Header - solo se ci sono messaggi */}
-      {hasMessages && (
-        <div className="border-b bg-background/95 backdrop-blur-sm px-4 py-3 animate-fade-in">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => navigate('/dashboard')}
-                  className="h-8 w-8"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                {completeness > 0 && (
-                  <span className="text-sm font-medium md:hidden">{completeness}%</span>
-                )}
-              </div>
+      {/* Header - sempre visibile con bottone Dashboard */}
+      <div className="border-b bg-background/95 backdrop-blur-sm px-4 py-3 animate-fade-in">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/dashboard')}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Dashboard</span>
+              </Button>
               {completeness > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Analisi caso</span>
-                  <Progress value={completeness} className="h-2 flex-1" />
-                  <span className="text-sm font-medium hidden md:inline">{completeness}%</span>
-                </div>
+                <span className="text-sm font-medium md:hidden">{completeness}%</span>
               )}
             </div>
+            {completeness > 0 && hasMessages && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Analisi caso</span>
+                <Progress value={completeness} className="h-2 flex-1" />
+                <span className="text-sm font-medium hidden md:inline">{completeness}%</span>
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Vista iniziale centrata o Chat Area */}
       {!hasMessages ? (
