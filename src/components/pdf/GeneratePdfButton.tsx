@@ -5,8 +5,8 @@ import { FileText, Loader2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PdfDocumentCard } from "./PdfDocumentCard";
-import { PremiumPaywall } from "@/components/premium/PremiumPaywall";
 import { usePremiumStatus } from "@/hooks/usePremiumStatus";
+import { useNavigate } from "react-router-dom";
 
 interface GeneratePdfButtonProps {
   caseId: string;
@@ -25,13 +25,13 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
   const [isGenerating, setIsGenerating] = useState(false);
   const [documents, setDocuments] = useState<PdfDocument[]>([]);
   const [summary, setSummary] = useState<string>("");
-  const [showPaywall, setShowPaywall] = useState(false);
   const { isPremium, loading } = usePremiumStatus();
+  const navigate = useNavigate();
 
   const handleGeneratePdf = async () => {
     // Check premium status first
     if (!isPremium) {
-      setShowPaywall(true);
+      navigate("/premium");
       return;
     }
     try {
@@ -179,12 +179,6 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
           </div>
         </div>
       )}
-      
-      {/* Premium Paywall Modal */}
-      <PremiumPaywall 
-        open={showPaywall} 
-        onOpenChange={setShowPaywall}
-      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import NewCase from "./pages/NewCase";
 import CaseDetail from "./pages/CaseDetail";
 import NotFound from "./pages/NotFound";
+import Premium from "./pages/Premium";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/case/new" element={<NewCase />} />
           <Route path="/case/:id" element={<CaseDetail />} />
+          <Route path="/premium" element={<Premium />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

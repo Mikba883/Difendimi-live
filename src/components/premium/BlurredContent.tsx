@@ -1,7 +1,7 @@
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PremiumPaywall } from "./PremiumPaywall";
+import { useNavigate } from "react-router-dom";
 
 interface BlurredContentProps {
   children: ReactNode;
@@ -16,21 +16,20 @@ export function BlurredContent({
   className = "",
   label = "Contenuto Premium"
 }: BlurredContentProps) {
-  const [showPaywall, setShowPaywall] = useState(false);
+  const navigate = useNavigate();
 
   if (isPremium) {
     return <>{children}</>;
   }
 
   return (
-    <>
-      <div 
-        className={cn(
-          "relative cursor-pointer group",
-          className
-        )}
-        onClick={() => setShowPaywall(true)}
-      >
+    <div 
+      className={cn(
+        "relative cursor-pointer group",
+        className
+      )}
+      onClick={() => navigate("/premium")}
+    >
         {/* Blurred content */}
         <div className="blur-md pointer-events-none select-none">
           {children}
@@ -46,12 +45,6 @@ export function BlurredContent({
             </p>
           </div>
         </div>
-      </div>
-      
-      <PremiumPaywall 
-        open={showPaywall} 
-        onOpenChange={setShowPaywall}
-      />
-    </>
+    </div>
   );
 }
