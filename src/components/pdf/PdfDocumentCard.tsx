@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, Eye } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface PdfDocument {
@@ -10,7 +10,7 @@ interface PdfDocument {
   title: string;
   rationale: string;
   url?: string;
-  content?: string;  // Supporta entrambi per retrocompatibilità
+  content?: string;  // Base64 content
   size_bytes: number;
 }
 
@@ -20,6 +20,7 @@ interface PdfDocumentCardProps {
 
 export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isViewing, setIsViewing] = useState(false);
   
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
@@ -27,7 +28,7 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     else return Math.round(bytes / 1048576) + ' MB';
   };
 
-  const handleDownload = (e?: React.MouseEvent) => {
+  const handleDownload = async (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
     
@@ -35,36 +36,22 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     
     setIsDownloading(true);
     
-    // Se abbiamo un URL, lo usiamo direttamente
-    if (document.url) {
-      // Creiamo un link temporaneo per forzare il download
-      const link = window.document.createElement('a');
-      link.href = document.url;
-      link.download = `${document.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-      link.target = '_blank';
-      link.style.display = 'none';
-      
-      window.document.body.appendChild(link);
-      link.click();
-      
-      setTimeout(() => {
-        window.document.body.removeChild(link);
-        setIsDownloading(false);
-      }, 1000);
-    } else if (document.content) {
-      // Fallback per base64 content
-      try {
-        const cleanContent = document.content
-          .replace(/^data:application\/pdf;base64,/, '')
-          .replace(/[\s\n\r]/g, '');
-        const binaryString = atob(cleanContent);
+    try {
+      // Priorità al contenuto base64 per bypassare il blocco di Chrome
+      if (document.content) {
+        // Estrai il contenuto base64 dal data URL
+        const base64Data = document.content.split(',')[1] || document.content;
+        
+        // Converti base64 in blob
+        const binaryString = atob(base64Data);
         const bytes = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
           bytes[i] = binaryString.charCodeAt(i);
         }
         const blob = new Blob([bytes], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
         
+        // Crea URL temporaneo e scarica
+        const url = URL.createObjectURL(blob);
         const link = window.document.createElement('a');
         link.href = url;
         link.download = `${document.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
@@ -73,35 +60,108 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
         window.document.body.appendChild(link);
         link.click();
         
+        // Pulizia
         setTimeout(() => {
           window.document.body.removeChild(link);
           URL.revokeObjectURL(url);
           setIsDownloading(false);
         }, 100);
-      } catch (error) {
-        console.error('Error downloading PDF:', error);
+        
         toast({
-          title: "Errore nel download",
-          description: "Si è verificato un errore durante il download del PDF",
-          variant: "destructive",
+          title: "Download completato",
+          description: "Il PDF è stato scaricato con successo",
         });
-        setIsDownloading(false);
-        return;
+      } else if (document.url) {
+        // Fallback all'URL se non c'è base64
+        const link = window.document.createElement('a');
+        link.href = document.url;
+        link.download = `${document.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+        link.target = '_blank';
+        link.style.display = 'none';
+        
+        window.document.body.appendChild(link);
+        link.click();
+        
+        setTimeout(() => {
+          window.document.body.removeChild(link);
+          setIsDownloading(false);
+        }, 1000);
+        
+        toast({
+          title: "Download avviato",
+          description: "Il PDF è in download...",
+        });
+      } else {
+        throw new Error("Nessun contenuto disponibile");
       }
-    } else {
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
       toast({
-        title: "PDF non disponibile",
-        description: "Il documento non è ancora pronto per il download",
+        title: "Errore nel download",
+        description: "Si è verificato un errore durante il download del PDF",
         variant: "destructive",
       });
       setIsDownloading(false);
-      return;
     }
+  };
+
+  const handleView = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     
-    toast({
-      title: "Download avviato",
-      description: "Il PDF è in download...",
-    });
+    if (isViewing) return;
+    
+    setIsViewing(true);
+    
+    try {
+      // Priorità al contenuto base64
+      if (document.content) {
+        // Estrai il contenuto base64 dal data URL
+        const base64Data = document.content.split(',')[1] || document.content;
+        
+        // Converti base64 in blob
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        
+        // Crea URL temporaneo e apri in nuova scheda
+        const url = URL.createObjectURL(blob);
+        const newWindow = window.open(url, '_blank');
+        
+        // Rilascia l'URL dopo un breve ritardo
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          setIsViewing(false);
+        }, 1000);
+        
+        if (!newWindow) {
+          toast({
+            title: "Popup bloccato",
+            description: "Abilita i popup per visualizzare il PDF",
+            variant: "destructive",
+          });
+        }
+      } else if (document.url) {
+        // Fallback all'URL se non c'è base64
+        window.open(document.url, '_blank');
+        setTimeout(() => {
+          setIsViewing(false);
+        }, 1000);
+      } else {
+        throw new Error("Nessun contenuto disponibile per la visualizzazione");
+      }
+    } catch (error) {
+      console.error('Error viewing PDF:', error);
+      toast({
+        title: "Errore nella visualizzazione",
+        description: "Non è possibile visualizzare il PDF al momento",
+        variant: "destructive",
+      });
+      setIsViewing(false);
+    }
   };
 
   return (
@@ -122,16 +182,29 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
           {document.rationale}
         </p>
         
-        <Button
-          variant="default"
-          size="sm"
-          onClick={handleDownload}
-          className="gap-2 w-full"
-          disabled={isDownloading}
-        >
-          <Download className="h-4 w-4" />
-          {isDownloading ? "Download in corso..." : "Scarica PDF"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleDownload}
+            className="gap-2 flex-1"
+            disabled={isDownloading}
+          >
+            <Download className="h-4 w-4" />
+            {isDownloading ? "Download..." : "Scarica PDF"}
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleView}
+            className="gap-2 flex-1"
+            disabled={isViewing}
+          >
+            <Eye className="h-4 w-4" />
+            {isViewing ? "Apertura..." : "Visualizza PDF"}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

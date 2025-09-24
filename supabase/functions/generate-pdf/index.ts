@@ -7,14 +7,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper function to save PDF to Supabase Storage and return URL
+// Helper function to save PDF to Supabase Storage and return URL with base64 content
 async function savePdfToStorage(
   supabase: any,
   pdfBytes: Uint8Array,
   caseId: string,
   documentId: string,
   documentTitle: string
-): Promise<{ url: string; path: string }> {
+): Promise<{ url: string; path: string; content: string }> {
   const timestamp = Date.now();
   const fileName = `${documentId}_${timestamp}.pdf`;
   const filePath = `cases/${caseId}/${fileName}`;
@@ -42,9 +42,18 @@ async function savePdfToStorage(
   
   console.log(`PDF saved successfully: ${publicUrl}`);
   
+  // Convert to base64 for direct access
+  let base64String = '';
+  const bytes = new Uint8Array(pdfBytes);
+  for (let i = 0; i < bytes.length; i++) {
+    base64String += String.fromCharCode(bytes[i]);
+  }
+  const base64Content = btoa(base64String);
+  
   return {
     url: publicUrl,
-    path: filePath
+    path: filePath,
+    content: `data:application/pdf;base64,${base64Content}`
   };
 }
 
@@ -785,7 +794,7 @@ serve(async (req) => {
           const pdf = await createPDF('Relazione Preliminare', content);
           console.log('Relazione preliminare PDF created successfully');
           // Save to storage
-          const { url } = await savePdfToStorage(
+          const { url, content: base64Content } = await savePdfToStorage(
             supabase,
             pdf,
             caseId,
@@ -797,6 +806,7 @@ serve(async (req) => {
             title: 'Relazione Preliminare',
             rationale: 'Documento di sintesi del caso con analisi e raccomandazioni',
             url,
+            content: base64Content,
             size_bytes: pdf.length
           };
         })
@@ -813,7 +823,7 @@ serve(async (req) => {
           const pdf = await createPDF('Riferimenti Giuridici', content);
           console.log('Riferimenti giuridici PDF created successfully');
           // Save to storage
-          const { url } = await savePdfToStorage(
+          const { url, content: base64Content } = await savePdfToStorage(
             supabase,
             pdf,
             caseId,
@@ -825,6 +835,7 @@ serve(async (req) => {
             title: 'Riferimenti Giuridici',
             rationale: 'Raccolta completa delle norme applicabili con testo integrale',
             url,
+            content: base64Content,
             size_bytes: pdf.length
           };
         })
@@ -844,7 +855,7 @@ serve(async (req) => {
             const pdf = await createPDF('Diffida e Messa in Mora', content);
             console.log('Diffida PDF created successfully');
             // Save to storage
-            const { url } = await savePdfToStorage(
+            const { url, content: base64Content } = await savePdfToStorage(
               supabase,
               pdf,
               caseId,
@@ -856,6 +867,7 @@ serve(async (req) => {
               title: 'Diffida e Messa in Mora',
               rationale: diffidaReason || 'Documento formale di diffida',
               url,
+              content: base64Content,
               size_bytes: pdf.length
             };
           })
@@ -877,7 +889,7 @@ serve(async (req) => {
             const pdf = await createPDF('Istanza ADR/ODR', content);
             console.log('ADR PDF created successfully');
             // Save to storage
-            const { url } = await savePdfToStorage(
+            const { url, content: base64Content } = await savePdfToStorage(
               supabase,
               pdf,
               caseId,
@@ -889,6 +901,7 @@ serve(async (req) => {
               title: 'Istanza ADR/ODR/Conciliazione',
               rationale: adrReason || 'Richiesta di mediazione/conciliazione',
               url,
+              content: base64Content,
               size_bytes: pdf.length
             };
           })
@@ -910,7 +923,7 @@ serve(async (req) => {
             const pdf = await createPDF('Email Richiesta Consulenza Legale', content);
             console.log('Email avvocato PDF created successfully');
             // Save to storage
-            const { url } = await savePdfToStorage(
+            const { url, content: base64Content } = await savePdfToStorage(
               supabase,
               pdf,
               caseId,
@@ -922,6 +935,7 @@ serve(async (req) => {
               title: 'Email Richiesta Consulenza Avvocato',
               rationale: emailAvvocatoReason || 'Richiesta consulenza legale professionale',
               url,
+              content: base64Content,
               size_bytes: pdf.length
             };
           })
@@ -943,7 +957,7 @@ serve(async (req) => {
             const pdf = await createPDF('Lettera di Risposta/Contestazione', content);
             console.log('Lettera risposta PDF created successfully');
             // Save to storage
-            const { url } = await savePdfToStorage(
+            const { url, content: base64Content } = await savePdfToStorage(
               supabase,
               pdf,
               caseId,
@@ -955,6 +969,7 @@ serve(async (req) => {
               title: 'Lettera di Risposta/Contestazione',
               rationale: letteraRispostaReason || 'Risposta formale a comunicazione ricevuta',
               url,
+              content: base64Content,
               size_bytes: pdf.length
             };
           })
