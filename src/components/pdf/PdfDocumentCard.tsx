@@ -26,24 +26,42 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     else return Math.round(bytes / 1048576) + ' MB';
   };
 
-  // Create and memoize PDF blob
+  // Create and memoize PDF blob with improved validation
   const pdfBlob = useMemo(() => {
     try {
-      // Remove any data URL prefix if present
-      const base64Data = document.content.replace(/^data:application\/pdf;base64,/, '');
+      // Remove any data URL prefix and clean whitespace
+      const cleanContent = document.content
+        .replace(/^data:application\/pdf;base64,/, '')
+        .replace(/[\s\n\r]/g, '');
       
       // Validate base64 string
-      if (!base64Data || base64Data.length === 0) {
+      if (!cleanContent || cleanContent.length === 0) {
         console.error('Empty PDF content');
         return null;
       }
       
+      // Check for valid base64 format
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(cleanContent)) {
+        console.error('Invalid base64 format');
+        return null;
+      }
+      
       // Decode base64
-      const binaryString = atob(base64Data);
+      const binaryString = atob(cleanContent);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
+      
+      // Validate PDF magic number (%PDF)
+      if (bytes.length > 4) {
+        const isPDF = bytes[0] === 0x25 && bytes[1] === 0x50 && 
+                     bytes[2] === 0x44 && bytes[3] === 0x46;
+        if (!isPDF) {
+          console.warn('File does not appear to be a valid PDF');
+        }
+      }
+      
       return new Blob([bytes], { type: 'application/pdf' });
     } catch (error) {
       console.error('Error creating PDF blob:', error);
