@@ -335,7 +335,7 @@ export default function NewCase() {
 
       // FASE 3: Quando riceviamo status 'complete', inizia la generazione
       if (data.status === 'complete' && !isGeneratingReport && !isGenerateFunctionCalled) {
-        console.log('Tutte le risposte ricevute, avvio generazione immediata');
+        console.log('Tutte le risposte ricevute, avvio generazione con timer visuale');
         setCompleteness(100);
         
         // Mostra messaggio "Ho raccolto tutto"
@@ -347,12 +347,13 @@ export default function NewCase() {
         };
         setMessages(prev => [...prev, completionMsg]);
         
-        // Avvia generazione immediata senza timer
+        // Avvia timer visuale e generazione
+        setShowGenerationTimer(true);
         setIsGeneratingReport(true);
         setIsGenerateFunctionCalled(true); // Previene chiamate duplicate
         
-        // Chiama immediatamente la funzione generate
-        console.log('Chiamo generate immediatamente con data:', data);
+        // Chiama la funzione generate
+        console.log('Chiamo generate con data:', data);
         callGenerateFunction(data);
       }
 
@@ -402,17 +403,17 @@ export default function NewCase() {
 
       console.log('Generazione completata:', generateData);
       
-      // Salva il caso e reindirizza
-      setIsComplete(true);
-      setShowGenerationTimer(false);
-      
-      await saveCase({
-        ...analysisData,
-        report: generateData,
-        caseAnalysis: analysisData.analysis || caseAnalysis,
-        allQuestions,
-        messages
-      });
+      // Il caso è già stato salvato dalla funzione generate nel backend
+      // Naviga direttamente usando il case_id restituito
+      if (generateData?.case_id) {
+        console.log('Navigazione diretta al caso:', generateData.case_id);
+        setIsComplete(true);
+        setShowGenerationTimer(false);
+        navigate(`/case/${generateData.case_id}`);
+      } else {
+        console.error('Nessun case_id ricevuto dalla funzione generate');
+        throw new Error('Case ID non ricevuto');
+      }
       
     } catch (error) {
       console.error('Errore durante la generazione:', error);
