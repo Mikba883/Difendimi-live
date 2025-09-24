@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Eye, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { PdfViewer } from "./PdfViewer";
 
 interface PdfDocument {
   id: string;
@@ -19,6 +20,7 @@ interface PdfDocumentCardProps {
 
 export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
   
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
@@ -88,19 +90,13 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
       return;
     }
     
-    // Opzione 2: Apri direttamente in nuova scheda
-    const url = URL.createObjectURL(pdfBlob);
-    window.open(url, '_blank');
-    
-    // Cleanup dopo un breve delay
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 1000);
+    // Apri il viewer modal
+    setShowPdfViewer(true);
   };
 
-  const handleDownload = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDownload = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     
     // Prevent double download
     if (isDownloading || !pdfBlob) return;
@@ -110,7 +106,7 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     // Create a temporary URL for the blob
     const url = URL.createObjectURL(pdfBlob);
     
-    // Opzione 1: Download + apertura automatica
+    // Download solo
     const link = window.document.createElement('a');
     link.href = url;
     link.download = `${document.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
@@ -120,15 +116,11 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
     link.click();
     window.document.body.removeChild(link);
     
-    // Dopo il download, apri automaticamente in nuova scheda
+    // Cleanup dopo il download
     setTimeout(() => {
-      window.open(url, '_blank');
-      // Cleanup dopo un delay maggiore per permettere apertura
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-        setIsDownloading(false);
-      }, 2000);
-    }, 100);
+      URL.revokeObjectURL(url);
+      setIsDownloading(false);
+    }, 1000);
   };
 
   return (
@@ -173,6 +165,15 @@ export function PdfDocumentCard({ document }: PdfDocumentCardProps) {
           </Button>
         </div>
       </CardContent>
+      
+      {/* PDF Viewer Modal */}
+      <PdfViewer
+        isOpen={showPdfViewer}
+        onClose={() => setShowPdfViewer(false)}
+        pdfBlob={pdfBlob}
+        title={document.title}
+        onDownload={handleDownload}
+      />
     </Card>
   );
 }
