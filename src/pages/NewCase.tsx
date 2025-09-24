@@ -57,6 +57,7 @@ export default function NewCase() {
   const [savedCaseId, setSavedCaseId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationTimer, setGenerationTimer] = useState(0);
+  const [showGenerationTimer, setShowGenerationTimer] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -108,7 +109,7 @@ export default function NewCase() {
       setIsGenerating(true);
       analyzeCase("__COMPLETED__"); // Flag speciale per indicare completamento
       
-      // Dopo 5 secondi mostra il messaggio di completamento
+      // Dopo 5 secondi mostra il messaggio di completamento E il timer
       const timer = setTimeout(() => {
         const completionMsg: Message = {
           id: Date.now().toString() + '-completion',
@@ -118,6 +119,7 @@ export default function NewCase() {
         };
         setMessages(prev => [...prev, completionMsg]);
         setShowCompletionMessage(true);
+        setShowGenerationTimer(true); // Mostra il timer solo dopo 5 secondi
       }, 5000); // 5 seconds after starting generation
       
       setAutoGenerateTimer(timer);
@@ -629,7 +631,7 @@ export default function NewCase() {
                 <div className="flex items-center justify-center space-x-2 p-4">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                   <span className="text-sm text-muted-foreground">
-                    Elaborazione in corso... {generationTimer > 0 && `(${generationTimer}s)`}
+                    Elaborazione in corso... {showGenerationTimer && generationTimer > 0 && `(${generationTimer}s)`}
                   </span>
                 </div>
               )}
