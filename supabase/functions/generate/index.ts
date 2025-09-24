@@ -83,8 +83,8 @@ serve(async (req) => {
       return jsonResponse({ error: "Missing required fields" }, 400);
     }
 
-    console.log(`Processing job ${job_id} of type ${caseType}`);
-    console.log("Meta received:", JSON.stringify(meta));
+    console.log(`[GENERATE] Processing job ${job_id} of type ${caseType}`);
+    console.log("[GENERATE] Meta received:", JSON.stringify(meta));
 
     // Extract user ID - from direct call or from meta passed by precheck
     let userId = null;
@@ -232,14 +232,39 @@ Dati dall'analisi preliminare:
 
     const result = await callOpenAI(systemPrompt, userPrompt);
 
+    // Check if case already exists with this job_id
+    console.log(`[GENERATE] Checking if case already exists for job_id: ${job_id}`);
+    const { data: existingCase, error: checkError } = await supabase
+      .from("cases")
+      .select()
+      .eq("job_id", job_id)
+      .maybeSingle();
+    
+    if (checkError) {
+      console.error("[GENERATE] Error checking existing case:", checkError);
+    }
+    
+    if (existingCase) {
+      console.log(`[GENERATE] Case already exists for job_id ${job_id}, returning existing case with ID ${existingCase.id}`);
+      return jsonResponse({
+        success: true,
+        job_id,
+        case_id: existingCase.id,
+        status: existingCase.status,
+        message: "Case already exists"
+      });
+    }
+    
     // Save to database - only save if we have a valid user ID
     if (!userId) {
-      console.error("Cannot save case without valid user ID");
+      console.error("[GENERATE] Cannot save case without valid user ID");
       return jsonResponse({ 
         error: "Authentication required", 
         details: "No valid user ID found - please ensure you are logged in" 
       }, 401);
     }
+    
+    console.log(`[GENERATE] Creating new case for job_id ${job_id} with user ${userId}`);
     
     // Prepare the data with the correct structure
     const caseDbData = {
@@ -281,11 +306,33 @@ Dati dall'analisi preliminare:
       .single();
 
     if (dbError) {
-      console.error("Database error:", dbError);
+      console.error("[GENERATE] Database error:", dbError);
+      
+      // If it's a duplicate key error, try to fetch the existing case
+      if (dbError.code === '23505' && dbError.message?.includes('job_id')) {
+        console.log("[GENERATE] Duplicate key error, fetching existing case");
+        const { data: existing } = await supabase
+          .from("cases")
+          .select()
+          .eq("job_id", job_id)
+          .maybeSingle();
+        
+        if (existing) {
+          console.log(`[GENERATE] Returning existing case with ID ${existing.id}`);
+          return jsonResponse({
+            success: true,
+            job_id,
+            case_id: existing.id,
+            status: existing.status,
+            message: "Case already existed (handled duplicate)"
+          });
+        }
+      }
+      
       return jsonResponse({ error: "Failed to save case", details: dbError.message }, 500);
     }
 
-    console.log(`Case ${job_id} processed and saved with ID ${caseRecord.id}`);
+    console.log(`[GENERATE] Case ${job_id} successfully created and saved with ID ${caseRecord.id}`);
 
     return jsonResponse({
       success: true,
