@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { FileText, Loader2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -25,8 +26,42 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
   const [isGenerating, setIsGenerating] = useState(false);
   const [documents, setDocuments] = useState<PdfDocument[]>([]);
   const [summary, setSummary] = useState<string>("");
+  const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState("");
   const { isPremium, loading } = usePremiumStatus();
   const navigate = useNavigate();
+
+  // Simulate progress updates
+  useEffect(() => {
+    if (isGenerating) {
+      setProgress(0);
+      setProgressMessage("Inizializzazione...");
+      
+      const interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(interval);
+            return 90;
+          }
+          const increment = prev < 20 ? 5 : prev < 60 ? 3 : 2;
+          return Math.min(prev + increment, 90);
+        });
+        
+        setProgressMessage((prev) => {
+          if (progress < 20) return "Analisi del caso...";
+          if (progress < 40) return "Generazione documenti legali...";
+          if (progress < 60) return "Creazione riferimenti giuridici...";
+          if (progress < 80) return "Finalizzazione PDF...";
+          return "Quasi completato...";
+        });
+      }, 800);
+      
+      return () => clearInterval(interval);
+    } else {
+      setProgress(0);
+      setProgressMessage("");
+    }
+  }, [isGenerating, progress]);
 
   const handleGeneratePdf = async () => {
     // Check premium status first
@@ -38,6 +73,8 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
       setIsGenerating(true);
       setDocuments([]);
       setSummary("");
+      setProgress(0);
+      setProgressMessage("Inizializzazione...");
 
       const response = await supabase.functions.invoke('generate-pdf', {
         body: { caseId }
@@ -68,6 +105,9 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
         throw new Error('Formato documenti non valido');
       }
 
+      setProgress(100);
+      setProgressMessage("Completato!");
+      
       setDocuments(generatedDocs);
       setSummary(summary || "");
       
@@ -84,6 +124,10 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
       });
     } finally {
       setIsGenerating(false);
+      setTimeout(() => {
+        setProgress(0);
+        setProgressMessage("");
+      }, 1000);
     }
   };
 
@@ -109,6 +153,16 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
                   Trasforma il tuo caso in un pacchetto di documenti PDF ordinati e completi: con bozze pronte (email, diffide, istanze, ecc..)
                 </p>
               </div>
+              
+              {/* Progress indicator */}
+              {isGenerating && (
+                <div className="w-full max-w-md space-y-2">
+                  <Progress value={progress} className="h-2" />
+                  <p className="text-sm text-muted-foreground text-center">
+                    {progressMessage}
+                  </p>
+                </div>
+              )}
               
               <Button
                 onClick={handleGeneratePdf}

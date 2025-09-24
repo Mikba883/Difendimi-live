@@ -902,12 +902,16 @@ serve(async (req) => {
 
     const endTime = Date.now();
     const elapsedTime = (endTime - startTime) / 1000;
-    console.log(`Successfully generated ${documents.length} documents in ${elapsedTime} seconds`);
+    
+    // Filter out null values from documents array
+    const validDocuments = documents.filter(Boolean);
+    
+    console.log(`Successfully generated ${validDocuments.length} documents in ${elapsedTime} seconds`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        documents,
+        documents: validDocuments,
         summary: summary.substring(0, 200) + '...',
         caseId
       }),
