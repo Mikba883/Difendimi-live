@@ -1,7 +1,7 @@
-import { Shield, ArrowRight, CheckCircle, Lock, Scale, Clock, Download, Brain, FileText, Zap, Users, Star, MessageSquare, ChevronRight, ClipboardList, FileCheck, Target, Calendar, Paperclip, Check, X, Eye, Maximize2 } from "lucide-react";
+import { Shield, ArrowRight, CheckCircle, Lock, Scale, Clock, Download, Brain, FileText, Zap, Users, Star, MessageSquare, ChevronRight, ClipboardList, FileCheck, Target, Calendar, Paperclip, Check, X, Eye, Maximize2, Menu, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { InstallPWA } from "@/components/InstallPWA";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +11,7 @@ import { ReportSections } from "@/components/case/ReportSections";
 import { DEMO_CASE_DATA } from "@/data/demoCase";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -23,6 +23,9 @@ const Index = () => {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     // Check auth status first
@@ -51,7 +54,17 @@ const Index = () => {
       setInstallPrompt(e as BeforeInstallPromptEvent);
     };
 
+    // Scroll handler for navbar
+    const handleScroll = () => {
+      const heroSection = document.getElementById('hero');
+      if (heroSection) {
+        const heroBottom = heroSection.getBoundingClientRect().bottom;
+        setIsScrolled(heroBottom < 0);
+      }
+    };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('scroll', handleScroll);
 
     // Check if app was installed
     window.addEventListener('appinstalled', () => {
@@ -61,64 +74,36 @@ const Index = () => {
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('scroll', handleScroll);
     };
   }, [navigate]);
 
-  const [showPreview, setShowPreview] = useState(false);
-  const [showInstallSheet, setShowInstallSheet] = useState(false);
+  const handleMainButtonClick = () => {
+    navigate("/login");
+  };
 
-  const handleMainButtonClick = async () => {
-    // Se l'app è già installata o siamo in modalità standalone, vai al login
-    if (isInstalled || window.matchMedia('(display-mode: standalone)').matches) {
-      navigate("/login");
-      return;
-    }
-
-    // Se c'è il prompt di installazione disponibile, installala
+  const handleDownloadApp = async () => {
     if (installPrompt) {
       try {
         await installPrompt.prompt();
         const { outcome } = await installPrompt.userChoice;
-        
         if (outcome === 'accepted') {
           setInstallPrompt(null);
-          // Dopo l'installazione, naviga al login
-          setTimeout(() => navigate("/login"), 500);
         }
       } catch (error) {
         console.error('Error installing PWA:', error);
-        // Se c'è un errore, vai comunque al login
         navigate("/login");
       }
-    } else if (isIOS) {
-      // Su iOS mostra un alert con le istruzioni
-      alert("Per installare l'app:\n1. Tocca il pulsante Condividi ⬆️\n2. Scorri e tocca 'Aggiungi a Home'\n3. Tocca 'Aggiungi'");
-      // Poi vai al login
-      navigate("/login");
     } else {
-      // Se non c'è modo di installare, vai direttamente al login
       navigate("/login");
     }
   };
 
-  const handleDownloadApp = async () => {
-    // Se c'è il prompt di installazione, usalo
-    if (installPrompt) {
-      try {
-        await installPrompt.prompt();
-        const { outcome } = await installPrompt.userChoice;
-        if (outcome === 'accepted') {
-          setInstallPrompt(null);
-        }
-      } catch (error) {
-        console.error('Error installing PWA:', error);
-        setShowInstallSheet(true);
-      }
-    } else if (isIOS) {
-      setShowInstallSheet(true);
-    } else {
-      // Mostra istruzioni generiche
-      setShowInstallSheet(true);
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+      setIsMobileMenuOpen(false);
     }
   };
 
