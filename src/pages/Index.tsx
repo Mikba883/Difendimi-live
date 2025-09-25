@@ -26,6 +26,7 @@ const Index = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  // Removed showInstallSheet - now using direct PWA prompt
 
   useEffect(() => {
     // Check auth status first
