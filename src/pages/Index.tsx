@@ -52,6 +52,7 @@ const Index = () => {
     // Listen for the beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
+      console.log('PWA install prompt captured and saved');
       setInstallPrompt(e as BeforeInstallPromptEvent);
     };
 
@@ -86,16 +87,25 @@ const Index = () => {
   const handleDownloadApp = async () => {
     if (installPrompt) {
       try {
+        console.log('Showing PWA install prompt...');
         await installPrompt.prompt();
         const { outcome } = await installPrompt.userChoice;
+        console.log(`User choice: ${outcome}`);
         if (outcome === 'accepted') {
           setInstallPrompt(null);
+          console.log('PWA installation accepted');
         }
       } catch (error) {
         console.error('Error installing PWA:', error);
-        navigate("/login");
       }
+    } else if (isIOS) {
+      // Show iOS installation instructions
+      alert('Per installare l\'app su iOS:\n1. Tocca il pulsante Condividi ⬆️\n2. Scorri e tocca "Aggiungi a Home"\n3. Tocca "Aggiungi"');
+    } else if (isInstalled) {
+      alert('L\'app è già installata sul tuo dispositivo!');
     } else {
+      // Fallback - try to re-capture the prompt or navigate to login
+      console.log('Install prompt not available, navigating to login');
       navigate("/login");
     }
   };
@@ -119,11 +129,16 @@ const Index = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
             {/* Logo */}
-            <div className="flex items-center gap-2">
-              <Shield className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                Difendimi
+            <div className="flex items-center gap-1">
+              <span className="text-3xl font-black tracking-tight">
+                <span className="bg-gradient-to-r from-primary via-blue-500 to-primary bg-clip-text text-transparent animate-pulse">
+                  D
+                </span>
+                <span className="text-2xl font-bold bg-gradient-to-r from-foreground/90 to-foreground/70 bg-clip-text text-transparent">
+                  ifendimi
+                </span>
               </span>
+              <span className="text-xs font-medium text-primary/60 ml-1">.AI</span>
             </div>
 
             {/* Desktop Menu - Center */}
