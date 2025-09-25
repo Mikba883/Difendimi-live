@@ -9,14 +9,22 @@ import { Card } from "@/components/ui/card";
 
 const Index = () => {
   const navigate = useNavigate();
-  const [installComponent, setInstallComponent] = useState<React.ReactNode>(null);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleDownloadApp = () => {
-    if (installComponent) {
-      (installComponent as any).props.onClick();
+    // Try to trigger the PWA install prompt if available
+    const beforeInstallPromptEvent = (window as any).deferredPrompt;
+    if (beforeInstallPromptEvent) {
+      beforeInstallPromptEvent.prompt();
+      beforeInstallPromptEvent.userChoice.then((choiceResult: any) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('User accepted the install prompt');
+        }
+        (window as any).deferredPrompt = null;
+      });
     } else {
+      // Fallback to manifest download
       const manifest = document.querySelector('link[rel="manifest"]');
       if (manifest) {
         window.open(manifest.getAttribute('href') || '', '_blank');
@@ -29,7 +37,18 @@ const Index = () => {
       setScrolled(window.scrollY > 100);
     };
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    
+    // Capture the beforeinstallprompt event
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      (window as any).deferredPrompt = e;
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
   }, []);
 
   const scrollToSection = (id: string) => {
@@ -47,7 +66,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen">
-      <InstallPWA onInstallReady={(component) => setInstallComponent(component)} />
+      <InstallPWA />
       
       {/* Hero Section */}
       <div className="relative bg-gradient-to-br from-rose-500 via-orange-400 to-amber-300">
@@ -179,10 +198,10 @@ const Index = () => {
             <Button
               onClick={() => navigate("/login")}
               size="lg"
-              className="bg-white text-rose-600 hover:bg-gray-100 px-8 py-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
+              className="bg-white text-rose-600 hover:bg-gray-100 px-10 py-8 text-xl font-bold shadow-xl hover:shadow-2xl transition-all transform hover:scale-105"
             >
               Analizza subito il tuo caso
-              <ArrowRight className="ml-2 h-5 w-5" />
+              <ArrowRight className="ml-3 h-6 w-6" />
             </Button>
           </div>
         </div>
@@ -289,7 +308,7 @@ const Index = () => {
           <div className="max-w-4xl mx-auto">
             <Card className="p-6 shadow-lg">
               <div className="mb-6">
-                <CaseStatusBadge status="completed" />
+                <CaseStatusBadge status="ready" />
                 <h3 className="text-2xl font-bold mt-4">Caso di esempio: Ritardo nella consegna</h3>
                 <p className="text-muted-foreground">Generato il {new Date().toLocaleDateString('it-IT')}</p>
               </div>
@@ -326,7 +345,7 @@ const Index = () => {
                     </div>
                     <div>
                       <span className="font-medium">3. Azione giudiziale:</span>
-                      <p className="ml-4">Decreto ingiuntivo presso Giudice di Pace (valore < €5000)</p>
+                      <p className="ml-4">Decreto ingiuntivo presso Giudice di Pace (valore &lt; €5000)</p>
                     </div>
                   </div>
                 </div>
@@ -352,6 +371,94 @@ const Index = () => {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-20">
+        <div className="container mx-auto px-4">
+          <h2 className="text-4xl font-bold text-center mb-12">Scegli il tuo piano</h2>
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <Card className="p-8">
+              <h3 className="text-2xl font-bold mb-2">Free</h3>
+              <p className="text-3xl font-bold mb-6">€0<span className="text-lg font-normal text-muted-foreground">/mese</span></p>
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Analisi del tuo caso specifico</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Interrogazione del sistema normativo italiano</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Report standard</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Principali riferimenti normativi</span>
+                </li>
+              </ul>
+              <Button 
+                onClick={() => navigate("/login")} 
+                variant="outline" 
+                className="w-full"
+              >
+                Inizia gratis
+              </Button>
+            </Card>
+
+            <Card className="p-8 border-primary relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-semibold">
+                  Consigliato
+                </span>
+              </div>
+              <h3 className="text-2xl font-bold mb-2">Premium</h3>
+              <p className="text-3xl font-bold mb-6">€4,13<span className="text-lg font-normal text-muted-foreground">/mese</span></p>
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span className="font-semibold">Tutte le funzionalità Free</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Dossier completo dettagliato</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Qualifica giuridica approfondita</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Opzioni strategiche personalizzate</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Passi operativi con tempistiche</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Termini e scadenze dettagliate</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Documenti e allegati pronti all'uso</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Export PDF illimitati</span>
+                </li>
+              </ul>
+              <Button 
+                onClick={() => navigate("/premium")} 
+                className="w-full"
+              >
+                Passa a Premium
+              </Button>
             </Card>
           </div>
         </div>
