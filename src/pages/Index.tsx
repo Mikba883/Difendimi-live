@@ -102,32 +102,30 @@ const Index = () => {
                 Difendimi.AI
               </h1>
             </div>
-            <Button 
-              onClick={handleMainButtonClick}
-              className="bg-gradient-primary hover:opacity-90 transition-opacity text-white shadow-elegant"
-            >
-              {isInstalled ? (
-                <>
-                  Apri App
-                </>
-              ) : installPrompt ? (
-                <>
-                  <Download className="h-4 w-4 mr-2" />
-                  Installa App
-                </>
-              ) : (
-                <>
-                  Accedi
-                </>
-              )}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleMainButtonClick}
+                variant="outline"
+                className="hover:bg-primary/10"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Scarica l'app
+              </Button>
+              <Button 
+                onClick={() => navigate("/login")}
+                className="bg-gradient-primary hover:opacity-90 transition-opacity text-white shadow-elegant"
+              >
+                Accedi
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-hero" />
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-400 via-rose-400 to-purple-500 opacity-20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/50 to-transparent" />
         <div className="container mx-auto px-4 relative">
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full mb-6">
@@ -135,8 +133,8 @@ const Index = () => {
               <span className="text-sm font-medium text-primary">Assistenza Legale Intelligente</span>
             </div>
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 animate-fade-in">
-              Scopri cosa dice la
-              <span className="bg-gradient-primary bg-clip-text text-transparent"> legge</span>
+              Fai valere i tuoi
+              <span className="bg-gradient-primary bg-clip-text text-transparent"> diritti</span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 animate-fade-in" style={{animationDelay: "0.1s"}}>
               Senza attese, senza parcelle, con l'intelligenza artificiale
@@ -144,10 +142,10 @@ const Index = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in" style={{animationDelay: "0.2s"}}>
               <Button 
                 size="lg"
-                onClick={handleMainButtonClick}
+                onClick={() => navigate("/case/new")}
                 className="bg-gradient-primary hover:opacity-90 text-white shadow-elegant px-8"
               >
-                {isInstalled ? 'Accedi all\'App' : (installPrompt ? 'Scarica App' : 'Accedi all\'App')}
+                Analizza subito il tuo caso
                 <ArrowRight className="h-5 w-5 ml-2" />
               </Button>
             </div>
@@ -182,10 +180,10 @@ const Index = () => {
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <Card className="group hover:shadow-elegant transition-all duration-300 border-border/50 bg-gradient-card">
               <CardContent className="pt-8 text-center">
-                <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-primary flex items-center justify-center text-white font-bold text-xl group-hover:scale-110 transition-transform">
-                  1
+                <div className="flex items-center justify-center gap-3 mb-6">
+                  <span className="text-5xl font-bold bg-gradient-primary bg-clip-text text-transparent">1</span>
+                  <MessageSquare className="h-8 w-8 text-primary" />
                 </div>
-                <MessageSquare className="h-8 w-8 mx-auto mb-4 text-primary" />
                 <h3 className="text-xl font-semibold mb-3">Racconta il tuo caso</h3>
                 <p className="text-muted-foreground">
                   Descrivi la situazione con parole tue. L'AI comprenderà e ti guiderà.
@@ -195,23 +193,23 @@ const Index = () => {
 
             <Card className="group hover:shadow-elegant transition-all duration-300 border-border/50 bg-gradient-card">
               <CardContent className="pt-8 text-center">
-                <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-primary flex items-center justify-center text-white font-bold text-xl group-hover:scale-110 transition-transform">
-                  2
+                <div className="flex items-center justify-center gap-3 mb-6">
+                  <span className="text-5xl font-bold bg-gradient-primary bg-clip-text text-transparent">2</span>
+                  <Brain className="h-8 w-8 text-primary" />
                 </div>
-                <Brain className="h-8 w-8 mx-auto mb-4 text-primary" />
                 <h3 className="text-xl font-semibold mb-3">Analisi intelligente</h3>
                 <p className="text-muted-foreground">
-                  Il sistema cerca nelle banche dati Normattiva ed EUR-Lex.
+                  Il sistema consulta la normativa vigente italiana ed europea.
                 </p>
               </CardContent>
             </Card>
 
             <Card className="group hover:shadow-elegant transition-all duration-300 border-border/50 bg-gradient-card">
               <CardContent className="pt-8 text-center">
-                <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-primary flex items-center justify-center text-white font-bold text-xl group-hover:scale-110 transition-transform">
-                  3
+                <div className="flex items-center justify-center gap-3 mb-6">
+                  <span className="text-5xl font-bold bg-gradient-primary bg-clip-text text-transparent">3</span>
+                  <FileText className="h-8 w-8 text-primary" />
                 </div>
-                <FileText className="h-8 w-8 mx-auto mb-4 text-primary" />
                 <h3 className="text-xl font-semibold mb-3">Ricevi documenti</h3>
                 <p className="text-muted-foreground">
                   Ottieni schede informative chiare e PDF scaricabili.
@@ -222,145 +220,53 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Vantaggi Section */}
+      {/* Download App Section */}
       <section className="py-20 bg-gradient-subtle">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              I Nostri <span className="bg-gradient-primary bg-clip-text text-transparent">Vantaggi</span>
+              Porta Difendimi.AI <span className="bg-gradient-primary bg-clip-text text-transparent">sempre con te</span>
             </h2>
-            <p className="text-xl text-muted-foreground">Perché scegliere Difendimi.AI</p>
+            <p className="text-xl text-muted-foreground mb-8">
+              Scarica l'app e accedi alle informazioni legali ovunque ti trovi
+            </p>
           </div>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
-            <Card className="group hover:shadow-soft transition-all duration-300 border-0 bg-background">
-              <CardContent className="pt-6">
-                <div className="w-12 h-12 mb-4 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                  <Lock className="h-6 w-6 text-primary" />
+          <Card className="max-w-2xl mx-auto border-primary/20 bg-background/95 backdrop-blur">
+            <CardContent className="p-12 text-center">
+              <div className="flex justify-center mb-6">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-primary flex items-center justify-center">
+                  <Download className="h-10 w-10 text-white" />
                 </div>
-                <h4 className="text-lg font-semibold mb-2">100% Anonimo</h4>
-                <p className="text-muted-foreground">
-                  I tuoi dati sono sempre protetti e anonimizzati
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="group hover:shadow-soft transition-all duration-300 border-0 bg-background">
-              <CardContent className="pt-6">
-                <div className="w-12 h-12 mb-4 rounded-xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                  <Scale className="h-6 w-6 text-accent" />
+              </div>
+              <h3 className="text-2xl font-bold mb-4">Installa l'applicazione</h3>
+              <p className="text-muted-foreground mb-8">
+                Con un semplice click, installa Difendimi.AI sul tuo dispositivo e accedi rapidamente quando ne hai bisogno. Nessun download da store, installazione diretta dal browser.
+              </p>
+              <Button
+                size="lg"
+                onClick={handleMainButtonClick}
+                className="bg-gradient-primary hover:opacity-90 text-white shadow-elegant px-12"
+              >
+                <Download className="h-5 w-5 mr-2" />
+                Scarica l'app
+              </Button>
+              <div className="flex items-center justify-center gap-8 mt-8 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-primary" />
+                  <span>Gratis</span>
                 </div>
-                <h4 className="text-lg font-semibold mb-2">Fonti Ufficiali</h4>
-                <p className="text-muted-foreground">
-                  Basato su Normattiva e EUR-Lex
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="group hover:shadow-soft transition-all duration-300 border-0 bg-background">
-              <CardContent className="pt-6">
-                <div className="w-12 h-12 mb-4 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                  <Clock className="h-6 w-6 text-primary" />
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <span>Sicura</span>
                 </div>
-                <h4 className="text-lg font-semibold mb-2">Risposte Immediate</h4>
-                <p className="text-muted-foreground">
-                  Ottieni informazioni in pochi minuti
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="group hover:shadow-soft transition-all duration-300 border-0 bg-background">
-              <CardContent className="pt-6">
-                <div className="w-12 h-12 mb-4 rounded-xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                  <Shield className="h-6 w-6 text-accent" />
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-primary" />
+                  <span>Veloce</span>
                 </div>
-                <h4 className="text-lg font-semibold mb-2">Privacy First</h4>
-                <p className="text-muted-foreground">
-                  Nessun dato personale viene salvato
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonianze Section */}
-      <section className="py-20 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              Cosa Dicono i Nostri <span className="bg-gradient-primary bg-clip-text text-transparent">Utenti</span>
-            </h2>
-            <p className="text-xl text-muted-foreground">Storie di successo dalla nostra community</p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <Card className="border-border/50 hover:shadow-elegant transition-all duration-300">
-              <CardHeader>
-                <div className="flex items-center gap-1 mb-2">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                  ))}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  "Ho risolto una questione contrattuale in pochi minuti. Servizio eccezionale!"
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-primary" />
-                  <div>
-                    <p className="font-semibold text-sm">Marco R.</p>
-                    <p className="text-xs text-muted-foreground">Imprenditore</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50 hover:shadow-elegant transition-all duration-300">
-              <CardHeader>
-                <div className="flex items-center gap-1 mb-2">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                  ))}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  "Finalmente posso capire le normative senza dover consultare un avvocato ogni volta."
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-secondary" />
-                  <div>
-                    <p className="font-semibold text-sm">Laura B.</p>
-                    <p className="text-xs text-muted-foreground">Freelance</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50 hover:shadow-elegant transition-all duration-300">
-              <CardHeader>
-                <div className="flex items-center gap-1 mb-2">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                  ))}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  "Risparmio tempo e denaro. L'AI è precisa e le informazioni sempre aggiornate."
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-primary" />
-                  <div>
-                    <p className="font-semibold text-sm">Giuseppe M.</p>
-                    <p className="text-xs text-muted-foreground">Consulente</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
@@ -393,7 +299,7 @@ const Index = () => {
                 <span className="text-lg font-bold">Difendimi.AI</span>
               </div>
               <p className="text-background/70 text-sm">
-                Assistenza legale intelligente per tutti
+                Scopri cosa dice la legge senza attese né parcelle
               </p>
             </div>
             
