@@ -1,4 +1,4 @@
-import { Shield, ArrowRight, CheckCircle, Lock, Scale, Clock, Download, Brain, FileText, Zap, Users, Star, MessageSquare, ChevronRight, ClipboardList, FileCheck, Target, Calendar, Paperclip, Check, X } from "lucide-react";
+import { Shield, ArrowRight, CheckCircle, Lock, Scale, Clock, Download, Brain, FileText, Zap, Users, Star, MessageSquare, ChevronRight, ClipboardList, FileCheck, Target, Calendar, Paperclip, Check, X, Eye, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,11 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ReportSections } from "@/components/case/ReportSections";
+import { DEMO_CASE_DATA } from "@/data/demoCase";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -59,6 +64,9 @@ const Index = () => {
     };
   }, [navigate]);
 
+  const [showPreview, setShowPreview] = useState(false);
+  const [showInstallSheet, setShowInstallSheet] = useState(false);
+
   const handleMainButtonClick = async () => {
     // Se l'app è già installata o siamo in modalità standalone, vai al login
     if (isInstalled || window.matchMedia('(display-mode: standalone)').matches) {
@@ -93,6 +101,27 @@ const Index = () => {
     }
   };
 
+  const handleDownloadApp = async () => {
+    // Se c'è il prompt di installazione, usalo
+    if (installPrompt) {
+      try {
+        await installPrompt.prompt();
+        const { outcome } = await installPrompt.userChoice;
+        if (outcome === 'accepted') {
+          setInstallPrompt(null);
+        }
+      } catch (error) {
+        console.error('Error installing PWA:', error);
+        setShowInstallSheet(true);
+      }
+    } else if (isIOS) {
+      setShowInstallSheet(true);
+    } else {
+      // Mostra istruzioni generiche
+      setShowInstallSheet(true);
+    }
+  };
+
   return (
     <div className="min-h-screen">
       {/* Hero Section with gradient background that extends to header */}
@@ -108,7 +137,7 @@ const Index = () => {
               </div>
               <div className="flex gap-2">
                 <Button
-                  onClick={handleMainButtonClick}
+                  onClick={handleDownloadApp}
                   variant="outline"
                   className="bg-white/10 text-white border-white/20 hover:bg-white/20"
                 >
@@ -326,147 +355,169 @@ const Index = () => {
       </div>
     </section>
 
-    {/* What You Get Section */}
+    {/* What You Get Section - Interactive Preview */}
     <section className="py-20 bg-background">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold mb-4">
             Cosa <span className="bg-gradient-primary bg-clip-text text-transparent">riceverai</span>
           </h2>
-          <p className="text-xl text-muted-foreground">
-            Documenti professionali per ogni tuo caso
+          <p className="text-xl text-muted-foreground mb-8">
+            Esplora un esempio reale di analisi generata da Difendimi
           </p>
         </div>
         
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-primary/20 bg-gradient-card overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                  <FileText className="h-6 w-6 text-primary" />
+        {/* Preview Card */}
+        <Card className="max-w-4xl mx-auto border-primary/20 overflow-hidden">
+          <CardHeader className="bg-gradient-card">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-2xl">Esempio: Multa per divieto di sosta</CardTitle>
+                <p className="text-muted-foreground mt-2">
+                  Vedi come appare un'analisi completa del tuo caso
+                </p>
+              </div>
+              <Badge variant="secondary" className="px-3 py-1">
+                DEMO
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {/* Mini preview of sections */}
+              <div className="grid md:grid-cols-2 gap-4 mb-6">
+                <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                  <h4 className="font-semibold flex items-center gap-2 mb-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Sommario Esecutivo
+                  </h4>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {DEMO_CASE_DATA.executive_summary?.summary}
+                  </p>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Sommario Esecutivo</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Sintesi immediata del tuo caso con i punti chiave
+                <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                  <h4 className="font-semibold flex items-center gap-2 mb-2">
+                    <Scale className="h-4 w-4 text-primary" />
+                    Qualifica Giuridica
+                  </h4>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {DEMO_CASE_DATA.qualificazione_giuridica?.description}
                   </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+              
+              {/* Action buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+                <Button 
+                  size="lg"
+                  onClick={() => setShowPreview(true)}
+                  className="shadow-elegant"
+                >
+                  <Eye className="h-5 w-5 mr-2" />
+                  Vedi esempio completo
+                </Button>
+                <Button 
+                  size="lg"
+                  variant="outline"
+                  onClick={() => navigate("/case/new")}
+                >
+                  Analizza il tuo caso
+                  <ArrowRight className="h-5 w-5 ml-2" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </section>
 
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-primary/20 bg-gradient-card overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                  <ClipboardList className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Dossier Completo</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Analisi dettagliata con riferimenti normativi
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-primary/20 bg-gradient-card overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                  <Scale className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Qualifica Giuridica</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Inquadramento legale preciso della situazione
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-primary/20 bg-gradient-card overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                  <Target className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Opzioni Strategiche</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Diverse strade percorribili con pro e contro
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-primary/20 bg-gradient-card overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                  <FileCheck className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Passi Operativi</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Azioni concrete da intraprendere subito
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-primary/20 bg-gradient-card overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                  <Calendar className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Termini e Scadenze</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Date importanti da non perdere
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-primary/20 bg-gradient-card overflow-hidden lg:col-span-2">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                  <Paperclip className="h-6 w-6 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-2">Documenti e Allegati</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Bozze personalizzate di lettere, email e diffide pronte all'uso
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-accent/30 bg-gradient-to-br from-accent/5 to-accent/10 overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-accent/20 group-hover:bg-accent/30 transition-colors">
-                  <Download className="h-6 w-6 text-accent" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">PDF Scaricabile</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Tutto in un documento professionale da conservare
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+    {/* FAQ Section */}
+    <section className="py-20 bg-gradient-subtle">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl md:text-5xl font-bold mb-4">
+            Domande <span className="bg-gradient-primary bg-clip-text text-transparent">Frequenti</span>
+          </h2>
+          <p className="text-xl text-muted-foreground">
+            Tutto quello che devi sapere su Difendimi
+          </p>
         </div>
+        
+        <Card className="max-w-4xl mx-auto">
+          <CardContent className="p-6">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="item-1">
+                <AccordionTrigger className="text-left">
+                  Che cos'è Difendimi?
+                </AccordionTrigger>
+                <AccordionContent>
+                  Difendimi è un assistente digitale esperto in diritto che ti aiuta a capire subito cosa dice la legge sul tuo caso, senza attese né parcelle.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-2">
+                <AccordionTrigger className="text-left">
+                  Difendimi sostituisce un avvocato?
+                </AccordionTrigger>
+                <AccordionContent>
+                  No. Difendimi non è uno studio legale e non fornisce consulenza personalizzata da parte di un avvocato. Ti aiuta però a orientarti tra le norme, a capire i tuoi diritti e a preparare la documentazione di base.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-3">
+                <AccordionTrigger className="text-left">
+                  Come funziona l'analisi del caso?
+                </AccordionTrigger>
+                <AccordionContent>
+                  Inserisci una descrizione semplice del tuo problema. Difendimi consulta la normativa vigente italiana ed europea e genera un dossier con: sintesi del caso, riferimenti normativi, opzioni procedurali e documenti utili.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-4">
+                <AccordionTrigger className="text-left">
+                  Cosa ricevo con l'app?
+                </AccordionTrigger>
+                <AccordionContent>
+                  <ul className="list-disc list-inside space-y-1 mt-2">
+                    <li>Sommario esecutivo del tuo caso</li>
+                    <li>Dossier completo con riferimenti normativi</li>
+                    <li>Qualifica giuridica del problema</li>
+                    <li>Opzioni strategiche possibili</li>
+                    <li>Passi operativi con termini e scadenze</li>
+                    <li>Documenti e allegati da utilizzare</li>
+                  </ul>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-5">
+                <AccordionTrigger className="text-left">
+                  I documenti sono validi legalmente?
+                </AccordionTrigger>
+                <AccordionContent>
+                  I documenti generati sono bozze pronte all'uso (email, diffide, istanze, ecc.). Non sostituiscono un atto redatto da un avvocato, ma ti permettono di organizzarti subito e di risparmiare tempo e costi.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-6">
+                <AccordionTrigger className="text-left">
+                  Quanto tempo ci vuole per ricevere il dossier?
+                </AccordionTrigger>
+                <AccordionContent>
+                  Il dossier viene generato in pochi secondi, pronto da consultare o scaricare in PDF.
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-7">
+                <AccordionTrigger className="text-left">
+                  Difendimi è sicuro?
+                </AccordionTrigger>
+                <AccordionContent>
+                  Sì. Difendimi non salva i dati dei tuoi casi e i dossier generati non contengono alcuna informazione personale o sensibile. Puoi quindi essere sicuro al 100%.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
       </div>
     </section>
 
@@ -589,6 +640,53 @@ const Index = () => {
     
     {/* Install PWA Component */}
     <InstallPWA />
+
+    {/* Preview Modal */}
+    <Dialog open={showPreview} onOpenChange={setShowPreview}>
+      <DialogContent className="max-w-7xl h-[90vh] overflow-hidden p-0">
+        <DialogHeader className="px-6 py-4 border-b bg-gradient-card">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-xl">Esempio di Analisi - Multa per divieto di sosta</DialogTitle>
+            <Badge variant="secondary">DEMO</Badge>
+          </div>
+        </DialogHeader>
+        <div className="overflow-y-auto h-[calc(90vh-80px)]">
+          <ReportSections report={DEMO_CASE_DATA} />
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    {/* Install Instructions Sheet */}
+    <Sheet open={showInstallSheet} onOpenChange={setShowInstallSheet}>
+      <SheetContent>
+        <div className="space-y-6 mt-6">
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Come installare Difendimi</h3>
+            {isIOS ? (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">Per dispositivi iOS:</p>
+                <ol className="list-decimal list-inside space-y-2 text-sm">
+                  <li>Apri questa pagina in Safari</li>
+                  <li>Tocca il pulsante Condividi <span className="inline-block">⬆️</span></li>
+                  <li>Scorri e tocca "Aggiungi a Home"</li>
+                  <li>Tocca "Aggiungi" in alto a destra</li>
+                </ol>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">Per installare l'app:</p>
+                <ol className="list-decimal list-inside space-y-2 text-sm">
+                  <li>Apri questa pagina in Chrome o Edge</li>
+                  <li>Cerca l'icona di installazione nella barra degli indirizzi</li>
+                  <li>Clicca su "Installa Difendimi"</li>
+                  <li>Segui le istruzioni del browser</li>
+                </ol>
+              </div>
+            )}
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   </div>
   );
 };
