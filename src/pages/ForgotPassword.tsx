@@ -38,9 +38,18 @@ const ForgotPassword = () => {
   };
 
   if (emailSent) {
-    return (
-      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+  return (
+    <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="fixed top-4 left-4 z-50"
+        onClick={() => navigate("/login")}
+        aria-label="Torna al login"
+      >
+        <ArrowLeft className="h-5 w-5" />
+      </Button>
+      <Card className="w-full max-w-md">
           <CardHeader className="space-y-1">
             <div className="flex items-center justify-center mb-4">
               <span className="text-4xl font-black tracking-tight">

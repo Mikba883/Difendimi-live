@@ -104,9 +104,8 @@ const Index = () => {
     } else if (isInstalled) {
       alert('L\'app è già installata sul tuo dispositivo!');
     } else {
-      // Fallback - try to re-capture the prompt or navigate to login
-      console.log('Install prompt not available, navigating to login');
-      navigate("/login");
+      // Fallback - show instructions for manual installation
+      alert('Per installare l\'app:\n\n• Chrome/Edge: Clicca sui 3 puntini → "Installa app"\n• Safari: Tocca Condividi → "Aggiungi a Home"\n• Firefox: Clicca sui 3 puntini → "Installa"');
     }
   };
 
