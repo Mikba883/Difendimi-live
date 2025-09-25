@@ -13,6 +13,9 @@ import Premium from "./pages/Premium";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Cookie from "./pages/Cookie";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import VerifyEmail from "./pages/VerifyEmail";
 
 const queryClient = new QueryClient();
 

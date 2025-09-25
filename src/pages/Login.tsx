@@ -6,79 +6,76 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Shield, Loader2, Mail, KeyRound, ArrowLeft } from "lucide-react";
+import { Loader2, Mail, KeyRound, ArrowLeft, Chrome } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
-import logoShield from "@/assets/logo-shield.png";
 
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [privacyConsent, setPrivacyConsent] = useState(false);
-  const [showOtpInput, setShowOtpInput] = useState(false);
-  const [generatedPassword, setGeneratedPassword] = useState("");
 
   useEffect(() => {
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate("/dashboard");
+        navigate("/case/new");
       }
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
-        navigate("/dashboard");
+        navigate("/case/new");
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Generate a secure random password
-  const generatePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let password = '';
-    for (let i = 0; i < 16; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    const redirectUrl = `${window.location.origin}/case/new`;
+    
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl,
+      }
+    });
+
+    if (error) {
+      toast({
+        title: "Errore di accesso",
+        description: error.message,
+        variant: "destructive",
+      });
+      setLoading(false);
     }
-    return password;
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!privacyConsent) {
-      // Don't show toast, just update the UI state
-      const privacyLabel = document.getElementById('privacy-label');
-      if (privacyLabel) {
-        privacyLabel.classList.add('text-destructive');
-      }
       const privacyError = document.getElementById('privacy-error');
       if (privacyError) {
         privacyError.classList.remove('hidden');
       }
-      setLoading(false);
       return;
     }
 
     setLoading(true);
     
-    // Generate a password for the user
-    const autoPassword = generatePassword();
-    setGeneratedPassword(autoPassword);
+    const redirectUrl = `${window.location.origin}/verify-email`;
     
-    const redirectUrl = `${window.location.origin}/dashboard`;
-    
-    const { error, data } = await supabase.auth.signUp({
+    const { error, data } = await supabase.auth.signInWithOtp({
       email,
-      password: autoPassword,
       options: {
         emailRedirectTo: redirectUrl,
+        shouldCreateUser: true,
         data: {
           privacy_consent: true,
           privacy_consent_date: new Date().toISOString(),
@@ -95,67 +92,9 @@ const Login = () => {
         variant: "destructive",
       });
       setLoading(false);
-    } else if (data?.user) {
-      // Send OTP
-      const { error: otpError } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: false,
-        }
-      });
-
-      if (otpError) {
-        toast({
-          title: "Errore invio OTP",
-          description: otpError.message,
-          variant: "destructive",
-        });
-        setLoading(false);
-      } else {
-        toast({
-          title: "Codice OTP inviato",
-          description: "Controlla la tua email per il codice di verifica.",
-        });
-        setShowOtpInput(true);
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token: otp,
-      type: 'email',
-    });
-
-    if (error) {
-      toast({
-        title: "Errore verifica OTP",
-        description: error.message,
-        variant: "destructive",
-      });
-      setLoading(false);
-    } else {
-      toast({
-        title: "Account verificato",
-        description: `La tua password è: ${generatedPassword}. Salvala in un posto sicuro!`,
-        duration: 10000,
-      });
-      
-      // Update profile with privacy consent
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("profiles").update({
-          privacy_consent: true,
-          privacy_consent_date: new Date().toISOString()
-        }).eq("user_id", user.id);
-      }
-      
-      navigate("/dashboard");
+    } else if (data) {
+      // Redirect to verify email page
+      navigate("/verify-email");
     }
   };
 
@@ -193,12 +132,49 @@ const Login = () => {
       </Button>
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">Difendimi.AI</CardTitle>
+          <div className="flex items-center justify-center mb-4">
+            <span className="text-4xl font-black tracking-tight">
+              <span className="bg-gradient-to-r from-primary via-blue-500 to-primary bg-clip-text text-transparent animate-pulse">
+                D
+              </span>
+              <span className="text-3xl font-bold bg-gradient-to-r from-foreground/90 to-foreground/70 bg-clip-text text-transparent">
+                ifendimi
+              </span>
+            </span>
+          </div>
+          <CardTitle className="text-2xl text-center">Accedi o Registrati</CardTitle>
           <CardDescription className="text-center">
-            Accedi per gestire i tuoi casi in completa privacy
+            Gestisci i tuoi casi in completa privacy
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Google Sign In - Primary Option */}
+          <div className="space-y-4 mb-6">
+            <Button 
+              onClick={handleGoogleSignIn} 
+              className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-300"
+              disabled={loading}
+            >
+              {loading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Chrome className="mr-2 h-4 w-4" />
+              )}
+              Continua con Google
+            </Button>
+            
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Oppure con email
+                </span>
+              </div>
+            </div>
+          </div>
+
           <Tabs defaultValue="signup" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signup">Registrati</TabsTrigger>
@@ -206,124 +182,75 @@ const Login = () => {
             </TabsList>
             
             <TabsContent value="signup">
-              {!showOtpInput ? (
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">
-                      <Mail className="h-4 w-4 inline mr-2" />
-                      Email
-                    </Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="nome@esempio.it"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Ti invieremo un codice OTP e genereremo una password sicura per te
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-start space-x-2">
-                      <Checkbox
-                        id="privacy"
-                        checked={privacyConsent}
-                        onCheckedChange={(checked) => {
-                          setPrivacyConsent(checked as boolean);
-                          // Reset error state when checkbox is checked
-                          if (checked) {
-                            const privacyLabel = document.getElementById('privacy-label');
-                            if (privacyLabel) {
-                              privacyLabel.classList.remove('text-destructive');
-                            }
-                            const privacyError = document.getElementById('privacy-error');
-                            if (privacyError) {
-                              privacyError.classList.add('hidden');
-                            }
+              <form onSubmit={handleSignUp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email">
+                    <Mail className="h-4 w-4 inline mr-2" />
+                    Email
+                  </Label>
+                  <Input
+                    id="signup-email"
+                    type="email"
+                    placeholder="nome@esempio.it"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Ti invieremo un'email di conferma con link di verifica. Controlla la tua casella email per validare l'account.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="privacy"
+                      checked={privacyConsent}
+                      onCheckedChange={(checked) => {
+                        setPrivacyConsent(checked as boolean);
+                        if (checked) {
+                          const privacyError = document.getElementById('privacy-error');
+                          if (privacyError) {
+                            privacyError.classList.add('hidden');
                           }
-                        }}
-                      />
-                      <label
-                        id="privacy-label"
-                        htmlFor="privacy"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 transition-colors"
-                      >
-                        Ho letto e accetto la{" "}
-                        <Link to="/privacy" className="text-primary hover:underline">
+                        }
+                      }}
+                      className="mt-1 border-primary data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                    />
+                    <label
+                      htmlFor="privacy"
+                      className="text-sm leading-relaxed cursor-pointer select-none"
+                    >
+                      <span className="font-medium">☑ Difendimi è uno strumento digitale per comprendere i propri diritti; non costituisce rapporto di consulenza legale.</span>
+                      <br />
+                      <span className="text-muted-foreground">Accetto la{" "}
+                        <Link to="/privacy" className="text-primary hover:underline font-medium">
                           Privacy Policy
                         </Link>
-                        , i{" "}
-                        <Link to="/terms" className="text-primary hover:underline">
+                        {" "}e i{" "}
+                        <Link to="/terms" className="text-primary hover:underline font-medium">
                           Termini e Condizioni
                         </Link>
-                        {" "}e il{" "}
-                        <Link to="/disclaimer" className="text-primary hover:underline">
-                          Disclaimer Legale
-                        </Link>
-                      </label>
-                    </div>
-                    <p id="privacy-error" className="text-sm text-destructive hidden">
-                      Devi accettare i termini e le condizioni per procedere
-                    </p>
+                      </span>
+                    </label>
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Invio OTP...
-                      </>
-                    ) : (
-                      <>
-                        <Mail className="mr-2 h-4 w-4" />
-                        Registrati
-                      </>
-                    )}
-                  </Button>
-                </form>
-              ) : (
-                <form onSubmit={handleVerifyOtp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="otp">
-                      <KeyRound className="h-4 w-4 inline mr-2" />
-                      Codice OTP
-                    </Label>
-                    <Input
-                      id="otp"
-                      type="text"
-                      placeholder="Inserisci il codice ricevuto via email"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Controlla la tua email per il codice di verifica
-                    </p>
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Verifica in corso...
-                      </>
-                    ) : (
-                      "Verifica e Accedi"
-                    )}
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    className="w-full"
-                    onClick={() => {
-                      setShowOtpInput(false);
-                      setOtp("");
-                    }}
-                  >
-                    Torna indietro
-                  </Button>
-                </form>
-              )}
+                  <p id="privacy-error" className="text-sm text-destructive hidden">
+                    Devi accettare i termini e le condizioni per procedere
+                  </p>
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Invio email...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="mr-2 h-4 w-4" />
+                      Registrati
+                    </>
+                  )}
+                </Button>
+              </form>
             </TabsContent>
             
             <TabsContent value="signin">
