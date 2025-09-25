@@ -99,5 +99,17 @@ export const InstallPWA = () => {
     );
   }
 
-  return null;
+  // If no install prompt available, show button to go to login
+  return (
+    <div className="fixed bottom-4 right-4 z-50 animate-fadeIn">
+      <Button 
+        onClick={() => window.location.href = '/login'}
+        className="shadow-lg gap-2"
+        size="lg"
+      >
+        <Download className="h-4 w-4" />
+        Installa App
+      </Button>
+    </div>
+  );
 };

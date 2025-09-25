@@ -191,7 +191,7 @@ const Login = () => {
                   Continua con Google
                 </Button>
                 
-                <div className="relative">
+                <div className="relative my-2">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />
                   </div>
@@ -294,7 +294,7 @@ const Login = () => {
                   Continua con Google
                 </Button>
                 
-                <div className="relative">
+                <div className="relative my-2">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />
                   </div>
