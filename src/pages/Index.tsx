@@ -109,37 +109,144 @@ const Index = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section with gradient background that extends to header */}
-      <div className="relative bg-gradient-to-br from-orange-400 via-rose-400 to-purple-500">
-        {/* Header */}
-        <header className="fixed top-0 w-full backdrop-blur-md bg-background/10 border-b border-white/10 z-50">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-white">
-                  Difendimi.AI
-                </h1>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleDownloadApp}
-                  variant="outline"
-                  className="bg-white/10 text-white border-white/20 hover:bg-white/20"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Scarica l'app
-                </Button>
-                <Button 
-                  onClick={() => navigate("/login")}
-                  className="bg-white text-primary hover:bg-white/90 transition-all shadow-elegant"
-                >
-                  Accedi
-                </Button>
-              </div>
+      {/* Navigation */}
+      <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+        isScrolled 
+          ? 'bg-background/98 backdrop-blur-md border-b shadow-sm' 
+          : 'bg-transparent backdrop-blur-sm'
+      }`}>
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-between items-center">
+            {/* Logo */}
+            <div className="flex items-center gap-2">
+              <Shield className="h-8 w-8 text-primary" />
+              <span className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                DIFENDIMI
+              </span>
+            </div>
+
+            {/* Desktop Menu - Center */}
+            <div className="hidden md:flex items-center gap-8">
+              <button 
+                onClick={() => scrollToSection('come-funziona')}
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  isScrolled ? 'text-foreground' : 'text-white'
+                }`}
+              >
+                Come funziona
+              </button>
+              <button 
+                onClick={() => scrollToSection('preview')}
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  isScrolled ? 'text-foreground' : 'text-white'
+                }`}
+              >
+                Preview
+              </button>
+              <button 
+                onClick={() => scrollToSection('pricing')}
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  isScrolled ? 'text-foreground' : 'text-white'
+                }`}
+              >
+                Pricing
+              </button>
+              <button 
+                onClick={() => scrollToSection('faq')}
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  isScrolled ? 'text-foreground' : 'text-white'
+                }`}
+              >
+                FAQ
+              </button>
+            </div>
+
+            {/* Desktop Buttons - Right */}
+            <div className="hidden md:flex gap-4">
+              <Button 
+                variant={isScrolled ? "outline" : "ghost"}
+                onClick={handleDownloadApp}
+                className={isScrolled ? "" : "text-white border-white/20 hover:bg-white/10"}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Scarica l'app
+              </Button>
+              <Button 
+                onClick={handleMainButtonClick} 
+                variant={isScrolled ? "default" : "outline"}
+                className={isScrolled ? "" : "bg-white text-primary hover:bg-white/90"}
+              >
+                Accedi
+              </Button>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <div className="md:hidden flex items-center gap-2">
+              <Button 
+                onClick={handleMainButtonClick} 
+                variant="default" 
+                size="sm"
+                className={isScrolled ? "" : "bg-white text-primary hover:bg-white/90"}
+              >
+                Accedi
+              </Button>
+              <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className={isScrolled ? "" : "text-white hover:bg-white/10"}
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[250px]">
+                  <SheetHeader>
+                    <SheetTitle>Menu</SheetTitle>
+                  </SheetHeader>
+                  <div className="flex flex-col gap-4 mt-8">
+                    <button 
+                      onClick={() => scrollToSection('come-funziona')}
+                      className="text-left text-sm font-medium hover:text-primary transition-colors"
+                    >
+                      Come funziona
+                    </button>
+                    <button 
+                      onClick={() => scrollToSection('preview')}
+                      className="text-left text-sm font-medium hover:text-primary transition-colors"
+                    >
+                      Preview
+                    </button>
+                    <button 
+                      onClick={() => scrollToSection('pricing')}
+                      className="text-left text-sm font-medium hover:text-primary transition-colors"
+                    >
+                      Pricing
+                    </button>
+                    <button 
+                      onClick={() => scrollToSection('faq')}
+                      className="text-left text-sm font-medium hover:text-primary transition-colors"
+                    >
+                      FAQ
+                    </button>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleDownloadApp}
+                      className="w-full"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Scarica l'app
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
-        </header>
+        </div>
+      </nav>
 
+      {/* Hero Section with gradient background */}
+      <div id="hero" className="relative bg-gradient-to-br from-orange-400 via-rose-400 to-purple-500">
         {/* Hero Content */}
         <section className="relative pt-32 pb-20 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
@@ -159,11 +266,11 @@ const Index = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in" style={{animationDelay: "0.2s"}}>
               <Button 
                 size="lg"
-                onClick={() => navigate("/case/new")}
-                className="bg-white text-primary hover:bg-white/90 shadow-elegant px-8"
+                onClick={handleMainButtonClick}
+                className="bg-white text-primary hover:bg-white/90 shadow-2xl hover:shadow-3xl px-10 py-8 text-xl font-semibold transition-all transform hover:scale-105"
               >
                 Analizza subito il tuo caso
-                <ArrowRight className="h-5 w-5 ml-2" />
+                <ArrowRight className="h-6 w-6 ml-3" />
               </Button>
             </div>
             <div className="flex items-center justify-center gap-8 mt-12 text-sm text-white/80">
@@ -186,7 +293,7 @@ const Index = () => {
     </div>
 
     {/* Come Funziona Section */}
-    <section className="py-20 bg-background">
+    <section id="come-funziona" className="py-20 bg-background">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold mb-4">
@@ -341,7 +448,7 @@ const Index = () => {
     </section>
 
     {/* What You Get Section - Interactive Preview */}
-    <section className="py-20 bg-background">
+    <section id="preview" className="py-20 bg-background">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold mb-4">
@@ -416,8 +523,120 @@ const Index = () => {
       </div>
     </section>
 
+    {/* Pricing Section */}
+    <section id="pricing" className="py-20 bg-secondary/5">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl md:text-5xl font-bold mb-4">
+            Scegli il tuo <span className="bg-gradient-primary bg-clip-text text-transparent">piano</span>
+          </h2>
+          <p className="text-xl text-muted-foreground">
+            Inizia gratis o sblocca tutte le funzionalità con Premium
+          </p>
+        </div>
+
+        <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-8">
+          {/* Free Plan */}
+          <Card className="relative overflow-hidden">
+            <CardHeader>
+              <CardTitle className="text-2xl">Free</CardTitle>
+              <CardDescription>Per iniziare subito</CardDescription>
+              <div className="mt-4">
+                <span className="text-4xl font-bold">€0</span>
+                <span className="text-muted-foreground ml-2">sempre gratis</span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Analisi del tuo caso specifico</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Interrogazione del sistema normativo italiano</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Report standard</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Principali riferimenti normativi</span>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => navigate("/login")}
+              >
+                Inizia gratis
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Premium Plan */}
+          <Card className="relative overflow-hidden border-primary shadow-lg">
+            <div className="absolute top-0 right-0 bg-gradient-to-l from-primary to-primary/80 text-primary-foreground px-4 py-1 text-sm font-semibold rounded-bl-lg">
+              PIÙ POPOLARE
+            </div>
+            <CardHeader>
+              <CardTitle className="text-2xl">Premium</CardTitle>
+              <CardDescription>Per professionisti e casi complessi</CardDescription>
+              <div className="mt-4">
+                <span className="text-4xl font-bold">€4,13</span>
+                <span className="text-muted-foreground ml-2">/mese</span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-sm font-semibold">Tutto il piano Free, più:</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Dossier completo</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Qualifica giuridica dettagliata</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Opzioni strategiche complete</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Passi operativi guidati</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Termini e scadenze specifiche</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Documenti e allegati personalizzati</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Check className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                  <span className="text-sm">Export PDF illimitati</span>
+                </div>
+              </div>
+              <Button 
+                className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
+                onClick={() => navigate("/login")}
+              >
+                Inizia Premium
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </section>
+
     {/* FAQ Section */}
-    <section className="py-20 bg-gradient-subtle">
+    <section id="faq" className="py-20 bg-background">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold mb-4">
@@ -641,37 +860,6 @@ const Index = () => {
       </DialogContent>
     </Dialog>
 
-    {/* Install Instructions Sheet */}
-    <Sheet open={showInstallSheet} onOpenChange={setShowInstallSheet}>
-      <SheetContent>
-        <div className="space-y-6 mt-6">
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Come installare Difendimi</h3>
-            {isIOS ? (
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">Per dispositivi iOS:</p>
-                <ol className="list-decimal list-inside space-y-2 text-sm">
-                  <li>Apri questa pagina in Safari</li>
-                  <li>Tocca il pulsante Condividi <span className="inline-block">⬆️</span></li>
-                  <li>Scorri e tocca "Aggiungi a Home"</li>
-                  <li>Tocca "Aggiungi" in alto a destra</li>
-                </ol>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">Per installare l'app:</p>
-                <ol className="list-decimal list-inside space-y-2 text-sm">
-                  <li>Apri questa pagina in Chrome o Edge</li>
-                  <li>Cerca l'icona di installazione nella barra degli indirizzi</li>
-                  <li>Clicca su "Installa Difendimi"</li>
-                  <li>Segui le istruzioni del browser</li>
-                </ol>
-              </div>
-            )}
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
   </div>
   );
 };
