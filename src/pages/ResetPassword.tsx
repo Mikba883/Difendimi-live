@@ -65,9 +65,9 @@ const ResetPassword = () => {
       setPasswordUpdated(true);
       setLoading(false);
       
-      // Redirect to dashboard after a moment
+      // Redirect to new case page after a moment
       setTimeout(() => {
-        navigate("/dashboard");
+        navigate("/case/new");
       }, 2000);
     }
   };
@@ -99,7 +99,7 @@ const ResetPassword = () => {
               </div>
             </div>
             <p className="text-sm text-center text-muted-foreground">
-              Reindirizzamento alla dashboard...
+              Reindirizzamento alla creazione di un nuovo caso...
             </p>
           </CardContent>
         </Card>

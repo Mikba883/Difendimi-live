@@ -1,14 +1,46 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Mail, ArrowLeft } from "lucide-react";
+import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 const VerifyEmail = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
+    // Check for confirmation parameters from email link
+    const token = searchParams.get("token");
+    const type = searchParams.get("type");
+    
+    const handleEmailConfirmation = async () => {
+      if (token && type === "signup") {
+        // Handle email confirmation
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: token,
+          type: "signup"
+        });
+        
+        if (error) {
+          toast({
+            title: "Errore di verifica",
+            description: "Il link di verifica non è valido o è scaduto",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Email verificata",
+            description: "Il tuo account è stato verificato con successo",
+          });
+          navigate("/case/new");
+        }
+      }
+    };
+
+    handleEmailConfirmation();
+
     // Check if user is already logged in
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -29,7 +61,7 @@ const VerifyEmail = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, searchParams]);
 
   return (
     <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
