@@ -1,595 +1,497 @@
-import { Shield, ArrowRight, CheckCircle, Lock, Scale, Clock, Download, Brain, FileText, Zap, Users, Star, MessageSquare, ChevronRight, ClipboardList, FileCheck, Target, Calendar, Paperclip, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ArrowRight, Shield, FileText, Download, Sparkles, CheckCircle, Star, Users, Menu, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import logo from "../assets/logo-shield.png";
 import { InstallPWA } from "@/components/InstallPWA";
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
-}
+import { CaseStatusBadge } from "@/components/case/CaseStatusBadge";
+import { Card } from "@/components/ui/card";
 
 const Index = () => {
   const navigate = useNavigate();
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  const [installComponent, setInstallComponent] = useState<React.ReactNode>(null);
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  useEffect(() => {
-    // Check auth status first
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate("/dashboard");
-        return;
-      }
-    };
-    
-    checkAuth();
-
-    // Check if running on iOS
-    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-    setIsIOS(isIOSDevice);
-
-    // Check if app is already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-    }
-
-    // Listen for the beforeinstallprompt event
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setInstallPrompt(e as BeforeInstallPromptEvent);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    // Check if app was installed
-    window.addEventListener('appinstalled', () => {
-      setIsInstalled(true);
-      setInstallPrompt(null);
-    });
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, [navigate]);
-
-  const handleMainButtonClick = async () => {
-    // Se l'app è già installata o siamo in modalità standalone, vai al login
-    if (isInstalled || window.matchMedia('(display-mode: standalone)').matches) {
-      navigate("/login");
-      return;
-    }
-
-    // Se c'è il prompt di installazione disponibile, installala
-    if (installPrompt) {
-      try {
-        await installPrompt.prompt();
-        const { outcome } = await installPrompt.userChoice;
-        
-        if (outcome === 'accepted') {
-          setInstallPrompt(null);
-          // Dopo l'installazione, naviga al login
-          setTimeout(() => navigate("/login"), 500);
-        }
-      } catch (error) {
-        console.error('Error installing PWA:', error);
-        // Se c'è un errore, vai comunque al login
-        navigate("/login");
-      }
-    } else if (isIOS) {
-      // Su iOS mostra un alert con le istruzioni
-      alert("Per installare l'app:\n1. Tocca il pulsante Condividi ⬆️\n2. Scorri e tocca 'Aggiungi a Home'\n3. Tocca 'Aggiungi'");
-      // Poi vai al login
-      navigate("/login");
+  const handleDownloadApp = () => {
+    if (installComponent) {
+      (installComponent as any).props.onClick();
     } else {
-      // Se non c'è modo di installare, vai direttamente al login
-      navigate("/login");
+      const manifest = document.querySelector('link[rel="manifest"]');
+      if (manifest) {
+        window.open(manifest.getAttribute('href') || '', '_blank');
+      }
     }
   };
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 100);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    element?.scrollIntoView({ behavior: 'smooth' });
+    setMobileMenuOpen(false);
+  };
+
+  const menuItems = [
+    { label: 'Come funziona', id: 'come-funziona' },
+    { label: 'Preview', id: 'preview' },
+    { label: 'Pricing', id: 'pricing' },
+    { label: 'FAQ', link: '/faq' }
+  ];
+
   return (
     <div className="min-h-screen">
-      {/* Hero Section with gradient background that extends to header */}
-      <div className="relative bg-gradient-to-br from-orange-400 via-rose-400 to-purple-500">
-        {/* Header */}
-        <header className="fixed top-0 w-full backdrop-blur-md bg-background/10 border-b border-white/10 z-50">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-white">
-                  Difendimi.AI
-                </h1>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleMainButtonClick}
-                  variant="outline"
-                  className="bg-white/10 text-white border-white/20 hover:bg-white/20"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Scarica l'app
-                </Button>
-                <Button 
-                  onClick={() => navigate("/login")}
-                  className="bg-white text-primary hover:bg-white/90 transition-all shadow-elegant"
-                >
-                  Accedi
-                </Button>
-              </div>
+      <InstallPWA onInstallReady={(component) => setInstallComponent(component)} />
+      
+      {/* Hero Section */}
+      <div className="relative bg-gradient-to-br from-rose-500 via-orange-400 to-amber-300">
+        {/* Header/Navigation */}
+        <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          scrolled ? 'bg-background shadow-md' : 'bg-transparent'
+        }`}>
+          <div className="container mx-auto flex items-center justify-between p-4">
+            <div className="flex items-center gap-2">
+              <img src={logo} alt="Difendimi" className="h-8 w-8" />
+              <span className={`text-xl font-bold ${scrolled ? 'text-foreground' : 'text-white'}`}>
+                Difendimi
+              </span>
             </div>
-          </div>
-        </header>
-
-        {/* Hero Content */}
-        <section className="relative pt-32 pb-20 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
-          <div className="container mx-auto px-4 relative">
-            <div className="max-w-4xl mx-auto text-center">
-              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur px-4 py-2 rounded-full mb-6">
-                <Zap className="h-4 w-4 text-white" />
-                <span className="text-sm font-medium text-white">Fai valere i tuoi diritti</span>
-              </div>
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 animate-fade-in text-white">
-                Scopri cosa dice la
-                <span className="text-white"> legge</span>
-              </h1>
-              <p className="text-xl md:text-2xl text-white/90 mb-8 animate-fade-in" style={{animationDelay: "0.1s"}}>
-                Senza attese, senza parcelle, con l'intelligenza artificiale
-              </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in" style={{animationDelay: "0.2s"}}>
-              <Button 
-                size="lg"
-                onClick={() => navigate("/case/new")}
-                className="bg-white text-primary hover:bg-white/90 shadow-elegant px-8"
+            
+            {/* Desktop Menu */}
+            <div className="hidden md:flex items-center gap-6">
+              {menuItems.map((item) => (
+                item.link ? (
+                  <Button
+                    key={item.label}
+                    variant="ghost"
+                    onClick={() => navigate(item.link)}
+                    className={scrolled ? 'text-foreground hover:bg-muted' : 'text-white hover:bg-white/20'}
+                  >
+                    {item.label}
+                  </Button>
+                ) : (
+                  <Button
+                    key={item.id}
+                    variant="ghost"
+                    onClick={() => scrollToSection(item.id!)}
+                    className={scrolled ? 'text-foreground hover:bg-muted' : 'text-white hover:bg-white/20'}
+                  >
+                    {item.label}
+                  </Button>
+                )
+              ))}
+              <Button
+                onClick={handleDownloadApp}
+                variant="ghost"
+                className={scrolled ? 'text-foreground border-border hover:bg-muted' : 'text-white border-white hover:bg-white/20'}
               >
-                Analizza subito il tuo caso
-                <ArrowRight className="h-5 w-5 ml-2" />
+                <Download className="mr-2 h-4 w-4" />
+                Scarica l'app
+              </Button>
+              <Button
+                onClick={() => navigate("/login")}
+                variant="outline"
+                className={scrolled ? '' : 'text-white border-white hover:bg-white/20'}
+              >
+                Accedi
               </Button>
             </div>
-            <div className="flex items-center justify-center gap-8 mt-12 text-sm text-white/80">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-white" />
-                <span>100% Anonimo</span>
+
+            {/* Mobile Menu Button */}
+            <div className="flex md:hidden items-center gap-2">
+              <Button
+                onClick={() => navigate("/login")}
+                variant="outline"
+                size="sm"
+                className={scrolled ? '' : 'text-white border-white hover:bg-white/20'}
+              >
+                Accedi
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className={scrolled ? 'text-foreground' : 'text-white'}
+              >
+                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
+            </div>
+          </div>
+
+          {/* Mobile Menu Dropdown */}
+          {mobileMenuOpen && (
+            <div className="md:hidden bg-background border-t">
+              <div className="container mx-auto p-4 space-y-2">
+                {menuItems.map((item) => (
+                  item.link ? (
+                    <Button
+                      key={item.label}
+                      variant="ghost"
+                      onClick={() => {
+                        navigate(item.link);
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full justify-start"
+                    >
+                      {item.label}
+                    </Button>
+                  ) : (
+                    <Button
+                      key={item.id}
+                      variant="ghost"
+                      onClick={() => scrollToSection(item.id!)}
+                      className="w-full justify-start"
+                    >
+                      {item.label}
+                    </Button>
+                  )
+                ))}
+                <Button
+                  onClick={handleDownloadApp}
+                  variant="outline"
+                  className="w-full justify-start"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Scarica l'app
+                </Button>
               </div>
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-white" />
-                <span>Privacy Garantita</span>
+            </div>
+          )}
+        </nav>
+
+        {/* Hero Content */}
+        <div className="relative z-10 px-4 pb-20 pt-32">
+          <div className="container mx-auto max-w-4xl text-center text-white">
+            <p className="mb-4 text-lg">Fai valere i tuoi diritti</p>
+            <h1 className="mb-6 text-5xl font-bold leading-tight md:text-6xl">
+              Scopri cosa dice la legge
+            </h1>
+            <p className="mb-8 text-xl text-white/90">
+              Ottieni subito un dossier completo con riferimenti normativi, 
+              opzioni procedurali e documenti pratici per il tuo caso specifico.
+            </p>
+            <Button
+              onClick={() => navigate("/login")}
+              size="lg"
+              className="bg-white text-rose-600 hover:bg-gray-100 px-8 py-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
+            >
+              Analizza subito il tuo caso
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* How it Works Section */}
+      <section id="come-funziona" className="py-20 bg-muted/50">
+        <div className="container mx-auto px-4">
+          <h2 className="text-4xl font-bold text-center mb-12">Come funziona</h2>
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <span className="text-4xl font-bold text-primary">1</span>
+                <FileText className="h-8 w-8 text-primary" />
               </div>
-              <div className="flex items-center gap-2">
-                <Brain className="h-4 w-4 text-white" />
-                <span>AI Avanzata</span>
+              <h3 className="text-xl font-semibold mb-2">Descrivi il tuo caso</h3>
+              <p className="text-muted-foreground">
+                Racconta in parole semplici qual è il tuo problema legale
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <span className="text-4xl font-bold text-primary">2</span>
+                <Shield className="h-8 w-8 text-primary" />
               </div>
+              <h3 className="text-xl font-semibold mb-2">Analisi normativa</h3>
+              <p className="text-muted-foreground">
+                Il sistema consulta la normativa vigente italiana ed europea
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <span className="text-4xl font-bold text-primary">3</span>
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Ricevi il dossier</h3>
+              <p className="text-muted-foreground">
+                Ottieni un report completo con riferimenti normativi e passi da seguire
+              </p>
             </div>
           </div>
         </div>
       </section>
-    </div>
 
-    {/* Come Funziona Section */}
-    <section className="py-20 bg-background">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">
-            Come <span className="bg-gradient-primary bg-clip-text text-transparent">Funziona</span>
-          </h2>
-          <p className="text-xl text-muted-foreground">Tre semplici passi verso la chiarezza legale</p>
-        </div>
-        
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-border/50 bg-gradient-card">
-            <CardContent className="pt-8 text-center">
-              <div className="flex items-center justify-center gap-3 mb-6">
-                <span className="text-5xl font-bold bg-gradient-primary bg-clip-text text-transparent">1</span>
-                <MessageSquare className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Racconta il tuo caso</h3>
-              <p className="text-muted-foreground">
-                Descrivi la situazione con parole tue. L'AI comprenderà e ti guiderà.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-border/50 bg-gradient-card">
-            <CardContent className="pt-8 text-center">
-              <div className="flex items-center justify-center gap-3 mb-6">
-                <span className="text-5xl font-bold bg-gradient-primary bg-clip-text text-transparent">2</span>
-                <Brain className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Analisi intelligente</h3>
-              <p className="text-muted-foreground">
-                Il sistema consulta la normativa vigente italiana ed europea.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-border/50 bg-gradient-card">
-            <CardContent className="pt-8 text-center">
-              <div className="flex items-center justify-center gap-3 mb-6">
-                <span className="text-5xl font-bold bg-gradient-primary bg-clip-text text-transparent">3</span>
-                <FileText className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Ricevi documenti</h3>
-              <p className="text-muted-foreground">
-                Ottieni schede informative chiare e PDF scaricabili.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </section>
-
-    {/* Comparison Section */}
-    <section className="py-20 bg-gradient-subtle">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">
-            Perché Difendimi è <span className="bg-gradient-primary bg-clip-text text-transparent">diverso</span>
-          </h2>
-          <p className="text-xl text-muted-foreground">
-            Confronto tra Difendimi.AI e le AI generiche
-          </p>
-        </div>
-        
-        <Card className="max-w-6xl mx-auto overflow-hidden border-primary/20">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-primary/5">
-                  <TableHead className="font-bold text-foreground">Caratteristica</TableHead>
-                  <TableHead className="font-bold text-center text-primary">Difendimi.AI</TableHead>
-                  <TableHead className="font-bold text-center text-muted-foreground">ChatGPT</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-medium">Focus</TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="default" className="bg-primary/10 text-primary">
-                      Specializzato sul diritto italiano ed europeo
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center text-muted-foreground">
-                    Generalista, copre qualsiasi argomento
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium">Affidabilità normativa</TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <Check className="h-5 w-5 text-primary" />
-                      <span>Consulta banche dati ufficiali (Normattiva, EUR-Lex, ecc.)</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <X className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-muted-foreground">Non ha accesso diretto a banche dati giuridiche ufficiali</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium">Output</TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="default" className="bg-primary/10 text-primary">
-                      Documenti pratici (schede, dossier PDF, bozze email/diffide)
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center text-muted-foreground">
-                    Risposte testuali generiche
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium">Personalizzazione</TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <Check className="h-5 w-5 text-primary" />
-                      <span>Analisi del tuo caso specifico e guida passo passo</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center text-muted-foreground">
-                    Risposte standard, non sempre contestualizzate alla normativa vigente
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium">Usabilità</TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="default" className="bg-primary/10 text-primary">
-                      Interfaccia semplice, pensata per chi non è giurista
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center text-muted-foreground">
-                    Richiede competenze per formulare prompt corretti
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium">Obiettivo</TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <Target className="h-5 w-5 text-primary" />
-                      <span className="font-medium">Farti valere i tuoi diritti in tempi rapidi e senza parcelle</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center text-muted-foreground">
-                    Rispondere in modo ampio a qualsiasi curiosità
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+      {/* Comparison with ChatGPT Section */}
+      <section className="py-20">
+        <div className="container mx-auto px-4">
+          <h2 className="text-4xl font-bold text-center mb-12">Perché Difendimi è meglio delle AI generiche</h2>
+          <div className="overflow-x-auto max-w-5xl mx-auto">
+            <table className="w-full border-collapse bg-card rounded-lg overflow-hidden shadow-lg">
+              <thead>
+                <tr className="bg-primary text-primary-foreground">
+                  <th className="p-4 text-left">Caratteristica</th>
+                  <th className="p-4 text-center">Difendimi</th>
+                  <th className="p-4 text-center">ChatGPT</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b">
+                  <td className="p-4 font-medium">Focus</td>
+                  <td className="p-4 text-center">✅ Specializzato sul diritto italiano ed europeo</td>
+                  <td className="p-4 text-center text-muted-foreground">Generalista, copre qualsiasi argomento</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="p-4 font-medium">Affidabilità normativa</td>
+                  <td className="p-4 text-center">✅ Consulta banche dati ufficiali (Normattiva, EUR-Lex, ecc.)</td>
+                  <td className="p-4 text-center text-muted-foreground">Non ha accesso diretto a banche dati giuridiche ufficiali</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="p-4 font-medium">Output</td>
+                  <td className="p-4 text-center">✅ Documenti pratici (schede, dossier PDF, bozze email/diffide)</td>
+                  <td className="p-4 text-center text-muted-foreground">Risposte testuali generiche</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="p-4 font-medium">Personalizzazione</td>
+                  <td className="p-4 text-center">✅ Analisi del tuo caso specifico e guida passo passo</td>
+                  <td className="p-4 text-center text-muted-foreground">Risposte standard, non sempre contestualizzate alla normativa vigente</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="p-4 font-medium">Usabilità</td>
+                  <td className="p-4 text-center">✅ Interfaccia semplice, pensata per chi non è giurista</td>
+                  <td className="p-4 text-center text-muted-foreground">Richiede competenze per formulare prompt corretti</td>
+                </tr>
+                <tr>
+                  <td className="p-4 font-medium">Obiettivo</td>
+                  <td className="p-4 text-center">✅ Farti valere i tuoi diritti in tempi rapidi e senza parcelle</td>
+                  <td className="p-4 text-center text-muted-foreground">Rispondere in modo ampio a qualsiasi curiosità</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-        </Card>
-      </div>
-    </section>
+        </div>
+      </section>
 
-    {/* What You Get Section */}
-    <section className="py-20 bg-background">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">
-            Cosa <span className="bg-gradient-primary bg-clip-text text-transparent">riceverai</span>
-          </h2>
-          <p className="text-xl text-muted-foreground">
-            Documenti professionali per ogni tuo caso
+      {/* Preview Section */}
+      <section id="preview" className="py-20 bg-muted/50">
+        <div className="container mx-auto px-4">
+          <h2 className="text-4xl font-bold text-center mb-4">Cosa ricevi con l'app</h2>
+          <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
+            Esplora un esempio di dossier completo generato da Difendimi. 
+            Clicca per ingrandire e navigare tra le sezioni.
           </p>
+          
+          <div className="max-w-4xl mx-auto">
+            <Card className="p-6 shadow-lg">
+              <div className="mb-6">
+                <CaseStatusBadge status="completed" />
+                <h3 className="text-2xl font-bold mt-4">Caso di esempio: Ritardo nella consegna</h3>
+                <p className="text-muted-foreground">Generato il {new Date().toLocaleDateString('it-IT')}</p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="border-l-4 border-primary pl-4">
+                  <h4 className="font-semibold text-lg mb-2">Sommario Esecutivo</h4>
+                  <p className="text-muted-foreground">
+                    Il consumatore ha diritto al risarcimento per ritardo nella consegna superiore a 30 giorni
+                    secondo l'art. 61 del Codice del Consumo. La merce ordinata online non è stata consegnata
+                    nei termini pattuiti causando un danno documentabile.
+                  </p>
+                </div>
+
+                <div className="border-l-4 border-primary pl-4">
+                  <h4 className="font-semibold text-lg mb-2">Riferimenti Normativi</h4>
+                  <ul className="space-y-2 text-muted-foreground">
+                    <li>• Art. 61 D.Lgs. 206/2005 - Codice del Consumo</li>
+                    <li>• Art. 1218 Codice Civile - Responsabilità del debitore</li>
+                    <li>• Direttiva 2011/83/UE sui diritti dei consumatori</li>
+                  </ul>
+                </div>
+
+                <div className="border-l-4 border-primary pl-4">
+                  <h4 className="font-semibold text-lg mb-2">Opzioni Strategiche</h4>
+                  <div className="space-y-3 text-muted-foreground">
+                    <div>
+                      <span className="font-medium">1. Risoluzione stragiudiziale:</span>
+                      <p className="ml-4">Invio diffida con richiesta di adempimento entro 7 giorni</p>
+                    </div>
+                    <div>
+                      <span className="font-medium">2. Procedura ADR:</span>
+                      <p className="ml-4">Attivazione conciliazione presso Camera di Commercio</p>
+                    </div>
+                    <div>
+                      <span className="font-medium">3. Azione giudiziale:</span>
+                      <p className="ml-4">Decreto ingiuntivo presso Giudice di Pace (valore < €5000)</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-l-4 border-primary pl-4">
+                  <h4 className="font-semibold text-lg mb-2">Documenti Allegati</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button variant="outline" className="justify-start">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Bozza diffida.docx
+                    </Button>
+                    <Button variant="outline" className="justify-start">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Modulo reclamo.pdf
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 flex justify-center">
+                <Button onClick={() => navigate("/login")} size="lg">
+                  Genera il tuo dossier personalizzato
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </Card>
+          </div>
         </div>
-        
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-primary/20 bg-gradient-card overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                  <FileText className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Sommario Esecutivo</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Sintesi immediata del tuo caso con i punti chiave
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      </section>
 
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-primary/20 bg-gradient-card overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                  <ClipboardList className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Dossier Completo</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Analisi dettagliata con riferimenti normativi
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      {/* Pricing Section */}
+      <section id="pricing" className="py-20">
+        <div className="container mx-auto px-4">
+          <h2 className="text-4xl font-bold text-center mb-12">Scegli il tuo piano</h2>
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <Card className="p-8">
+              <h3 className="text-2xl font-bold mb-2">Free</h3>
+              <p className="text-3xl font-bold mb-6">€0<span className="text-lg font-normal text-muted-foreground">/mese</span></p>
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Analisi del tuo caso specifico</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Interrogazione del sistema normativo italiano</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Report standard</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Principali riferimenti normativi</span>
+                </li>
+              </ul>
+              <Button 
+                onClick={() => navigate("/login")} 
+                variant="outline" 
+                className="w-full"
+              >
+                Inizia gratis
+              </Button>
+            </Card>
 
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-primary/20 bg-gradient-card overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                  <Scale className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Qualifica Giuridica</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Inquadramento legale preciso della situazione
-                  </p>
-                </div>
+            <Card className="p-8 border-primary relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-semibold">
+                  Consigliato
+                </span>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-primary/20 bg-gradient-card overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                  <Target className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Opzioni Strategiche</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Diverse strade percorribili con pro e contro
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-primary/20 bg-gradient-card overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                  <FileCheck className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Passi Operativi</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Azioni concrete da intraprendere subito
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-primary/20 bg-gradient-card overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                  <Calendar className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Termini e Scadenze</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Date importanti da non perdere
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-primary/20 bg-gradient-card overflow-hidden lg:col-span-2">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                  <Paperclip className="h-6 w-6 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-2">Documenti e Allegati</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Bozze personalizzate di lettere, email e diffide pronte all'uso
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="group hover:shadow-elegant transition-all duration-300 border-accent/30 bg-gradient-to-br from-accent/5 to-accent/10 overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-accent/20 group-hover:bg-accent/30 transition-colors">
-                  <Download className="h-6 w-6 text-accent" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">PDF Scaricabile</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Tutto in un documento professionale da conservare
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              <h3 className="text-2xl font-bold mb-2">Premium</h3>
+              <p className="text-3xl font-bold mb-6">€4,13<span className="text-lg font-normal text-muted-foreground">/mese</span></p>
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span className="font-semibold">Tutte le funzionalità Free</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Dossier completo dettagliato</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Qualifica giuridica approfondita</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Opzioni strategiche personalizzate</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Passi operativi con tempistiche</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Termini e scadenze dettagliate</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Documenti e allegati pronti all'uso</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
+                  <span>Export PDF illimitati</span>
+                </li>
+              </ul>
+              <Button 
+                onClick={() => navigate("/premium")} 
+                className="w-full"
+              >
+                Passa a Premium
+              </Button>
+            </Card>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    {/* Download App Section */}
-    <section className="py-20 bg-gradient-subtle">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">
-            Porta Difendimi.AI <span className="bg-gradient-primary bg-clip-text text-transparent">sempre con te</span>
-          </h2>
-          <p className="text-xl text-muted-foreground mb-8">
-            Scarica l'app e accedi alle informazioni legali ovunque ti trovi
+      {/* Download App Section */}
+      <section className="py-20 bg-gradient-to-br from-rose-500 via-orange-400 to-amber-300">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-4xl font-bold mb-6 text-white">Scarica l'app Difendimi</h2>
+          <p className="text-xl mb-8 text-white/90 max-w-2xl mx-auto">
+            Porta sempre con te il tuo assistente legale digitale. 
+            Disponibile su tutti i dispositivi, senza costi di installazione.
           </p>
-        </div>
-        
-        <Card className="max-w-2xl mx-auto border-primary/20 bg-background/95 backdrop-blur">
-          <CardContent className="p-12 text-center">
-            <div className="flex justify-center mb-6">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-primary flex items-center justify-center">
-                <Download className="h-10 w-10 text-white" />
-              </div>
-            </div>
-            <h3 className="text-2xl font-bold mb-4">Installa l'applicazione</h3>
-            <p className="text-muted-foreground mb-8">
-              Con un semplice click, installa Difendimi.AI sul tuo dispositivo e accedi rapidamente quando ne hai bisogno. Nessun download da store, installazione diretta dal browser.
-            </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
+              onClick={handleDownloadApp}
               size="lg"
-              onClick={handleMainButtonClick}
-              className="bg-gradient-primary hover:opacity-90 text-white shadow-elegant px-12"
+              className="bg-white text-rose-600 hover:bg-gray-100"
             >
-              <Download className="h-5 w-5 mr-2" />
+              <Download className="mr-2 h-5 w-5" />
               Scarica l'app
             </Button>
-            <div className="flex items-center justify-center gap-8 mt-8 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-primary" />
-                <span>Gratis</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-primary" />
-                <span>Sicura</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-primary" />
-                <span>Veloce</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </section>
+            <Button
+              onClick={() => navigate("/login")}
+              size="lg"
+              variant="outline"
+              className="text-white border-white hover:bg-white/20"
+            >
+              Prova online
+            </Button>
+          </div>
+        </div>
+      </section>
 
-    {/* Disclaimer Section */}
-    <section className="py-20 bg-gradient-subtle">
-      <div className="container mx-auto px-4">
-        <Card className="max-w-3xl mx-auto border-primary/20 bg-background/50 backdrop-blur">
-          <CardContent className="p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <Shield className="h-6 w-6 text-primary" />
-              <h3 className="text-xl font-semibold">Nota Importante</h3>
+      {/* Footer */}
+      <footer className="py-12 bg-muted">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2">
+              <img src={logo} alt="Difendimi" className="h-8 w-8" />
+              <span className="text-xl font-bold">Difendimi</span>
             </div>
-            <p className="text-muted-foreground leading-relaxed">
-              Difendimi.AI fornisce esclusivamente informazioni educative basate su fonti ufficiali.
-              Per questioni legali specifiche, consulta sempre un professionista qualificato.
-              Il servizio è progettato per aiutarti a comprendere meglio le normative applicabili.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    </section>
-
-    {/* Footer */}
-    <footer className="bg-foreground text-background">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid md:grid-cols-4 gap-8 mb-8">
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Shield className="h-6 w-6 text-primary" />
-              <span className="text-lg font-bold">Difendimi.AI</span>
-            </div>
-            <p className="text-background/70 text-sm">
+            <p className="text-muted-foreground text-center">
               Scopri cosa dice la legge senza attese né parcelle
             </p>
-          </div>
-          
-          <div>
-            <h4 className="font-semibold mb-4">Prodotto</h4>
-            <ul className="space-y-2 text-sm text-background/70">
-              <li><a href="/features" className="hover:text-background transition">Funzionalità</a></li>
-              <li><a href="/pricing" className="hover:text-background transition">Prezzi</a></li>
-              <li><a href="/faq" className="hover:text-background transition">FAQ</a></li>
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="font-semibold mb-4">Azienda</h4>
-            <ul className="space-y-2 text-sm text-background/70">
-              <li><a href="/about" className="hover:text-background transition">Chi Siamo</a></li>
-              <li><a href="/contact" className="hover:text-background transition">Contatti</a></li>
-              <li><a href="/blog" className="hover:text-background transition">Blog</a></li>
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="font-semibold mb-4">Legale</h4>
-            <ul className="space-y-2 text-sm text-background/70">
-              <li><a href="/privacy" className="hover:text-background transition">Privacy Policy</a></li>
-              <li><a href="/terms" className="hover:text-background transition">Termini di Servizio</a></li>
-              <li><a href="/disclaimer" className="hover:text-background transition">Disclaimer</a></li>
-            </ul>
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} Difendimi. Tutti i diritti riservati.
+            </p>
           </div>
         </div>
-        
-        <div className="border-t border-background/20 pt-8 text-center text-sm text-background/60">
-          <p>&copy; 2024 Difendimi.AI. Tutti i diritti riservati.</p>
-        </div>
-      </div>
-    </footer>
-    
-    {/* Install PWA Component */}
-    <InstallPWA />
-  </div>
+      </footer>
+    </div>
   );
 };
 
