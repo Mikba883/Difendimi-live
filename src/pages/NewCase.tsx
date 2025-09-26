@@ -590,7 +590,7 @@ export default function NewCase() {
               <h1 className="text-6xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                 Lexy AI Assistant
               </h1>
-              <p className="text-xl text-muted-foreground leading-relaxed pb-2">
+              <p className="text-xl text-muted-foreground leading-relaxed mt-4 mb-2">
                 Racconta in modo semplice e completo la situazione che vuoi risolvere
               </p>
             </div>
