@@ -9,9 +9,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Mail, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { useMetaPixel } from "@/hooks/useMetaPixel";
 
 const Login = () => {
   const navigate = useNavigate();
+  const { trackEvent } = useMetaPixel();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -96,6 +98,14 @@ const Login = () => {
       });
       setLoading(false);
     } else if (data) {
+      // Track registration event
+      trackEvent('CompleteRegistration', {
+        custom_data: {
+          method: 'email'
+        }
+      }, {
+        email
+      });
       // Redirect to verify email page
       navigate("/verify-email");
     }

@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
+import { useMetaPixel } from "@/hooks/useMetaPixel";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -39,6 +40,7 @@ interface Question {
 export default function NewCase() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { trackEvent } = useMetaPixel();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
@@ -230,6 +232,15 @@ export default function NewCase() {
     };
     setMessages(prev => [...prev, userMessage]);
     setCurrentText(prev => prev + " " + text);
+    
+    // Track lead event when user starts a case
+    if (messages.length === 1) { // First user message after welcome
+      trackEvent('Lead', {
+        custom_data: {
+          source: 'new_case_chat'
+        }
+      });
+    }
     
     // Analizza il caso
     await analyzeCase(text);

@@ -7,10 +7,12 @@ import { CountdownTimer } from "@/components/premium/CountdownTimer";
 import { usePremiumStatus } from "@/hooks/usePremiumStatus";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useMetaPixel } from "@/hooks/useMetaPixel";
 
 export default function Premium() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { trackEvent } = useMetaPixel();
   const { timeRemaining } = usePremiumStatus();
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -38,6 +40,13 @@ export default function Premium() {
       if (error) throw error;
 
       if (data?.url) {
+        // Track InitiateCheckout event
+        trackEvent('InitiateCheckout', {
+          custom_data: {
+            currency: 'EUR',
+            value: 49.60
+          }
+        });
         // Redirect to Stripe Checkout - don't reset isProcessing to keep animation going
         window.location.href = data.url;
         // DON'T set isProcessing to false here - let the redirect happen with animation
