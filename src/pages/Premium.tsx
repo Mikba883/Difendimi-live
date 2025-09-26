@@ -30,11 +30,19 @@ export default function Premium() {
         return;
       }
 
-      // Placeholder per integrazione Stripe futura
-      toast({
-        title: "Coming Soon",
-        description: "L'integrazione con i pagamenti sarà disponibile a breve!",
+      // Call the edge function to create checkout session
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: {},
       });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
       
     } catch (error) {
       console.error("Error upgrading to premium:", error);
@@ -87,7 +95,7 @@ export default function Premium() {
             {/* Diagonal Badge - aligned with box top */}
             <div className="absolute -top-0.5 right-0 w-24 h-24 overflow-hidden">
               <div className="absolute transform rotate-45 bg-green-500 text-white text-center font-bold py-1.5 right-[-35px] top-[15px] w-[150px] text-sm flex items-center justify-center">
-                Promo -68%
+                <span className="ml-2">Promo -68%</span>
               </div>
             </div>
 

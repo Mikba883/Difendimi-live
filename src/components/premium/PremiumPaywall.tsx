@@ -20,8 +20,6 @@ export function PremiumPaywall({ open, onOpenChange }: PremiumPaywallProps) {
     setIsProcessing(true);
     
     try {
-      // Qui andrà l'integrazione con Stripe
-      // Per ora simuliamo un upgrade
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
@@ -33,11 +31,19 @@ export function PremiumPaywall({ open, onOpenChange }: PremiumPaywallProps) {
         return;
       }
 
-      // Placeholder per integrazione Stripe futura
-      toast({
-        title: "Coming Soon",
-        description: "L'integrazione con i pagamenti sarà disponibile a breve!",
+      // Call the edge function to create checkout session
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: {},
       });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
       
     } catch (error) {
       console.error("Error upgrading to premium:", error);
@@ -57,7 +63,7 @@ export function PremiumPaywall({ open, onOpenChange }: PremiumPaywallProps) {
         {/* Header con Badge Promo */}
         <div className="relative p-6 pb-4">
           <Badge className="absolute top-4 right-4 bg-green-500 text-white border-0 px-3 py-1">
-            Promo -50%
+            <span className="ml-2">Promo -68%</span>
           </Badge>
           
           <DialogHeader className="mt-2">
