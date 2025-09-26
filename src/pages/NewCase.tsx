@@ -586,11 +586,11 @@ export default function NewCase() {
       {!hasMessages ? (
         <div className="flex-1 flex flex-col items-center justify-center px-4 animate-fade-in">
           <div className="max-w-2xl w-full text-center space-y-12">
-            <div className="space-y-4">
+            <div className="space-y-6">
               <h1 className="text-6xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                 Lexy AI Assistant
               </h1>
-              <p className="text-xl text-muted-foreground">
+              <p className="text-xl text-muted-foreground leading-relaxed pb-2">
                 Racconta in modo semplice e completo la situazione che vuoi risolvere
               </p>
             </div>
