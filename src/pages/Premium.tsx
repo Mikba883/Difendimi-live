@@ -38,8 +38,10 @@ export default function Premium() {
       if (error) throw error;
 
       if (data?.url) {
-        // Redirect to Stripe Checkout
+        // Redirect to Stripe Checkout - don't reset isProcessing to keep animation going
         window.location.href = data.url;
+        // DON'T set isProcessing to false here - let the redirect happen with animation
+        return;
       } else {
         throw new Error('No checkout URL received');
       }
@@ -51,7 +53,7 @@ export default function Premium() {
         description: "Si è verificato un errore durante l'upgrade",
         variant: "destructive",
       });
-    } finally {
+      // Only reset isProcessing on error
       setIsProcessing(false);
     }
   };
@@ -75,7 +77,7 @@ export default function Premium() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/dashboard')}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -181,7 +183,7 @@ export default function Premium() {
                 variant="ghost" 
                 size="sm" 
                 className="text-xs"
-                onClick={() => navigate(-1)}
+                onClick={() => navigate('/dashboard')}
               >
                 Continua con il piano gratuito
               </Button>

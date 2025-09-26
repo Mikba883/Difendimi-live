@@ -39,8 +39,10 @@ export function PremiumPaywall({ open, onOpenChange }: PremiumPaywallProps) {
       if (error) throw error;
 
       if (data?.url) {
-        // Redirect to Stripe Checkout
+        // Redirect to Stripe Checkout - don't reset isProcessing to keep animation going
         window.location.href = data.url;
+        // DON'T set isProcessing to false here - let the redirect happen with animation
+        return;
       } else {
         throw new Error('No checkout URL received');
       }
@@ -52,7 +54,7 @@ export function PremiumPaywall({ open, onOpenChange }: PremiumPaywallProps) {
         description: "Si è verificato un errore durante l'upgrade",
         variant: "destructive",
       });
-    } finally {
+      // Only reset isProcessing on error
       setIsProcessing(false);
     }
   };
