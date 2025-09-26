@@ -8,15 +8,18 @@ import { ArrowLeft, AlertCircle } from "lucide-react";
 import { CaseStatusBadge } from "@/components/case/CaseStatusBadge";
 import { ReportSections } from "@/components/case/ReportSections";
 import { usePremiumStatus } from "@/hooks/usePremiumStatus";
+import { useMetaPixel } from "@/hooks/useMetaPixel";
 import type { Case } from "@/types/case";
 
 export default function CaseDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isPremium } = usePremiumStatus();
+  const { trackEvent } = useMetaPixel();
   const [caseData, setCaseData] = useState<Case | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasTrackedCaseView, setHasTrackedCaseView] = useState(false);
 
   useEffect(() => {
     loadCase();
@@ -60,6 +63,19 @@ export default function CaseDetail() {
       }
 
       setCaseData(data as any);
+      
+      // Track ViewCase event once when case is loaded
+      if (!hasTrackedCaseView && data) {
+        trackEvent('ViewCase', {
+          custom_data: {
+            case_id: data.id,
+            case_status: data.status,
+            case_type: data.case_type || 'general',
+            has_report: !!data.report
+          }
+        });
+        setHasTrackedCaseView(true);
+      }
     } catch (err) {
       console.error('Error loading case:', err);
       setError('Errore nel caricamento del caso');

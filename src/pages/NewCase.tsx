@@ -233,8 +233,16 @@ export default function NewCase() {
     setMessages(prev => [...prev, userMessage]);
     setCurrentText(prev => prev + " " + text);
     
-    // Track lead event when user starts a case
+    // Track lead event when user starts a case (StartFreeTrial)
     if (messages.length === 1) { // First user message after welcome
+      trackEvent('StartFreeTrial', {
+        custom_data: {
+          source: 'new_case_chat',
+          trial_type: 'legal_analysis'
+        }
+      });
+      
+      // Also track as Lead for Meta Pixel standard event
       trackEvent('Lead', {
         custom_data: {
           source: 'new_case_chat'
@@ -340,6 +348,16 @@ export default function NewCase() {
           
           const progress = Math.round(20 + (80 * (nextIndex + 1) / allQuestions.length));
           setCompleteness(progress);
+          
+          // Track CompleteFreeTrial event when reaching 100%
+          if (progress === 100) {
+            trackEvent('CompleteFreeTrial', {
+              custom_data: {
+                questions_answered: allQuestions.length,
+                case_type: caseAnalysis?.caseType || 'general'
+              }
+            });
+          }
         }
         return;
       }
@@ -348,6 +366,14 @@ export default function NewCase() {
       if (data.status === 'complete' && !isGeneratingReport && !isGenerateFunctionCalled) {
         console.log('✅ Tutte le risposte ricevute - generazione OTTIMIZZATA (30s invece di 50s)');
         setCompleteness(100);
+        
+        // Track CompleteFreeTrial event when all questions are answered
+        trackEvent('CompleteFreeTrial', {
+          custom_data: {
+            questions_answered: allQuestions.length,
+            case_type: caseAnalysis?.caseType || 'general'
+          }
+        });
         
         // Mostra messaggio "Ho raccolto tutto"
         const completionMsg: Message = {
@@ -418,6 +444,16 @@ export default function NewCase() {
       // Naviga direttamente usando il case_id restituito
       if (generateData?.case_id) {
         console.log('Navigazione diretta al caso:', generateData.case_id);
+        
+        // Track GenerateCase event
+        trackEvent('GenerateCase', {
+          custom_data: {
+            case_id: generateData.case_id,
+            case_type: generateData.case_type || 'general',
+            source: 'ai_generation'
+          }
+        });
+        
         setIsComplete(true);
         setShowGenerationTimer(false);
         navigate(`/case/${generateData.case_id}`);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,18 @@ export default function Premium() {
   const { trackEvent } = useMetaPixel();
   const { timeRemaining } = usePremiumStatus();
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Track ViewContent event when the Premium page is viewed
+  useEffect(() => {
+    trackEvent('ViewContent', {
+      custom_data: {
+        content_type: 'product',
+        content_name: 'Premium Subscription',
+        currency: 'EUR',
+        value: 49.60
+      }
+    });
+  }, []);
 
   const handleUpgrade = async () => {
     setIsProcessing(true);
