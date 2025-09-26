@@ -97,6 +97,11 @@ export type Database = {
           is_premium: boolean | null
           privacy_consent: boolean | null
           privacy_consent_date: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_end_date: string | null
+          subscription_price_id: string | null
+          subscription_status: string | null
           trial_started_at: string | null
           updated_at: string
           user_id: string
@@ -108,6 +113,11 @@ export type Database = {
           is_premium?: boolean | null
           privacy_consent?: boolean | null
           privacy_consent_date?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_end_date?: string | null
+          subscription_price_id?: string | null
+          subscription_status?: string | null
           trial_started_at?: string | null
           updated_at?: string
           user_id: string
@@ -119,6 +129,11 @@ export type Database = {
           is_premium?: boolean | null
           privacy_consent?: boolean | null
           privacy_consent_date?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_end_date?: string | null
+          subscription_price_id?: string | null
+          subscription_status?: string | null
           trial_started_at?: string | null
           updated_at?: string
           user_id?: string
