@@ -811,7 +811,7 @@ const Index = () => {
     {/* Footer */}
     <footer className="bg-foreground text-background">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid md:grid-cols-4 gap-8 mb-8">
+        <div className="grid md:grid-cols-3 gap-8 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-4">
               <Shield className="h-6 w-6 text-primary" />
@@ -823,20 +823,40 @@ const Index = () => {
           </div>
           
           <div>
-            <h4 className="font-semibold mb-4">Prodotto</h4>
+            <h4 className="font-semibold mb-4">Esplora</h4>
             <ul className="space-y-2 text-sm text-background/70">
-              <li><a href="/features" className="hover:text-background transition">Funzionalità</a></li>
-              <li><a href="/pricing" className="hover:text-background transition">Prezzi</a></li>
-              <li><a href="/faq" className="hover:text-background transition">FAQ</a></li>
-            </ul>
-          </div>
-          
-          <div>
-            <h4 className="font-semibold mb-4">Azienda</h4>
-            <ul className="space-y-2 text-sm text-background/70">
-              <li><a href="/about" className="hover:text-background transition">Chi Siamo</a></li>
-              <li><a href="/contact" className="hover:text-background transition">Contatti</a></li>
-              <li><a href="/blog" className="hover:text-background transition">Blog</a></li>
+              <li>
+                <button 
+                  onClick={() => scrollToSection('features')} 
+                  className="hover:text-background transition text-left"
+                >
+                  Come funziona
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => scrollToSection('preview')} 
+                  className="hover:text-background transition text-left"
+                >
+                  Preview
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => scrollToSection('pricing')} 
+                  className="hover:text-background transition text-left"
+                >
+                  Prezzi
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => scrollToSection('faq')} 
+                  className="hover:text-background transition text-left"
+                >
+                  FAQ
+                </button>
+              </li>
             </ul>
           </div>
           
@@ -845,7 +865,7 @@ const Index = () => {
             <ul className="space-y-2 text-sm text-background/70">
               <li><a href="/privacy" className="hover:text-background transition">Privacy Policy</a></li>
               <li><a href="/terms" className="hover:text-background transition">Termini di Servizio</a></li>
-              <li><a href="/disclaimer" className="hover:text-background transition">Disclaimer</a></li>
+              <li><a href="/cookie" className="hover:text-background transition">Cookie Policy</a></li>
             </ul>
           </div>
         </div>

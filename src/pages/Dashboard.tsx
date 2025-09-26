@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, FileText, Trash2, LogOut, Shield, User, ChevronDown, CreditCard, BarChart3, Calendar, FileCheck } from "lucide-react";
+import { Plus, FileText, Trash2, LogOut, Shield, User, ChevronDown, CreditCard, BarChart3, Calendar, FileCheck, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
@@ -242,10 +242,11 @@ const Dashboard = () => {
             <Button 
               onClick={() => navigate("/case/new")} 
               size="lg"
-              className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+              className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl transition-all duration-300 px-8 py-6 text-lg font-semibold transform hover:scale-[1.02]"
             >
-              <Plus className="h-5 w-5 mr-2" />
+              <Plus className="h-6 w-6 mr-3" />
               <span className="font-semibold">Nuovo Caso</span>
+              <ArrowRight className="h-5 w-5 ml-2" />
             </Button>
           </div>
 
