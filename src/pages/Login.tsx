@@ -31,6 +31,27 @@ const Login = () => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
+        // Track CompleteRegistration for Google OAuth sign-ups
+        if (event === 'SIGNED_IN' && session.user?.app_metadata?.provider === 'google') {
+          // Check if this is a new user (created recently)
+          const createdAt = new Date(session.user.created_at);
+          const now = new Date();
+          const timeDiff = now.getTime() - createdAt.getTime();
+          const minutesDiff = timeDiff / (1000 * 60);
+          
+          // If user was created less than 5 minutes ago, consider it a new registration
+          if (minutesDiff < 5) {
+            trackEvent('CompleteRegistration', {
+              custom_data: {
+                method: 'google',
+                user_id: session.user.id,
+                email: session.user.email
+              }
+            }, {
+              email: session.user.email
+            });
+          }
+        }
         navigate("/case/new");
       }
     });

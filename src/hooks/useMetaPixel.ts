@@ -29,6 +29,13 @@ type UserData = {
 export function useMetaPixel() {
   const location = useLocation();
 
+  // Initialize dataLayer if it doesn't exist
+  useEffect(() => {
+    if (!window.dataLayer) {
+      window.dataLayer = [];
+    }
+  }, []);
+
   // Track page views on route change
   useEffect(() => {
     trackEvent('PageView', {
