@@ -84,7 +84,7 @@ export function PremiumPaywall({ open, onOpenChange }: PremiumPaywallProps) {
               <span className="text-muted-foreground text-sm">/mese</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              fatturati 49,50€ all'anno
+              fatturati 49,60€ all'anno
             </p>
             <p className="text-xs text-green-600 font-medium">
               Risparmi il 50% rispetto al piano mensile

@@ -117,8 +117,8 @@ export default function Premium() {
               </div>
               <div className="flex items-center justify-center gap-2">
                 <span className="text-base">Pagamento unico</span>
-                <span className="text-base font-semibold">49,50€</span>
-                <span className="text-base text-muted-foreground line-through">154€</span>
+                <span className="text-base font-semibold">49,60€</span>
+                <span className="text-base text-muted-foreground line-through">155€</span>
               </div>
             </div>
 

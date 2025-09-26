@@ -591,7 +591,7 @@ export default function NewCase() {
                 Lexy AI Assistant
               </h1>
               <p className="text-xl text-muted-foreground">
-                Descrivimi dettagliatamente il tuo problema legale
+                Racconta in modo semplice e completo la situazione che vuoi risolvere
               </p>
             </div>
             
