@@ -242,10 +242,10 @@ const Dashboard = () => {
             <Button 
               onClick={() => navigate("/case/new")} 
               size="lg"
-              className="bg-gradient-to-r from-primary to-primary-hover hover:opacity-90 transition-opacity"
+              className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
             >
               <Plus className="h-5 w-5 mr-2" />
-              Nuovo Caso
+              <span className="font-semibold">Nuovo Caso</span>
             </Button>
           </div>
 

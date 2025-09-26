@@ -2,7 +2,6 @@ import { Shield, ArrowRight, CheckCircle, Lock, Scale, Clock, Download, Brain, F
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { InstallPWA } from "@/components/InstallPWA";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -104,8 +103,8 @@ const Index = () => {
     } else if (isInstalled) {
       alert('L\'app è già installata sul tuo dispositivo!');
     } else {
-      // Fallback - show instructions for manual installation
-      alert('Per installare l\'app:\n\n• Chrome/Edge: Clicca sui 3 puntini → "Installa app"\n• Safari: Tocca Condividi → "Aggiungi a Home"\n• Firefox: Clicca sui 3 puntini → "Installa"');
+      // Fallback - redirect to login page
+      navigate('/login');
     }
   };
 
@@ -857,8 +856,6 @@ const Index = () => {
       </div>
     </footer>
     
-    {/* Install PWA Component */}
-    <InstallPWA />
 
     {/* Preview Modal */}
     <Dialog open={showPreview} onOpenChange={setShowPreview}>
