@@ -709,7 +709,7 @@ const Index = () => {
             </p>
             <Button
               size="lg"
-              onClick={handleMainButtonClick}
+              onClick={handleInstall}
               className="bg-gradient-primary hover:opacity-90 text-white shadow-elegant px-12"
             >
               <Download className="h-5 w-5 mr-2" />
