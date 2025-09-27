@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, X, Smartphone, Monitor } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -11,105 +12,245 @@ export const InstallPWA = () => {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showBanner, setShowBanner] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
-    // Check if running on iOS
-    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-    setIsIOS(isIOSDevice);
-
-    // Check if app is already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-      console.log('App già installata come PWA');
-      return;
+    // Check if already dismissed
+    const dismissed = localStorage.getItem('pwa-install-dismissed');
+    const dismissedTime = localStorage.getItem('pwa-install-dismissed-time');
+    
+    if (dismissed && dismissedTime) {
+      const daysSinceDismissed = (Date.now() - parseInt(dismissedTime)) / (1000 * 60 * 60 * 24);
+      if (daysSinceDismissed < 7) {
+        setIsDismissed(true);
+      } else {
+        // Reset after 7 days
+        localStorage.removeItem('pwa-install-dismissed');
+        localStorage.removeItem('pwa-install-dismissed-time');
+      }
     }
 
-    // Listen for the beforeinstallprompt event
+    // Listen for custom trigger event from other components
+    const handleTriggerInstall = () => {
+      if (installPrompt) {
+        handleInstallClick();
+      } else if (isIOS) {
+        setShowBanner(true);
+        setIsDismissed(false);
+      } else if (isAndroid) {
+        setShowBanner(true);
+        setIsDismissed(false);
+      } else {
+        // Desktop fallback
+        alert('Per installare l\'app:\n1. Clicca sull\'icona di installazione nella barra degli indirizzi\n2. Oppure usa il menu del browser e cerca "Installa"');
+      }
+    };
+
+    window.addEventListener('trigger-pwa-install', handleTriggerInstall);
+
+    // Detect device type
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) && !('MSStream' in window);
+    const isAndroidDevice = /android/.test(userAgent);
+    const isMobileDevice = /mobile|tablet|android|ipad|iphone/.test(userAgent);
+    
+    setIsIOS(isIOSDevice);
+    setIsAndroid(isAndroidDevice);
+    setIsMobile(isMobileDevice);
+
+    // Check if already installed
+    const checkInstalled = () => {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+      const isInWebApp = (window.navigator as any).standalone === true;
+      const installed = isStandalone || isInWebApp;
+      
+      setIsInstalled(installed);
+      
+      if (installed) {
+        console.log('PWA già installata');
+        localStorage.setItem('pwa-installed', 'true');
+      }
+    };
+
+    checkInstalled();
+
+    // Listen for beforeinstallprompt
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      console.log('beforeinstallprompt event fired');
-      setInstallPrompt(e as BeforeInstallPromptEvent);
+      console.log('beforeinstallprompt catturato');
+      const promptEvent = e as BeforeInstallPromptEvent;
+      setInstallPrompt(promptEvent);
+      
+      // Show banner after a delay if not dismissed
+      if (!isDismissed && !localStorage.getItem('pwa-installed')) {
+        setTimeout(() => setShowBanner(true), 2000);
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // Check if app was installed
+    // Listen for successful installation
     window.addEventListener('appinstalled', () => {
       console.log('PWA installata con successo');
       setIsInstalled(true);
       setInstallPrompt(null);
+      setShowBanner(false);
+      localStorage.setItem('pwa-installed', 'true');
     });
+
+    // Check display mode changes
+    const displayModeQuery = window.matchMedia('(display-mode: standalone)');
+    displayModeQuery.addEventListener('change', checkInstalled);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('trigger-pwa-install', handleTriggerInstall);
+      displayModeQuery.removeEventListener('change', checkInstalled);
     };
-  }, []);
+  }, [isDismissed]);
 
   const handleInstallClick = async () => {
     if (!installPrompt) {
-      console.log('Install prompt not available');
+      console.log('Prompt di installazione non disponibile');
+      
+      // Fallback: show instructions based on device
+      if (isIOS) {
+        alert('Per installare l\'app:\n1. Tocca il pulsante Condividi ⬆️\n2. Scorri e tocca "Aggiungi a Home"\n3. Tocca "Aggiungi"');
+      } else if (isAndroid) {
+        alert('Per installare l\'app:\n1. Tocca il menu ⋮ del browser\n2. Seleziona "Installa app" o "Aggiungi a schermata Home"');
+      } else {
+        alert('Per installare l\'app:\n1. Clicca sull\'icona di installazione nella barra degli indirizzi\n2. Oppure usa il menu del browser e cerca "Installa"');
+      }
       return;
     }
 
     try {
       await installPrompt.prompt();
       const { outcome } = await installPrompt.userChoice;
-      console.log(`User choice: ${outcome}`);
+      console.log(`Scelta utente: ${outcome}`);
       
       if (outcome === 'accepted') {
         setInstallPrompt(null);
+        setShowBanner(false);
       }
     } catch (error) {
-      console.error('Error installing PWA:', error);
+      console.error('Errore durante l\'installazione:', error);
+      alert('Si è verificato un errore durante l\'installazione. Riprova più tardi.');
     }
   };
 
-  // Don't show if already installed
+  const handleDismiss = () => {
+    setShowBanner(false);
+    setIsDismissed(true);
+    localStorage.setItem('pwa-install-dismissed', 'true');
+    localStorage.setItem('pwa-install-dismissed-time', Date.now().toString());
+  };
+
+  // Don't show anything if installed
   if (isInstalled) {
     return null;
   }
 
-  // iOS specific instructions
-  if (isIOS) {
+  // iOS specific banner
+  if (isIOS && showBanner && !isDismissed) {
     return (
-      <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-auto bg-card border rounded-lg shadow-lg p-4 z-50 animate-fadeIn">
-        <p className="text-sm mb-2">Installa l'app sul tuo iPhone:</p>
-        <ol className="text-xs text-muted-foreground space-y-1">
-          <li>1. Tocca il pulsante Condividi <span className="inline-block">⬆️</span></li>
-          <li>2. Scorri e tocca "Aggiungi a Home"</li>
-          <li>3. Tocca "Aggiungi" in alto a destra</li>
-        </ol>
-      </div>
+      <Card className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-card border-2 shadow-xl p-4 z-50 animate-in slide-in-from-bottom duration-300">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="bg-primary/10 p-2 rounded-lg">
+              <Smartphone className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-sm mb-1">Installa Difendimi.AI</p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Accedi rapidamente all'app dalla tua Home
+              </p>
+              <ol className="text-xs text-muted-foreground space-y-1">
+                <li>1. Tocca <span className="font-semibold">Condividi ⬆️</span></li>
+                <li>2. Scorri e tocca <span className="font-semibold">"Aggiungi a Home"</span></li>
+                <li>3. Tocca <span className="font-semibold">"Aggiungi"</span></li>
+              </ol>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 -mr-2 -mt-2"
+            onClick={handleDismiss}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </Card>
     );
   }
 
-  // Show install button only when prompt is available
-  if (installPrompt) {
+  // Android/Desktop install banner
+  if ((installPrompt || isAndroid) && showBanner && !isDismissed) {
     return (
-      <div className="fixed bottom-4 right-4 z-50 animate-fadeIn">
-        <Button 
-          onClick={handleInstallClick}
-          className="shadow-lg gap-2"
-          size="lg"
-        >
-          <Download className="h-4 w-4" />
-          Installa App
-        </Button>
-      </div>
+      <Card className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-card border-2 shadow-xl p-4 z-50 animate-in slide-in-from-bottom duration-300">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="bg-primary/10 p-2 rounded-lg">
+              {isMobile ? <Smartphone className="h-5 w-5 text-primary" /> : <Monitor className="h-5 w-5 text-primary" />}
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-sm mb-1">Installa Difendimi.AI</p>
+              <p className="text-xs text-muted-foreground mb-3">
+                {isMobile 
+                  ? "Accedi rapidamente all'app dal tuo telefono"
+                  : "Installa l'app per un accesso rapido dal desktop"}
+              </p>
+              <Button 
+                onClick={handleInstallClick}
+                size="sm"
+                className="w-full gap-2"
+              >
+                <Download className="h-3 w-3" />
+                Installa ora
+              </Button>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 -mr-2 -mt-2"
+            onClick={handleDismiss}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </Card>
     );
   }
 
-  // If no install prompt available, show button to go to login
-  return (
-    <div className="fixed bottom-4 right-4 z-50 animate-fadeIn">
-      <Button 
-        onClick={() => window.location.href = '/login'}
-        className="shadow-lg gap-2"
+  // Floating install button (always visible if not installed and not dismissed for too long)
+  const daysSinceDismissed = isDismissed 
+    ? (Date.now() - parseInt(localStorage.getItem('pwa-install-dismissed-time') || '0')) / (1000 * 60 * 60 * 24)
+    : 0;
+
+  if (!showBanner && (installPrompt || isIOS || isAndroid) && (!isDismissed || daysSinceDismissed > 1)) {
+    return (
+      <Button
+        onClick={() => {
+          if (installPrompt || isAndroid) {
+            handleInstallClick();
+          } else if (isIOS) {
+            setShowBanner(true);
+            setIsDismissed(false);
+          }
+        }}
+        className="fixed bottom-4 right-4 z-40 shadow-lg gap-2 animate-in fade-in duration-500"
         size="lg"
       >
         <Download className="h-4 w-4" />
         Installa App
       </Button>
-    </div>
-  );
+    );
+  }
+
+  return null;
 };

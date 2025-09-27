@@ -12,20 +12,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
-}
-
 const Index = () => {
   const navigate = useNavigate();
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  // Removed showInstallSheet - now using direct PWA prompt
 
   useEffect(() => {
     // Check auth status first
@@ -39,22 +30,6 @@ const Index = () => {
     
     checkAuth();
 
-    // Check if running on iOS
-    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-    setIsIOS(isIOSDevice);
-
-    // Check if app is already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-    }
-
-    // Listen for the beforeinstallprompt event
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      console.log('PWA install prompt captured and saved');
-      setInstallPrompt(e as BeforeInstallPromptEvent);
-    };
-
     // Scroll handler for navbar
     const handleScroll = () => {
       const heroSection = document.getElementById('hero');
@@ -64,17 +39,9 @@ const Index = () => {
       }
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('scroll', handleScroll);
 
-    // Check if app was installed
-    window.addEventListener('appinstalled', () => {
-      setIsInstalled(true);
-      setInstallPrompt(null);
-    });
-
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('scroll', handleScroll);
     };
   }, [navigate]);
@@ -83,29 +50,11 @@ const Index = () => {
     navigate("/login");
   };
 
-  const handleDownloadApp = async () => {
-    if (installPrompt) {
-      try {
-        console.log('Showing PWA install prompt...');
-        await installPrompt.prompt();
-        const { outcome } = await installPrompt.userChoice;
-        console.log(`User choice: ${outcome}`);
-        if (outcome === 'accepted') {
-          setInstallPrompt(null);
-          console.log('PWA installation accepted');
-        }
-      } catch (error) {
-        console.error('Error installing PWA:', error);
-      }
-    } else if (isIOS) {
-      // Show iOS installation instructions
-      alert('Per installare l\'app su iOS:\n1. Tocca il pulsante Condividi ⬆️\n2. Scorri e tocca "Aggiungi a Home"\n3. Tocca "Aggiungi"');
-    } else if (isInstalled) {
-      alert('L\'app è già installata sul tuo dispositivo!');
-    } else {
-      // Fallback - redirect to login page
-      navigate('/login');
-    }
+  const handleDownloadApp = () => {
+    // The InstallPWA component now handles all installation logic
+    // This function can trigger a custom event that InstallPWA listens to
+    const event = new CustomEvent('trigger-pwa-install');
+    window.dispatchEvent(event);
   };
 
   const scrollToSection = (sectionId: string) => {
