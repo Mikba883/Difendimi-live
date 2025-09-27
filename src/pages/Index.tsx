@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useState, useEffect } from "react";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -50,18 +51,10 @@ const Index = () => {
     navigate("/login");
   };
 
+  const { handleInstall } = usePWAInstall();
+  
   const handleDownloadApp = () => {
-    // Check if PWA is available by checking localStorage
-    const pwaAvailable = localStorage.getItem('pwa-available');
-    
-    if (pwaAvailable === 'true') {
-      // Trigger the PWA install
-      const event = new CustomEvent('trigger-pwa-install');
-      window.dispatchEvent(event);
-    } else {
-      // If PWA is not available, go to login
-      navigate('/login');
-    }
+    handleInstall();
   };
 
   const scrollToSection = (sectionId: string) => {
