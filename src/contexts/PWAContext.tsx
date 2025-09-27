@@ -41,29 +41,21 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const dismissBanner = () => {
     setShowInstallBanner(false);
-    if (isIOS) {
-      localStorage.setItem('pwa-banner-dismissed-ios', Date.now().toString());
-    } else {
-      localStorage.setItem('pwa-banner-dismissed', Date.now().toString());
-    }
+    localStorage.setItem('pwa-banner-dismissed', Date.now().toString());
   };
 
   const installApp = async () => {
-    console.log('Install app called', { installPrompt, isIOS, isAndroid });
+    console.log('Install app called', { installPrompt, isIOS, isAndroid, isMobile });
 
     if (isIOS) {
+      // Show iOS install instructions
       alert('Per installare l\'app su iOS:\n\n1. Tocca il pulsante Condividi ⬆️\n2. Scorri e tocca "Aggiungi a Home"\n3. Tocca "Aggiungi"');
       dismissBanner();
       return;
     }
 
-    if (isAndroid && !installPrompt) {
-      alert('Per installare l\'app su Android:\n\n1. Tocca il menu ⋮ del browser\n2. Seleziona "Installa app" o "Aggiungi a schermata Home"');
-      dismissBanner();
-      return;
-    }
-
     if (installPrompt) {
+      // Chrome/Edge/Android with install prompt
       try {
         await installPrompt.prompt();
         const { outcome } = await installPrompt.userChoice;
@@ -75,30 +67,55 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
       } catch (error) {
         console.error('Error showing install prompt:', error);
-        navigate('/login');
       }
+    } else if (isAndroid) {
+      // Android without prompt
+      alert('Per installare l\'app su Android:\n\n1. Tocca il menu ⋮ del browser\n2. Seleziona "Installa app" o "Aggiungi a schermata Home"');
+      dismissBanner();
     } else {
+      // Desktop or unknown - redirect to login
       console.log('No install method available, redirecting to login');
-      navigate('/login');
+      navigate('/login', { 
+        state: { 
+          trigger: 'pwa-install',
+          showInstallInstructions: true 
+        } 
+      });
     }
   };
 
   const triggerInstall = () => {
-    console.log('Trigger install called', { isInstallable, isInstalled });
-    
+    console.log('Trigger install called', { 
+      isInstalled, 
+      isMobile, 
+      isIOS, 
+      isAndroid, 
+      hasPrompt: !!installPrompt 
+    });
+
     if (isInstalled) {
       console.log('App already installed');
       return;
     }
 
-    if (isInstallable || isIOS || isAndroid) {
-      installApp();
-    } else {
-      navigate('/login');
+    // Desktop: always redirect to login
+    if (!isMobile) {
+      console.log('Desktop detected, redirecting to login');
+      navigate('/login', { 
+        state: { 
+          trigger: 'pwa-install',
+          showInstallInstructions: true 
+        } 
+      });
+      return;
     }
+
+    // Mobile: install or show instructions
+    installApp();
   };
 
   useEffect(() => {
+    // Detect device type
     const userAgent = navigator.userAgent.toLowerCase();
     const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) && !(window as any).MSStream;
     const isAndroidDevice = /android/.test(userAgent);
@@ -115,6 +132,7 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       userAgent
     });
 
+    // Check if app is installed
     const checkInstalled = () => {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
                           (window.navigator as any).standalone === true ||
@@ -122,12 +140,12 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       
       setIsInstalled(isStandalone);
       console.log('PWA installed status:', isStandalone);
-      
       return isStandalone;
     };
 
     checkInstalled();
 
+    // Listen for install prompt
     const handleBeforeInstallPrompt = (e: Event) => {
       console.log('beforeinstallprompt event fired');
       e.preventDefault();
@@ -135,6 +153,7 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setInstallPrompt(promptEvent);
       setIsInstallable(true);
       
+      // Show banner after delay if not installed
       if (!checkInstalled()) {
         setTimeout(() => {
           const lastDismissed = localStorage.getItem('pwa-banner-dismissed');
@@ -145,34 +164,36 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    if (isIOSDevice && !checkInstalled()) {
-      setIsInstallable(true);
-      setTimeout(() => {
-        const lastDismissed = localStorage.getItem('pwa-banner-dismissed-ios');
-        if (!lastDismissed || Date.now() - parseInt(lastDismissed) > 7 * 24 * 60 * 60 * 1000) {
-          setShowInstallBanner(true);
-        }
-      }, 3000);
-    }
-
+    // Listen for successful installation
     const handleAppInstalled = () => {
       console.log('PWA was installed');
       setIsInstalled(true);
       setShowInstallBanner(false);
       setInstallPrompt(null);
+      setIsInstallable(false);
     };
 
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
+    // Check for display mode changes
     const displayModeQuery = window.matchMedia('(display-mode: standalone)');
-    const handleDisplayModeChange = (e: MediaQueryListEvent) => {
-      console.log('Display mode changed:', e.matches);
-      setIsInstalled(e.matches);
+    const handleDisplayModeChange = () => {
+      checkInstalled();
     };
     
     displayModeQuery.addEventListener('change', handleDisplayModeChange);
+
+    // Special handling for iOS
+    if (isIOSDevice && !checkInstalled()) {
+      setIsInstallable(true);
+      setTimeout(() => {
+        const lastDismissed = localStorage.getItem('pwa-banner-dismissed');
+        if (!lastDismissed || Date.now() - parseInt(lastDismissed) > 7 * 24 * 60 * 60 * 1000) {
+          setShowInstallBanner(true);
+        }
+      }, 3000);
+    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -180,20 +201,6 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       displayModeQuery.removeEventListener('change', handleDisplayModeChange);
     };
   }, []);
-
-  // Listen for custom trigger events
-  useEffect(() => {
-    const handleTriggerEvent = () => {
-      console.log('Custom PWA install trigger received');
-      triggerInstall();
-    };
-    
-    window.addEventListener('trigger-pwa-install', handleTriggerEvent);
-    
-    return () => {
-      window.removeEventListener('trigger-pwa-install', handleTriggerEvent);
-    };
-  }, [triggerInstall]);
 
   return (
     <PWAContext.Provider value={{

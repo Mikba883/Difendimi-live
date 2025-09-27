@@ -52,10 +52,6 @@ const Index = () => {
   };
 
   const { handleInstall } = usePWAInstall();
-  
-  const handleDownloadApp = () => {
-    handleInstall();
-  };
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
@@ -128,7 +124,7 @@ const Index = () => {
             <div className="hidden md:flex gap-4">
               <Button 
                 variant={isScrolled ? "outline" : "ghost"}
-                onClick={handleDownloadApp}
+                onClick={handleInstall}
                 className={isScrolled ? "" : "text-white border-white/20 hover:bg-white/10"}
               >
                 <Download className="mr-2 h-4 w-4" />
@@ -194,7 +190,7 @@ const Index = () => {
                     </button>
                     <Button 
                       variant="outline" 
-                      onClick={handleDownloadApp}
+                      onClick={handleInstall}
                       className="w-full"
                     >
                       <Download className="mr-2 h-4 w-4" />
