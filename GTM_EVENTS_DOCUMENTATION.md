@@ -168,6 +168,29 @@ window.dataLayer.push({
 }
 ```
 
+### 10. Purchase (CompleteCheckout)
+**Trigger**: Quando il pagamento Stripe viene completato con successo
+**File Client-side**: `src/pages/Dashboard.tsx` (quando `?success=true`)
+**File Server-side**: `supabase/functions/stripe-webhook/index.ts` (evento `checkout.session.completed`)
+```javascript
+{
+  event: 'meta_pixel_event',
+  event_name: 'Purchase',
+  event_data: {
+    custom_data: {
+      currency: 'EUR',
+      value: 49.60,
+      content_type: 'product',
+      content_name: 'Premium Subscription',
+      session_id: 'SESSION_ID' // solo client-side
+    }
+  },
+  user_data: {
+    email: 'USER_EMAIL'
+  }
+}
+```
+
 ## Note Tecniche
 - Il dataLayer viene inizializzato automaticamente se non esiste (in `useMetaPixel.ts`)
 - Tutti gli eventi vengono inviati sia al dataLayer (per GTM) che all'API Meta Pixel (server-side)

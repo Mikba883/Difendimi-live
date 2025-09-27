@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, FileText, Trash2, LogOut, Shield, User, ChevronDown, CreditCard, BarChart3, Calendar, FileCheck, ArrowRight } from "lucide-react";
@@ -40,6 +40,7 @@ interface Case {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string>("");
@@ -47,7 +48,40 @@ const Dashboard = () => {
   useEffect(() => {
     checkAuth();
     fetchCases();
-  }, []);
+    
+    // Check for payment success and track Purchase event
+    const isPaymentSuccess = searchParams.get('success') === 'true';
+    const sessionId = searchParams.get('session_id');
+    
+    if (isPaymentSuccess) {
+      // Push Purchase event to dataLayer
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        event: 'meta_pixel_event',
+        event_name: 'Purchase',
+        event_data: {
+          custom_data: {
+            currency: 'EUR',
+            value: 49.60,
+            content_type: 'product',
+            content_name: 'Premium Subscription',
+            session_id: sessionId || undefined
+          }
+        },
+        user_data: {
+          email: userEmail || undefined
+        }
+      });
+      
+      toast({
+        title: "Pagamento completato!",
+        description: "Il tuo abbonamento Premium è ora attivo.",
+      });
+      
+      // Clean up URL parameters
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams, userEmail]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();

@@ -65,6 +65,32 @@ serve(async (req) => {
                 .eq("user_id", profile.user_id);
               
               console.log(`[WEBHOOK] Updated profile for user ${profile.user_id}`);
+              
+              // Track Purchase event server-side to Meta Pixel API
+              try {
+                const metaPixelResponse = await supabase.functions.invoke('meta-pixel-api', {
+                  body: {
+                    eventName: 'Purchase',
+                    eventData: {
+                      currency: 'EUR',
+                      value: session.amount_total ? session.amount_total / 100 : 49.60,
+                      content_type: 'product',
+                      content_name: 'Premium Subscription',
+                      content_category: 'subscription',
+                      num_items: 1
+                    },
+                    userData: {
+                      email: customer.email,
+                      client_user_agent: req.headers.get('user-agent') || undefined,
+                      event_source_url: `${Deno.env.get("SUPABASE_URL")}/stripe-webhook`
+                    }
+                  }
+                });
+                
+                console.log(`[WEBHOOK] Purchase event tracked to Meta Pixel`, metaPixelResponse);
+              } catch (metaError) {
+                console.error(`[WEBHOOK] Failed to track Purchase event to Meta Pixel:`, metaError);
+              }
             }
           }
         }
