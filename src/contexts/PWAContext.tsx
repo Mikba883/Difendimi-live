@@ -45,20 +45,29 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const installApp = async () => {
-    console.log('Install app called', { installPrompt, isIOS, isAndroid, isMobile });
+    console.log('🚀 Install app called', { 
+      hasPrompt: !!installPrompt, 
+      isIOS, 
+      isAndroid, 
+      isMobile,
+      isInstalled 
+    });
 
     if (installPrompt) {
       // Chrome/Edge/Android with install prompt - try automatic installation
+      console.log('📱 Attempting automatic installation with prompt');
       try {
         await installPrompt.prompt();
         const { outcome } = await installPrompt.userChoice;
-        console.log('User choice:', outcome);
+        console.log('✅ User choice:', outcome);
         
         if (outcome === 'accepted') {
+          console.log('🎉 App installed successfully');
           setInstallPrompt(null);
           setShowInstallBanner(false);
         } else {
           // User rejected, redirect to login
+          console.log('❌ User rejected installation, redirecting to login');
           navigate('/login', { 
             state: { 
               trigger: 'pwa-install',
@@ -67,7 +76,7 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           });
         }
       } catch (error) {
-        console.error('Error showing install prompt:', error);
+        console.error('⚠️ Error showing install prompt:', error);
         // If error, redirect to login
         navigate('/login', { 
           state: { 
@@ -77,8 +86,11 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         });
       }
     } else {
-      // No prompt available (iOS, Android without prompt, or Desktop) - redirect to login
-      console.log('No install prompt available, redirecting to login');
+      // No prompt available - redirect to login
+      console.log('⚠️ No install prompt available, checking device type');
+      console.log('📱 Device info:', { isIOS, isAndroid, isMobile });
+      console.log('🔄 Redirecting to login page');
+      
       navigate('/login', { 
         state: { 
           trigger: 'pwa-install',
