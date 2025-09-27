@@ -51,10 +51,17 @@ const Index = () => {
   };
 
   const handleDownloadApp = () => {
-    // The InstallPWA component now handles all installation logic
-    // This function can trigger a custom event that InstallPWA listens to
-    const event = new CustomEvent('trigger-pwa-install');
-    window.dispatchEvent(event);
+    // Check if PWA is available by checking localStorage
+    const pwaAvailable = localStorage.getItem('pwa-available');
+    
+    if (pwaAvailable === 'true') {
+      // Trigger the PWA install
+      const event = new CustomEvent('trigger-pwa-install');
+      window.dispatchEvent(event);
+    } else {
+      // If PWA is not available, go to login
+      navigate('/login');
+    }
   };
 
   const scrollToSection = (sectionId: string) => {

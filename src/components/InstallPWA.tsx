@@ -40,12 +40,9 @@ export const InstallPWA = () => {
       } else if (isIOS) {
         setShowBanner(true);
         setIsDismissed(false);
-      } else if (isAndroid) {
-        setShowBanner(true);
-        setIsDismissed(false);
       } else {
-        // Desktop fallback
-        alert('Per installare l\'app:\n1. Clicca sull\'icona di installazione nella barra degli indirizzi\n2. Oppure usa il menu del browser e cerca "Installa"');
+        // If no PWA available, redirect to login
+        window.location.href = '/login';
       }
     };
 
@@ -84,6 +81,9 @@ export const InstallPWA = () => {
       const promptEvent = e as BeforeInstallPromptEvent;
       setInstallPrompt(promptEvent);
       
+      // Mark PWA as available
+      localStorage.setItem('pwa-available', 'true');
+      
       // Show banner after a delay if not dismissed
       if (!isDismissed && !localStorage.getItem('pwa-installed')) {
         setTimeout(() => setShowBanner(true), 2000);
@@ -91,6 +91,11 @@ export const InstallPWA = () => {
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Mark iOS as PWA available too
+    if (isIOS && !isInstalled) {
+      localStorage.setItem('pwa-available', 'true');
+    }
 
     // Listen for successful installation
     window.addEventListener('appinstalled', () => {
@@ -116,14 +121,8 @@ export const InstallPWA = () => {
     if (!installPrompt) {
       console.log('Prompt di installazione non disponibile');
       
-      // Fallback: show instructions based on device
-      if (isIOS) {
-        alert('Per installare l\'app:\n1. Tocca il pulsante Condividi ⬆️\n2. Scorri e tocca "Aggiungi a Home"\n3. Tocca "Aggiungi"');
-      } else if (isAndroid) {
-        alert('Per installare l\'app:\n1. Tocca il menu ⋮ del browser\n2. Seleziona "Installa app" o "Aggiungi a schermata Home"');
-      } else {
-        alert('Per installare l\'app:\n1. Clicca sull\'icona di installazione nella barra degli indirizzi\n2. Oppure usa il menu del browser e cerca "Installa"');
-      }
+      // Instead of showing instructions, redirect to login
+      window.location.href = '/login';
       return;
     }
 
@@ -135,10 +134,12 @@ export const InstallPWA = () => {
       if (outcome === 'accepted') {
         setInstallPrompt(null);
         setShowBanner(false);
+        localStorage.setItem('pwa-installed', 'true');
       }
     } catch (error) {
       console.error('Errore durante l\'installazione:', error);
-      alert('Si è verificato un errore durante l\'installazione. Riprova più tardi.');
+      // If error, redirect to login
+      window.location.href = '/login';
     }
   };
 
