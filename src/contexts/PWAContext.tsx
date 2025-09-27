@@ -47,15 +47,8 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const installApp = async () => {
     console.log('Install app called', { installPrompt, isIOS, isAndroid, isMobile });
 
-    if (isIOS) {
-      // Show iOS install instructions
-      alert('Per installare l\'app su iOS:\n\n1. Tocca il pulsante Condividi ⬆️\n2. Scorri e tocca "Aggiungi a Home"\n3. Tocca "Aggiungi"');
-      dismissBanner();
-      return;
-    }
-
     if (installPrompt) {
-      // Chrome/Edge/Android with install prompt
+      // Chrome/Edge/Android with install prompt - try automatic installation
       try {
         await installPrompt.prompt();
         const { outcome } = await installPrompt.userChoice;
@@ -64,17 +57,28 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (outcome === 'accepted') {
           setInstallPrompt(null);
           setShowInstallBanner(false);
+        } else {
+          // User rejected, redirect to login
+          navigate('/login', { 
+            state: { 
+              trigger: 'pwa-install',
+              showInstallInstructions: true 
+            } 
+          });
         }
       } catch (error) {
         console.error('Error showing install prompt:', error);
+        // If error, redirect to login
+        navigate('/login', { 
+          state: { 
+            trigger: 'pwa-install',
+            showInstallInstructions: true 
+          } 
+        });
       }
-    } else if (isAndroid) {
-      // Android without prompt
-      alert('Per installare l\'app su Android:\n\n1. Tocca il menu ⋮ del browser\n2. Seleziona "Installa app" o "Aggiungi a schermata Home"');
-      dismissBanner();
     } else {
-      // Desktop or unknown - redirect to login
-      console.log('No install method available, redirecting to login');
+      // No prompt available (iOS, Android without prompt, or Desktop) - redirect to login
+      console.log('No install prompt available, redirecting to login');
       navigate('/login', { 
         state: { 
           trigger: 'pwa-install',
@@ -82,6 +86,8 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         } 
       });
     }
+    
+    dismissBanner();
   };
 
   const triggerInstall = () => {
