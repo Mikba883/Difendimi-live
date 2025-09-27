@@ -61,7 +61,8 @@ const Login = () => {
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
-    const redirectUrl = `${window.location.origin}/case/new`;
+    // Use fixed redirect URL to match exactly what's configured in Supabase and Google OAuth
+    const redirectUrl = `https://www.difendimiai.com/case/new`;
     
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -95,7 +96,8 @@ const Login = () => {
 
     setLoading(true);
     
-    const redirectUrl = `${window.location.origin}/case/new`;
+    // Use fixed redirect URL to match what's configured in Supabase
+    const redirectUrl = `https://www.difendimiai.com/case/new`;
     
     const { error, data } = await supabase.auth.signInWithOtp({
       email,

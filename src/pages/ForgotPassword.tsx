@@ -18,7 +18,8 @@ const ForgotPassword = () => {
     e.preventDefault();
     setLoading(true);
 
-    const redirectUrl = `${window.location.origin}/reset-password`;
+    // Use fixed redirect URL to match what's configured in Supabase
+    const redirectUrl = `https://www.difendimiai.com/reset-password`;
     
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: redirectUrl,
