@@ -18,6 +18,9 @@ export default function Premium() {
   
   // Track ViewContent event when the Premium page is viewed
   useEffect(() => {
+    // Scroll to top when component mounts
+    window.scrollTo(0, 0);
+    
     trackEvent('ViewContent', {
       custom_data: {
         content_type: 'product',

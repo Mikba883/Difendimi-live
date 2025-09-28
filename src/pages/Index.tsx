@@ -1,6 +1,6 @@
 import { Shield, ArrowRight, CheckCircle, Lock, Scale, Clock, Download, Brain, FileText, Zap, Users, Star, MessageSquare, ChevronRight, ClipboardList, FileCheck, Target, Calendar, Paperclip, Check, X, Eye, Maximize2, Menu, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useState, useEffect } from "react";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
@@ -808,9 +808,9 @@ const Index = () => {
           <div>
             <h4 className="font-semibold mb-4">Legale</h4>
             <ul className="space-y-2 text-sm text-background/70">
-              <li><a href="/privacy" className="hover:text-background transition">Privacy Policy</a></li>
-              <li><a href="/terms" className="hover:text-background transition">Termini di Servizio</a></li>
-              <li><a href="/cookie" className="hover:text-background transition">Cookie Policy</a></li>
+              <li><Link to="/privacy" className="hover:text-background transition">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="hover:text-background transition">Termini di Servizio</Link></li>
+              <li><Link to="/cookie" className="hover:text-background transition">Cookie Policy</Link></li>
             </ul>
           </div>
         </div>
