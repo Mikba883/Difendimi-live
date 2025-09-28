@@ -16,12 +16,34 @@ const ResetPassword = () => {
   const [passwordUpdated, setPasswordUpdated] = useState(false);
 
   useEffect(() => {
-    // Check if user is coming from password reset link
+    // Extract access_token from URL hash for password reset flow
     const handlePasswordReset = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        // If no session, redirect to login
-        navigate("/login");
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      
+      if (accessToken) {
+        // Set the session with the access token from the URL
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: hashParams.get('refresh_token') || '',
+        });
+        
+        if (error) {
+          console.error('Error setting session:', error);
+          toast({
+            title: "Errore",
+            description: "Link di reset non valido o scaduto",
+            variant: "destructive",
+          });
+          navigate("/login");
+          return;
+        }
+      } else {
+        // Check for existing session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          navigate("/login");
+        }
       }
     };
     handlePasswordReset();
