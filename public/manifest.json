@@ -1,0 +1,60 @@
+{
+  "name": "Difendimi.AI - Il tuo assistente legale",
+  "short_name": "Difendimi.AI",
+  "description": "Scopri cosa dice la legge - Assistenza legale AI per tutti",
+  "theme_color": "#3b82f6",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/?utm_source=pwa",
+  "id": "difendimi-ai-app",
+  "categories": ["legal", "utilities", "education", "productivity"],
+  "lang": "it-IT",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nuovo Caso",
+      "short_name": "Nuovo",
+      "description": "Crea un nuovo caso legale",
+      "url": "/case/new",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Vai alla dashboard",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "related_applications": [],
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"]
+}
