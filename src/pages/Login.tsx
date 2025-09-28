@@ -143,13 +143,22 @@ const Login = () => {
     });
 
     if (error) {
-      toast({
-        title: "Errore di registrazione",
-        description: error.message === "User already registered" 
-          ? "Questo utente è già registrato. Prova ad accedere."
-          : error.message,
-        variant: "destructive",
-      });
+      // Handle rate limit error specifically
+      if (error.message?.includes('429') || error.message?.toLowerCase().includes('too many requests') || error.message?.toLowerCase().includes('rate limit')) {
+        toast({
+          title: "Limite raggiunto",
+          description: "Hai richiesto troppi codici, riprova tra qualche minuto.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Errore di registrazione",
+          description: error.message === "User already registered" 
+            ? "Questo utente è già registrato. Prova ad accedere."
+            : error.message,
+          variant: "destructive",
+        });
+      }
       setLoading(false);
     } else if (data) {
       // Track registration event

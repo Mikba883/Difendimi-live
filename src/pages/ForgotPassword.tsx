@@ -26,11 +26,20 @@ const ForgotPassword = () => {
     });
 
     if (error) {
-      toast({
-        title: "Errore",
-        description: error.message,
-        variant: "destructive",
-      });
+      // Handle rate limit error specifically
+      if (error.message?.includes('429') || error.message?.toLowerCase().includes('too many requests') || error.message?.toLowerCase().includes('rate limit')) {
+        toast({
+          title: "Limite raggiunto",
+          description: "Hai richiesto troppi codici, riprova tra qualche minuto.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Errore",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
       setLoading(false);
     } else {
       setEmailSent(true);

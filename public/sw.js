@@ -1,6 +1,8 @@
-const CACHE_NAME = 'difendimi-ai-v2';
-const STATIC_CACHE = 'difendimi-static-v2';
-const DYNAMIC_CACHE = 'difendimi-dynamic-v2';
+// Build hash for cache busting - will be replaced at build time
+const BUILD_HASH = Date.now().toString();
+const CACHE_NAME = `difendimi-ai-v3-${BUILD_HASH}`;
+const STATIC_CACHE = `difendimi-static-v3-${BUILD_HASH}`;
+const DYNAMIC_CACHE = `difendimi-dynamic-v3-${BUILD_HASH}`;
 
 // Assets to cache on install
 const STATIC_ASSETS = [
@@ -39,7 +41,8 @@ self.addEventListener('activate', event => {
       return Promise.all(
         cacheNames
           .filter(cacheName => {
-            return cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE;
+            // Delete all caches that don't match current version
+            return !cacheName.includes(BUILD_HASH);
           })
           .map(cacheName => {
             console.log('[Service Worker] Deleting old cache:', cacheName);
