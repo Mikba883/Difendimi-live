@@ -63,15 +63,27 @@ serve(async (req) => {
     });
 
     if (subscriptions.data.length > 0) {
-      console.log(`[CREATE-CHECKOUT] Customer already has active subscription`);
+      console.log(`[CREATE-CHECKOUT] Customer already has active subscription, creating portal session instead`);
+      
+      // Create a portal session for existing subscribers
+      const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+        apiVersion: "2025-08-27.basil",
+      });
+      
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${req.headers.get("origin")}/dashboard`,
+      });
+      
       return new Response(
         JSON.stringify({ 
-          error: "Hai già un abbonamento attivo",
-          hasActiveSubscription: true 
+          url: portalSession.url,
+          hasActiveSubscription: true,
+          isPortalSession: true
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
+          status: 200,
         }
       );
     }
