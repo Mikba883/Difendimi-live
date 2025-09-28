@@ -21,6 +21,30 @@ const Login = () => {
   const [consentError, setConsentError] = useState(false);
 
   useEffect(() => {
+    // Check for OAuth callback parameters
+    const checkOAuthCallback = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const searchParams = new URLSearchParams(window.location.search);
+      
+      // Check if there are OAuth tokens in the URL
+      if (hashParams.get('access_token') || searchParams.get('code')) {
+        console.log('OAuth callback detected, processing authentication...');
+        // Supabase will handle the OAuth callback automatically
+        // Wait a moment for Supabase to process
+        setTimeout(() => {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+              console.log('Session established after OAuth callback');
+              navigate("/case/new");
+            }
+          });
+        }, 100);
+        return;
+      }
+    };
+    
+    checkOAuthCallback();
+    
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -30,6 +54,8 @@ const Login = () => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email);
+      
       if (session) {
         // Track CompleteRegistration for Google OAuth sign-ups
         if (event === 'SIGNED_IN' && session.user?.app_metadata?.provider === 'google') {
@@ -57,12 +83,15 @@ const Login = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, trackEvent]);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
-    // Use fixed redirect URL to match exactly what's configured in Supabase and Google OAuth
-    const redirectUrl = `https://www.difendimiai.com/case/new`;
+    console.log('Starting Google OAuth flow...');
+    
+    // Use dynamic redirect URL that works in both development and production
+    const redirectUrl = `${window.location.origin}/login`;
+    console.log('OAuth redirect URL:', redirectUrl);
     
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -72,6 +101,7 @@ const Login = () => {
     });
 
     if (error) {
+      console.error('Google OAuth error:', error);
       toast({
         title: "Errore di accesso",
         description: error.message,
@@ -79,6 +109,7 @@ const Login = () => {
       });
       setLoading(false);
     }
+    // If successful, the page will redirect to Google for authentication
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -96,8 +127,8 @@ const Login = () => {
 
     setLoading(true);
     
-    // Use fixed redirect URL to match what's configured in Supabase
-    const redirectUrl = `https://www.difendimiai.com/case/new`;
+    // Use dynamic redirect URL that works in both development and production
+    const redirectUrl = `${window.location.origin}/login`;
     
     const { error, data } = await supabase.auth.signInWithOtp({
       email,
