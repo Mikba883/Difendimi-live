@@ -16,36 +16,80 @@ const ResetPassword = () => {
   const [passwordUpdated, setPasswordUpdated] = useState(false);
 
   useEffect(() => {
-    // Extract access_token from URL hash for password reset flow
+    // Handle password reset token from URL
     const handlePasswordReset = async () => {
+      // First check URL params (for newer Supabase versions)
+      const urlParams = new URLSearchParams(window.location.search);
+      const type = urlParams.get('type');
+      const tokenHash = urlParams.get('token_hash');
+      
+      // Also check hash params (for compatibility)
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
       
-      if (accessToken) {
-        // Set the session with the access token from the URL
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: hashParams.get('refresh_token') || '',
-        });
-        
-        if (error) {
-          console.error('Error setting session:', error);
-          toast({
-            title: "Errore",
-            description: "Link di reset non valido o scaduto",
-            variant: "destructive",
+      // Log for debugging
+      console.log('Reset password params:', {
+        type,
+        tokenHash, 
+        accessToken: !!accessToken,
+        refreshToken: !!refreshToken
+      });
+      
+      // Handle recovery type with token_hash
+      if (type === 'recovery' && tokenHash) {
+        try {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery',
           });
-          navigate("/login");
-          return;
+          
+          if (error) {
+            console.error('Error verifying OTP:', error);
+            toast({
+              title: "Errore",
+              description: "Link di reset non valido o scaduto",
+              variant: "destructive",
+            });
+            navigate("/login");
+            return;
+          }
+        } catch (err) {
+          console.error('Error during OTP verification:', err);
         }
-      } else {
-        // Check for existing session
+      } 
+      // Handle access token from hash (older method)
+      else if (accessToken && refreshToken) {
+        try {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          
+          if (error) {
+            console.error('Error setting session:', error);
+            toast({
+              title: "Errore",
+              description: "Link di reset non valido o scaduto",
+              variant: "destructive",
+            });
+            navigate("/login");
+            return;
+          }
+        } catch (err) {
+          console.error('Error during session setup:', err);
+        }
+      }
+      // Check for existing session
+      else {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
+          console.log('No session found, redirecting to login');
           navigate("/login");
         }
       }
     };
+    
     handlePasswordReset();
   }, [navigate]);
 

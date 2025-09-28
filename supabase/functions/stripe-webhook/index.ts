@@ -34,6 +34,7 @@ serve(async (req) => {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        console.log(`[WEBHOOK] Processing checkout.session.completed for session ${session.id}`);
         
         if (session.mode === "subscription" && session.subscription) {
           const subscription = await stripe.subscriptions.retrieve(
@@ -44,27 +45,41 @@ serve(async (req) => {
           const customer = await stripe.customers.retrieve(customerId);
           
           if ("email" in customer && customer.email) {
+            console.log(`[WEBHOOK] Found customer email: ${customer.email}`);
+            
             // Update user profile with subscription info
-            const { data: profile } = await supabase
+            const { data: profile, error: profileError } = await supabase
               .from("profiles")
               .select("user_id")
               .eq("email", customer.email)
-              .single();
+              .maybeSingle();
+            
+            if (profileError) {
+              console.error(`[WEBHOOK] Error fetching profile:`, profileError);
+            }
             
             if (profile) {
-              await supabase
+              const updateData = {
+                stripe_customer_id: customerId,
+                stripe_subscription_id: subscription.id,
+                subscription_status: subscription.status,
+                subscription_end_date: new Date(subscription.current_period_end * 1000).toISOString(),
+                subscription_price_id: subscription.items.data[0].price.id,
+                is_premium: true,
+              };
+              
+              console.log(`[WEBHOOK] Updating profile with:`, updateData);
+              
+              const { error: updateError } = await supabase
                 .from("profiles")
-                .update({
-                  stripe_customer_id: customerId,
-                  stripe_subscription_id: subscription.id,
-                  subscription_status: subscription.status,
-                  subscription_end_date: new Date(subscription.current_period_end * 1000).toISOString(),
-                  subscription_price_id: subscription.items.data[0].price.id,
-                  is_premium: true,
-                })
+                .update(updateData)
                 .eq("user_id", profile.user_id);
               
-              console.log(`[WEBHOOK] Updated profile for user ${profile.user_id}`);
+              if (updateError) {
+                console.error(`[WEBHOOK] Error updating profile:`, updateError);
+              } else {
+                console.log(`[WEBHOOK] Successfully updated profile for user ${profile.user_id}`);
+              }
               
               // Track Purchase event server-side to Meta Pixel API
               try {
@@ -91,8 +106,14 @@ serve(async (req) => {
               } catch (metaError) {
                 console.error(`[WEBHOOK] Failed to track Purchase event to Meta Pixel:`, metaError);
               }
+            } else {
+              console.error(`[WEBHOOK] No profile found for email ${customer.email}`);
             }
+          } else {
+            console.error(`[WEBHOOK] No email found for customer ${customerId}`);
           }
+        } else {
+          console.log(`[WEBHOOK] Session is not a subscription or missing subscription ID`);
         }
         break;
       }
