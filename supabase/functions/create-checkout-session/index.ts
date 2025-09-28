@@ -93,7 +93,7 @@ serve(async (req) => {
       customer: customerId,
       line_items: [
         {
-          price: "price_1SBV11GUM0wmwBaNVjKRwxnz", // €155/year price
+          price: "price_1SCG5FGUM0wmwBaNEo6VMpDW", // €1/year test price
           quantity: 1,
         },
       ],
