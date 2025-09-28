@@ -4,6 +4,9 @@ export const usePWAInstall = () => {
   const { triggerInstall } = usePWA();
   
   return {
-    handleInstall: triggerInstall
+    handleInstall: () => {
+      // Always trigger install - context will handle logic
+      triggerInstall();
+    }
   };
 };

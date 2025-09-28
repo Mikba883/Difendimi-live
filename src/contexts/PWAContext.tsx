@@ -38,6 +38,7 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isMobile, setIsMobile] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [attemptedInstall, setAttemptedInstall] = useState(false);
 
   const dismissBanner = () => {
     setShowInstallBanner(false);
@@ -47,14 +48,12 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const installApp = async () => {
     console.log('🚀 Install app called', { 
       hasPrompt: !!installPrompt, 
-      isIOS, 
-      isAndroid, 
-      isMobile,
+      attemptedInstall,
       isInstalled 
     });
 
-    if (installPrompt) {
-      // Chrome/Edge/Android with install prompt - try automatic installation
+    // If we have a prompt and haven't attempted yet, try to use it
+    if (installPrompt && !attemptedInstall) {
       console.log('📱 Attempting automatic installation with prompt');
       try {
         await installPrompt.prompt();
@@ -65,38 +64,24 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           console.log('🎉 App installed successfully');
           setInstallPrompt(null);
           setShowInstallBanner(false);
+          setAttemptedInstall(false); // Reset for future
         } else {
-          // User rejected, redirect to login
-          console.log('❌ User rejected installation, redirecting to login');
-          navigate('/login', { 
-            state: { 
-              trigger: 'pwa-install',
-              showInstallInstructions: true 
-            } 
-          });
+          // User rejected, mark as attempted but don't clear prompt
+          console.log('❌ User rejected installation');
+          setAttemptedInstall(true);
+          // Redirect to login as fallback
+          navigate('/login');
         }
       } catch (error) {
         console.error('⚠️ Error showing install prompt:', error);
+        setAttemptedInstall(true);
         // If error, redirect to login
-        navigate('/login', { 
-          state: { 
-            trigger: 'pwa-install',
-            showInstallInstructions: true 
-          } 
-        });
+        navigate('/login');
       }
     } else {
-      // No prompt available - redirect to login
-      console.log('⚠️ No install prompt available, checking device type');
-      console.log('📱 Device info:', { isIOS, isAndroid, isMobile });
+      // No prompt available or already attempted - redirect to login
       console.log('🔄 Redirecting to login page');
-      
-      navigate('/login', { 
-        state: { 
-          trigger: 'pwa-install',
-          showInstallInstructions: true 
-        } 
-      });
+      navigate('/login');
     }
     
     dismissBanner();
@@ -105,10 +90,8 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const triggerInstall = () => {
     console.log('Trigger install called', { 
       isInstalled, 
-      isMobile, 
-      isIOS, 
-      isAndroid, 
-      hasPrompt: !!installPrompt 
+      hasPrompt: !!installPrompt,
+      attemptedInstall
     });
 
     if (isInstalled) {
@@ -116,19 +99,7 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return;
     }
 
-    // Desktop: always redirect to login
-    if (!isMobile) {
-      console.log('Desktop detected, redirecting to login');
-      navigate('/login', { 
-        state: { 
-          trigger: 'pwa-install',
-          showInstallInstructions: true 
-        } 
-      });
-      return;
-    }
-
-    // Mobile: install or show instructions
+    // Always try to install, fallback will redirect to login
     installApp();
   };
 
@@ -170,6 +141,7 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const promptEvent = e as BeforeInstallPromptEvent;
       setInstallPrompt(promptEvent);
       setIsInstallable(true);
+      setAttemptedInstall(false); // Reset when new prompt is available
       
       // Show banner after delay if not installed
       if (!checkInstalled()) {

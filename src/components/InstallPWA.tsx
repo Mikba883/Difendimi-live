@@ -1,12 +1,11 @@
 import React from 'react';
-import { X, Download, Share } from 'lucide-react';
+import { X, Download } from 'lucide-react';
 import { usePWA } from '@/contexts/PWAContext';
 import { Button } from '@/components/ui/button';
 
 const InstallPWA: React.FC = () => {
   const { 
     isInstalled, 
-    isIOS, 
     showInstallBanner, 
     dismissBanner, 
     installApp 
@@ -22,44 +21,7 @@ const InstallPWA: React.FC = () => {
     return null;
   }
 
-  // iOS specific banner
-  if (isIOS) {
-    return (
-      <div className="fixed bottom-20 left-4 right-4 z-50 animate-in slide-in-from-bottom-5">
-        <div className="bg-card border border-border rounded-lg shadow-lg p-4 relative">
-          <button
-            onClick={dismissBanner}
-            className="absolute right-2 top-2 p-1 rounded-full hover:bg-muted transition-colors"
-            aria-label="Chiudi"
-          >
-            <X className="h-4 w-4" />
-          </button>
-          
-          <div className="flex items-start gap-3 pr-6">
-            <div className="bg-primary/10 p-2 rounded-lg shrink-0">
-              <Share className="h-5 w-5 text-primary" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="font-semibold text-sm">Installa Difendimi.AI</h3>
-              <p className="text-xs text-muted-foreground">
-                Tocca il pulsante Condividi <Share className="h-3 w-3 inline" /> e poi "Aggiungi a Home"
-              </p>
-              <Button
-                onClick={installApp}
-                size="sm"
-                variant="outline"
-                className="w-full mt-2"
-              >
-                Mostra istruzioni
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Android/Desktop banner
+  // Single banner for all platforms - no instructions
   return (
     <div className="fixed bottom-20 left-4 right-4 z-50 animate-in slide-in-from-bottom-5">
       <div className="bg-card border border-border rounded-lg shadow-lg p-4 relative">
