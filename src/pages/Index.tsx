@@ -220,7 +220,7 @@ const Index = () => {
                 <span className="text-white"> legge</span>
               </h1>
               <p className="text-xl md:text-2xl text-white/90 mb-8 animate-fade-in" style={{animationDelay: "0.1s"}}>
-                Senza attese, senza parcelle, con l'intelligenza artificiale
+                Il tuo assistente AI esperto di legge
               </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in" style={{animationDelay: "0.2s"}}>
               <Button 

@@ -61,8 +61,19 @@ Deno.serve(async (req) => {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        const user_id = (session.metadata?.user_id as string) || null;
+        console.log(`[WEBHOOK] Processing checkout.session.completed`, {
+          sessionId: session.id,
+          customerId: session.customer,
+          metadata: session.metadata,
+          mode: session.mode,
+          subscription: session.subscription
+        });
+
+        // Try to get user_id from metadata (preferred)
+        const user_id = session.metadata?.supabase_user_id || null;
         const customerId = session.customer as string | null;
+
+        console.log(`[WEBHOOK] User ID: ${user_id}, Customer ID: ${customerId}`);
 
         let subscriptionId: string | null = null;
         let status: string | null = null;
@@ -75,6 +86,13 @@ Deno.serve(async (req) => {
           status = sub.status;
           endISO = new Date(sub.current_period_end * 1000).toISOString();
           priceId = sub.items.data?.[0]?.price?.id ?? null;
+          
+          console.log(`[WEBHOOK] Subscription details:`, {
+            subscriptionId,
+            status,
+            endISO,
+            priceId
+          });
         }
 
         const updateData = {
@@ -88,8 +106,43 @@ Deno.serve(async (req) => {
             : true,
         };
 
-        if (user_id) await updateProfileByUserId(user_id, updateData);
-        else if (customerId) await updateProfileByCustomerId(customerId, updateData);
+        console.log(`[WEBHOOK] Update data:`, updateData);
+
+        // If we have user_id, update by user_id
+        if (user_id) {
+          console.log(`[WEBHOOK] Updating profile by user_id: ${user_id}`);
+          await updateProfileByUserId(user_id, updateData);
+        } 
+        // Fallback: if we have customerId, try to find user by email
+        else if (customerId) {
+          console.log(`[WEBHOOK] No user_id in metadata, trying fallback with customerId: ${customerId}`);
+          
+          // Get customer email from Stripe
+          const customer = await stripe.customers.retrieve(customerId);
+          if ('email' in customer && customer.email) {
+            console.log(`[WEBHOOK] Found customer email: ${customer.email}`);
+            
+            // Find user profile by email
+            const { data: profile, error } = await supabase
+              .from("profiles")
+              .select("user_id")
+              .eq("email", customer.email)
+              .single();
+            
+            if (profile && !error) {
+              console.log(`[WEBHOOK] Found profile for email, updating by user_id: ${profile.user_id}`);
+              await updateProfileByUserId(profile.user_id, updateData);
+            } else {
+              console.log(`[WEBHOOK] No profile found for email, updating by customerId`);
+              await updateProfileByCustomerId(customerId, updateData);
+            }
+          } else {
+            console.log(`[WEBHOOK] No email found for customer, updating by customerId`);
+            await updateProfileByCustomerId(customerId, updateData);
+          }
+        } else {
+          console.error(`[WEBHOOK] No user_id or customerId found for session: ${session.id}`);
+        }
         break;
       }
 
@@ -97,6 +150,13 @@ Deno.serve(async (req) => {
         const sub = event.data.object as Stripe.Subscription;
         const customerId = sub.customer as string;
         const isPremium = sub.status === "active" || sub.status === "trialing";
+
+        console.log(`[WEBHOOK] Processing subscription.updated`, {
+          subscriptionId: sub.id,
+          customerId,
+          status: sub.status,
+          metadata: sub.metadata
+        });
 
         const updateData = {
           stripe_customer_id: customerId,
@@ -107,7 +167,7 @@ Deno.serve(async (req) => {
           is_premium: isPremium,
         };
 
-        const user_id = (sub.metadata?.user_id as string) || null;
+        const user_id = sub.metadata?.supabase_user_id || null;
         if (user_id) await updateProfileByUserId(user_id, updateData);
         else await updateProfileByCustomerId(customerId, updateData);
         break;
