@@ -28,7 +28,10 @@ export function BlurredContent({
         "relative cursor-pointer group",
         className
       )}
-      onClick={() => navigate("/premium")}
+      onClick={() => {
+        const caseId = window.location.pathname.match(/\/case\/([^\/]+)/)?.[1];
+        navigate("/premium", caseId ? { state: { fromCase: `/case/${caseId}` } } : {});
+      }}
     >
         {/* Blurred content */}
         <div className="blur-md pointer-events-none select-none">

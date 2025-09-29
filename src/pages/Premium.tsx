@@ -90,23 +90,33 @@ export default function Premium() {
   };
 
   const handleBack = () => {
-    // Try to get the referrer from state or sessionStorage
-    const referrer = (location.state as any)?.fromCase || sessionStorage.getItem('premiumReferrer');
+    // First check for case state
+    const fromCase = (location.state as any)?.fromCase;
+    if (fromCase) {
+      navigate(fromCase);
+      return;
+    }
     
+    // Then check sessionStorage
+    const referrer = sessionStorage.getItem('premiumReferrer');
     if (referrer && referrer.includes('/case/')) {
-      // If we came from a case page, go back there
       const caseIdMatch = referrer.match(/\/case\/([^\/]+)/);
       if (caseIdMatch) {
         navigate(`/case/${caseIdMatch[1]}`);
-      } else {
-        navigate('/dashboard');
+        sessionStorage.removeItem('premiumReferrer');
+        return;
       }
-    } else {
-      // Default to dashboard
-      navigate('/dashboard');
     }
     
-    // Clean up sessionStorage
+    // Finally check localStorage for last viewed case
+    const lastViewedCase = localStorage.getItem('lastViewedCase');
+    if (lastViewedCase) {
+      navigate(`/case/${lastViewedCase}`);
+      return;
+    }
+    
+    // Default to dashboard
+    navigate('/dashboard');
     sessionStorage.removeItem('premiumReferrer');
   };
 
