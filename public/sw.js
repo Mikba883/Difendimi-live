@@ -1,57 +1,77 @@
-// public/sw.js
-const VERSION = '2025-09-29-1';
-const STATIC_CACHE = `static-${VERSION}`;
-const RUNTIME_CACHE = `runtime-${VERSION}`;
+/* SW v2 � cache sicura con filtri (VER-0933) */
+(() => {
+  const SKIP_HOSTS = new Set([
+    "connect.facebook.net",
+    "www.googletagmanager.com",
+    "www.google-analytics.com",
+    "capi-automation.s3.us-east-2.amazonaws.com",
+  ]);
 
-self.addEventListener('install', (event) => {
-  self.skipWaiting();
-  event.waitUntil(caches.open(STATIC_CACHE));
-});
+  const isHTMLNav = (req) =>
+    req.mode === "navigate" ||
+    (req.destination === "" && req.headers.get("accept")?.includes("text/html"));
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(
-      keys.filter(k => ![STATIC_CACHE, RUNTIME_CACHE].includes(k))
-          .map(k => caches.delete(k))
-    );
-    await self.clients.claim();
-  })());
-});
+  self.addEventListener("install", (event) => {
+    self.skipWaiting();
+  });
 
-// Strategia di cache
-self.addEventListener('fetch', (event) => {
-  const req = event.request;
-  const url = new URL(req.url);
-
-  // Non cache su domini critici
-  const noCacheHosts = ['stripe.com','supabase.co','supabase.in','accounts.google.com'];
-  if (noCacheHosts.some(h => url.hostname.includes(h))) return;
-
-  // Navigations (HTML) → NetworkFirst
-  if (req.mode === 'navigate') {
-    event.respondWith((async () => {
-      try {
-        return await fetch(req, { cache: 'no-store' });
-      } catch {
-        const cache = await caches.open(STATIC_CACHE);
-        const fallback = await cache.match('/offline.html');
-        return fallback || Response.error();
-      }
+  self.addEventListener("activate", (event) => {
+    event.waitUntil((async () => {
+      await self.clients.claim();
     })());
-    return;
-  }
+  });
 
-  // Asset statici → StaleWhileRevalidate
-  if (/\.(?:js|css|woff2?|png|jpg|jpeg|gif|svg|webp)$/.test(url.pathname)) {
+  self.addEventListener("fetch", (event) => {
+    const req = event.request;
+
+    // Solo GET
+    if (req.method !== "GET") return;
+
+    // Solo http/https (niente chrome-extension:, file:, ecc.)
+    const url = new URL(req.url);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return;
+
+    // Evita host terzi "rumorosi"
+    if (SKIP_HOSTS.has(url.hostname)) return;
+
+    // A) Navigazioni HTML => network-first con fallback cache
+    if (isHTMLNav(req)) {
+      event.respondWith((async () => {
+        try {
+          const fresh = await fetch(req, { cache: "no-store" });
+          const c = await caches.open("runtime");
+          c.put(req, fresh.clone());
+          return fresh;
+        } catch {
+          const c = await caches.open("runtime");
+          const cached = await c.match(req);
+          return cached || new Response("Offline", { status: 503, statusText: "Offline" });
+        }
+      })());
+      return;
+    }
+
+    // B) Asset statici => cache-first
+    const isAsset = url.pathname.startsWith("/assets/") ||
+      ["script","style","font","image"].includes(req.destination);
+    if (isAsset) {
+      event.respondWith((async () => {
+        const c = await caches.open("static");
+        const cached = await c.match(req);
+        if (cached) return cached;
+        const fresh = await fetch(req);
+        c.put(req, fresh.clone());
+        return fresh;
+      })());
+      return;
+    }
+
+    // C) Altri GET => stale-while-revalidate semplice
     event.respondWith((async () => {
-      const cache = await caches.open(RUNTIME_CACHE);
-      const cached = await cache.match(req);
-      const fetchPromise = fetch(req).then(res => {
-        cache.put(req, res.clone());
-        return res;
-      }).catch(() => cached);
-      return cached || fetchPromise;
+      const c = await caches.open("runtime");
+      const cached = await c.match(req);
+      const freshP = fetch(req).then(res => { c.put(req, res.clone()); return res; }).catch(() => null);
+      return cached || (await freshP) || fetch(req);
     })());
-  }
-});
+  });
+})();
