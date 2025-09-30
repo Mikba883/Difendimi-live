@@ -90,7 +90,7 @@ const Login = () => {
     console.log('Starting Google OAuth flow...');
     
     // Use dynamic redirect URL that works in both development and production
-    const redirectUrl = `${window.location.origin}/`;
+    const redirectUrl = `${window.location.origin}/dashboard`;
     console.log('OAuth redirect URL:', redirectUrl);
     
     const { error } = await supabase.auth.signInWithOAuth({
@@ -128,7 +128,7 @@ const Login = () => {
     setLoading(true);
     
     // Use dynamic redirect URL that works in both development and production
-    const redirectUrl = `${window.location.origin}/`;
+    const redirectUrl = `${window.location.origin}/dashboard`;
     
     const { error, data } = await supabase.auth.signInWithOtp({
       email,

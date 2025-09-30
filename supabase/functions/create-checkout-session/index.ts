@@ -94,7 +94,7 @@ serve(async (req) => {
       customer_creation: customerId ? undefined : "if_required",
       line_items: [
         {
-          price: "price_1SCG5FGUM0wmwBaNEo6VMpDW", // €1/year test price
+          price: "price_1SCwRbGUM0wmwBaNKNXCmsWZ", // €155/year price
           quantity: 1,
         },
       ],
