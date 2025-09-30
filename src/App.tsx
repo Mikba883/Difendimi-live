@@ -1,3 +1,4 @@
+import './register-sw';
 import { BUILD_TAG } from "@/version";
 
 import { Toaster } from "@/components/ui/toaster";
@@ -62,3 +63,4 @@ const App = () => {
 };
 
 export default App;
+
