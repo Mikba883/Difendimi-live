@@ -1,0 +1,16 @@
+﻿{
+  "version": 2,
+  "rewrites": [
+    { "source": "/reset-password", "destination": "/" },
+    { "source": "/auth/callback", "destination": "/" },
+    { "source": "/(.*)", "destination": "/" }
+  ],
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "www.difendimiai.com" }],
+      "destination": "https://difendimiai.com/$1",
+      "permanent": true
+    }
+  ]
+}
