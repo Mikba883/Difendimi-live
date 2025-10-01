@@ -1,18 +1,2 @@
-/* SW killer – rimuove cache e si deregistra */
-self.addEventListener("install", () => self.skipWaiting());
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil((async () => {
-    try {
-      const keys = await caches.keys();
-      await Promise.all(keys.map(k => caches.delete(k)));
-    } catch (e) {}
-    await self.clients.claim();
-    await self.registration.unregister();
-    const cs = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    cs.forEach(c => c.postMessage({ type: "SW_UNREGISTERED" }));
-  })());
-});
-
-// Non intercetta nulla
-self.addEventListener("fetch", () => {});
+if(!self.define){let e,t={};const s=(s,n)=>(s=new URL(s+".js",n).href,t[s]||new Promise(t=>{if("document"in self){const e=document.createElement("script");e.src=s,e.onload=t,document.head.appendChild(e)}else e=s,importScripts(s),t()}).then(()=>{let e=t[s];if(!e)throw new Error(`Module ${s} didnâ€™t register its module`);return e}));self.define=(n,o)=>{const i=e||("document"in self?document.currentScript.src:"")||location.href;if(t[i])return;let r={};const c=e=>s(e,i),u={module:{uri:i},exports:r,require:c};t[i]=Promise.all(n.map(e=>u[e]||c(e))).then(e=>(o(...e),r))}}define(["./workbox-dc488a7c"],function(e){"use strict";self.skipWaiting(),e.clientsClaim(),e.registerRoute(({request:e})=>"navigate"===e.mode,new e.NetworkFirst({cacheName:"html",networkTimeoutSeconds:3,plugins:[]}),"GET"),e.registerRoute(({url:e,request:t})=>e.origin===self.location.origin&&(e.pathname.startsWith("/assets/")||["script","style","font","image"].includes(t.destination)),new e.StaleWhileRevalidate({cacheName:"assets",plugins:[]}),"GET")});
+//# sourceMappingURL=sw.js.map
