@@ -156,7 +156,7 @@ Rispondi SEMPRE in formato JSON.`;
 Se è un saluto o messaggio generico, rispondi:
 {
   "isValidCase": false,
-  "welcomeMessage": "Ciao! Sono Lexy, il tuo assistente legale AI. Per poterti aiutare al meglio, ti prego di descrivere nel dettaglio il tuo problema legale. Ad esempio: controversie contrattuali, problemi di locazione, questioni di famiglia, multe, contenziosi, etc."
+  "welcomeMessage": "Ciao! Sono Lexy, il tuo assistente AI esperto in diritto. Per poterti aiutare al meglio, ti prego di descrivere nel dettaglio il tuo problema. Ad esempio: controversie contrattuali, problemi di locazione, questioni di famiglia, multe, contenziosi, etc."
 }
 
 Se descrive un problema legale reale, rispondi:
@@ -172,7 +172,7 @@ Se descrive un problema legale reale, rispondi:
         // Se c'è un errore nel parsing, assumiamo sia un input generico
         return jsonResponse({
           status: "welcome_message",
-          message: "Ciao! Sono Lexy, il tuo assistente legale AI. Per poterti aiutare al meglio, ti prego di descrivere nel dettaglio il tuo problema legale. Ad esempio: controversie contrattuali, problemi di locazione, questioni di famiglia, multe, contenziosi, etc.",
+          message: "Ciao! Sono Lexy, il tuo assistente AI esperto in diritto. Per poterti aiutare al meglio, ti prego di descrivere nel dettaglio il tuo problema. Ad esempio: controversie contrattuali, problemi di locazione, questioni di famiglia, multe, contenziosi, etc.",
           requiresInput: true
         });
       }
@@ -182,7 +182,7 @@ Se descrive un problema legale reale, rispondi:
         console.log('🤝 Input generico ricevuto - invio messaggio di benvenuto');
         return jsonResponse({
           status: "welcome_message",
-          message: validationResult.welcomeMessage || "Ciao! Per poterti aiutare, descrivi il tuo problema legale nel dettaglio.",
+          message: validationResult.welcomeMessage || "Ciao! Per poterti aiutare, descrivi il tuo problema nel dettaglio.",
           requiresInput: true
         });
       }
@@ -334,7 +334,7 @@ IMPORTANTE:
         response = {
           status: "complete",
           job_id,
-          message: "Ho raccolto tutte le informazioni necessarie. Sto preparando il tuo report legale completo...",
+          message: "Ho raccolto tutte le informazioni necessarie. Sto preparando il tuo report completo...",
           // Non includiamo più analysis per evitare confusione
         };
         
