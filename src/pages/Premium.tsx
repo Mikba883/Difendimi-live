@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
@@ -11,6 +11,7 @@ import { useMetaPixel } from "@/hooks/useMetaPixel";
 
 export default function Premium() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { trackEvent } = useMetaPixel();
   const { timeRemaining } = usePremiumStatus();
@@ -21,6 +22,12 @@ export default function Premium() {
     // Scroll to top when component mounts
     window.scrollTo(0, 0);
     
+    // Save the referrer URL (where user came from)
+    const fromCase = (location.state as any)?.fromCase || sessionStorage.getItem('premiumReferrer');
+    if (!fromCase && document.referrer) {
+      sessionStorage.setItem('premiumReferrer', document.referrer);
+    }
+    
     trackEvent('ViewContent', {
       custom_data: {
         content_type: 'product',
@@ -29,7 +36,7 @@ export default function Premium() {
         value: 49.60
       }
     });
-  }, []);
+  }, [location]);
 
   const handleUpgrade = async () => {
     setIsProcessing(true);
@@ -82,6 +89,43 @@ export default function Premium() {
     }
   };
 
+  const handleBack = () => {
+    // First check for case state
+    const fromCase = (location.state as any)?.fromCase;
+    if (fromCase) {
+      navigate(fromCase);
+      return;
+    }
+    
+    // Then check sessionStorage
+    const referrer = sessionStorage.getItem('premiumReferrer');
+    if (referrer && referrer.includes('/case/')) {
+      const caseIdMatch = referrer.match(/\/case\/([^\/]+)/);
+      if (caseIdMatch) {
+        navigate(`/case/${caseIdMatch[1]}`);
+        sessionStorage.removeItem('premiumReferrer');
+        return;
+      }
+    }
+    
+    // Finally check localStorage for last viewed case
+    const lastViewedCase = localStorage.getItem('lastViewedCase');
+    if (lastViewedCase) {
+      navigate(`/case/${lastViewedCase}`);
+      return;
+    }
+    
+    // Try to go back if there's history
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    
+    // Default to dashboard
+    navigate('/dashboard');
+    sessionStorage.removeItem('premiumReferrer');
+  };
+
   const features = [
     { name: "Analisi personalizzata del tuo caso", bold: false },
     { name: "Accesso alla scheda generale", bold: false },
@@ -101,7 +145,7 @@ export default function Premium() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/dashboard')}
+            onClick={handleBack}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>

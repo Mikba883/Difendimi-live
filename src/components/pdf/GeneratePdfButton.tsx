@@ -73,7 +73,7 @@ export function GeneratePdfButton({ caseId, caseStatus }: GeneratePdfButtonProps
   const handleGeneratePdf = async () => {
     // Check premium status first
     if (!isPremium) {
-      navigate("/premium");
+      navigate("/premium", { state: { fromCase: `/case/${caseId}` } });
       return;
     }
     try {

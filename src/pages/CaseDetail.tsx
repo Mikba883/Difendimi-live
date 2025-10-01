@@ -27,6 +27,10 @@ export default function CaseDetail() {
 
   // Auto-redirect to premium after 20 seconds for non-premium users
   useEffect(() => {
+    // Save last viewed case
+    if (id) {
+      localStorage.setItem('lastViewedCase', id);
+    }
     if (!isPremium && caseData?.report) {
       // Check if we've already redirected for this case
       const redirectedCases = JSON.parse(localStorage.getItem('redirectedCases') || '[]');
@@ -36,7 +40,7 @@ export default function CaseDetail() {
           // Mark this case as redirected
           redirectedCases.push(caseData.id);
           localStorage.setItem('redirectedCases', JSON.stringify(redirectedCases));
-          navigate('/premium');
+          navigate('/premium', { state: { fromCase: `/case/${caseData.id}` } });
         }, 20000);
 
         return () => clearTimeout(timer);

@@ -73,7 +73,7 @@ export default function NewCase() {
     // Add welcome message
     setMessages([{
       id: '1',
-      text: "Ciao! Sono Lexy, il tuo assistente AI legale. Racconta in modo semplice e completo la situazione che vuoi risolvere. Dopo la tua descrizione, ti farò alcune domande mirate per completare l'analisi.",
+      text: "Ciao! Sono Lexy, il tuo assistente AI esperto in Diritto. Racconta in modo semplice e completo la situazione che vuoi risolvere. Dopo la tua descrizione, ti farò alcune domande mirate per completare l'analisi.",
       sender: 'assistant',
       timestamp: new Date()
     }]);

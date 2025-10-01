@@ -67,23 +67,32 @@
     <!-- End Google Tag Manager (noscript) -->
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      // Registra il service worker per PWA
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-              console.log('Service Worker registrato con successo:', registration);
-              // Check for updates
-              setInterval(() => {
-                registration.update();
-              }, 60000);
-            })
-            .catch(error => {
-              console.error('Errore nella registrazione del Service Worker:', error);
-            });
-        });
-      }
-    </script>
-  </body>
+  <script>window.__BUILD_TAG__='VER-0936-2';</script>
+<style>
+#__buildTag{
+ position:fixed;bottom:8px;right:8px;
+ font:12px/1.2 monospace;
+ background:#000;color:#0f0;padding:4px 6px;border-radius:4px;
+ z-index:2147483647;opacity:.9
+}
+</style>
+<div id="__buildTag">build: VER-0936-2</div>
+<script>window.__BUILD_TAG__='VER-0936-3';</script>
+<style>
+#__buildTag{
+ position:fixed;bottom:8px;right:8px;
+ font:12px/1.2 monospace;background:#000;color:#0f0;
+ padding:4px 6px;border-radius:4px;z-index:2147483647;opacity:.9
+}
+</style>
+<div id="__buildTag">build: VER-0936-3</div>
+<script>window.__BUILD_TAG__='VER-0936-3';</script>
+<style>
+#__buildTag{position:fixed;bottom:8px;right:8px;font:12px/1.2 monospace;background:#000;color:#0f0;padding:4px 6px;border-radius:4px;z-index:2147483647;opacity:.9}
+</style>
+<div id="__buildTag">build: VER-0936-3</div>
+</body>
 </html>
+
+
+

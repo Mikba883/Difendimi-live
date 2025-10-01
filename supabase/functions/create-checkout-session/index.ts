@@ -29,11 +29,11 @@ serve(async (req) => {
       throw new Error("User not authenticated or email not available");
     }
 
-    console.log(`[CREATE-CHECKOUT] Processing checkout for user: ${user.email}`);
+    console.log(`[CREATE-CHECKOUT] Processing checkout for user: ${user.email}, ID: ${user.id}`);
 
     // Initialize Stripe
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2025-08-27.basil",
+      apiVersion: "2024-06-20",
     });
 
     // Check if customer exists
@@ -66,11 +66,11 @@ serve(async (req) => {
       console.log(`[CREATE-CHECKOUT] Customer already has active subscription, creating portal session instead`);
       
       // Create a portal session for existing subscribers
-      const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-        apiVersion: "2025-08-27.basil",
+      const portalStripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+        apiVersion: "2024-06-20",
       });
       
-      const portalSession = await stripe.billingPortal.sessions.create({
+      const portalSession = await portalStripe.billingPortal.sessions.create({
         customer: customerId,
         return_url: `${req.headers.get("origin")}/dashboard`,
       });
@@ -88,12 +88,13 @@ serve(async (req) => {
       );
     }
 
-    // Create checkout session with automatic coupon application
+    // Create checkout session with automatic coupon application and metadata
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
+      customer_creation: customerId ? undefined : "if_required",
       line_items: [
         {
-          price: "price_1SCG5FGUM0wmwBaNEo6VMpDW", // €1/year test price
+          price: "price_1SCwRbGUM0wmwBaNKNXCmsWZ", // €155/year price
           quantity: 1,
         },
       ],
@@ -109,6 +110,9 @@ serve(async (req) => {
         metadata: {
           supabase_user_id: user.id,
         },
+      },
+      metadata: {
+        supabase_user_id: user.id, // CRITICAL: Add metadata to the checkout session itself
       },
       locale: "it",
     });
