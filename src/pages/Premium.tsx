@@ -115,6 +115,12 @@ export default function Premium() {
       return;
     }
     
+    // Try to go back if there's history
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    
     // Default to dashboard
     navigate('/dashboard');
     sessionStorage.removeItem('premiumReferrer');
