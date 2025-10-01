@@ -67,23 +67,5 @@
     <!-- End Google Tag Manager (noscript) -->
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      // Registra il service worker per PWA
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-              console.log('Service Worker registrato con successo:', registration);
-              // Check for updates
-              setInterval(() => {
-                registration.update();
-              }, 60000);
-            })
-            .catch(error => {
-              console.error('Errore nella registrazione del Service Worker:', error);
-            });
-        });
-      }
-    </script>
   </body>
 </html>
