@@ -1,1 +1,1 @@
-export const BUILD_TAG = "VER-0934";
+export const BUILD_TAG = "VER-0936";
