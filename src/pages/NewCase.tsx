@@ -10,7 +10,7 @@ import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { useMetaPixel } from "@/hooks/useMetaPixel";
-import { PrivacyBadge } from "@/components/premium/PrivacyBadge";
+import { PrivacyBadgeEnhanced } from "@/components/premium/PrivacyBadgeEnhanced";
 
 import {
   AlertDialog,
@@ -808,7 +808,7 @@ export default function NewCase() {
             </div>
             
             {/* Privacy Badge */}
-            <PrivacyBadge />
+            <PrivacyBadgeEnhanced />
           </div>
         </div>
       ) : (
