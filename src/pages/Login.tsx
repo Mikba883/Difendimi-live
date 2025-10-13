@@ -87,12 +87,19 @@ const Login = () => {
 
   const handlePendingCaseGeneration = async (session: any) => {
     console.log('[Login] Checking for pending case generation...');
+    console.log('[Login] Current pathname:', window.location.pathname);
     
     const pendingCaseStr = localStorage.getItem('pending_case_generation');
     console.log('[Login] Pending case in localStorage:', pendingCaseStr ? 'YES' : 'NO');
     
     if (!pendingCaseStr) {
       console.log('[Login] No pending case found');
+      
+      // Se siamo già su /case/new, NON fare redirect
+      if (window.location.pathname === '/case/new') {
+        console.log('[Login] Already on /case/new, skipping redirect');
+        return;
+      }
       
       // Controlla se c'è un returnUrl nei parametri URL
       const searchParams = new URLSearchParams(window.location.search);
@@ -109,7 +116,12 @@ const Login = () => {
     }
 
     // Se c'è un pending case, torna a /case/new
-    // NewCase si occuperà di rilevarlo e avviare la generazione
+    // MA solo se NON siamo già lì!
+    if (window.location.pathname === '/case/new') {
+      console.log('[Login] Already on /case/new with pending case, letting NewCase handle it');
+      return;
+    }
+    
     console.log('[Login] Found pending case, redirecting to /case/new');
     toast({
       title: "Generazione in corso",
