@@ -97,7 +97,14 @@ serve(async (req) => {
       if (token) {
         const { data: { user }, error } = await supabase.auth.getUser(token);
         if (error) {
-          console.error("Error extracting user from token:", error);
+          // Se è l'anon key (missing sub claim), NON è un errore fatale
+          if (error.message?.includes('missing sub claim')) {
+            console.log('[GENERATE] Anonymous request detected (anon key) - report will be generated but not saved');
+            userId = null;
+          } else {
+            // Altri errori di auth sono problematici
+            console.error('[GENERATE] Auth error:', error);
+          }
         } else if (user) {
           userId = user.id;
           console.log(`User ID extracted from precheck auth: ${userId}`);
@@ -259,13 +266,17 @@ Dati dall'analisi preliminare:
       });
     }
     
-    // Save to database - only save if we have a valid user ID
+    // Se l'utente NON è autenticato, NON salvare nel database ma restituire il report generato
     if (!userId) {
-      console.error("[GENERATE] Cannot save case without valid user ID");
-      return jsonResponse({ 
-        error: "Authentication required", 
-        details: "No valid user ID found - please ensure you are logged in" 
-      }, 401);
+      console.log('[GENERATE] No authenticated user - skipping database save, report will be returned to frontend');
+      
+      return jsonResponse({
+        success: false,
+        requiresAuth: true,
+        job_id,
+        message: "Report generated successfully. Please log in to save it to your account.",
+        report: result
+      }, 200);
     }
     
     console.log(`[GENERATE] Creating new case for job_id ${job_id} with user ${userId}`);
