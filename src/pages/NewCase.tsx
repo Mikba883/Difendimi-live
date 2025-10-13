@@ -381,7 +381,7 @@ export default function NewCase() {
 
       // FASE 3: Quando riceviamo status 'complete', inizia la generazione
       if (data.status === 'complete' && !isGeneratingReport && !isGenerateFunctionCalled) {
-        console.log('✅ Tutte le risposte ricevute - generazione OTTIMIZZATA (30s invece di 50s)');
+        console.log('✅ Tutte le risposte ricevute');
         setCompleteness(100);
         
         // Track CompleteFreeTrial event when all questions are answered
@@ -395,19 +395,52 @@ export default function NewCase() {
         // Mostra messaggio "Ho raccolto tutto"
         const completionMsg: Message = {
           id: Date.now().toString() + '-completion',
-          text: "Ho raccolto tutte le informazioni necessarie. Sto preparando il tuo report legale completo...",
+          text: "Ho raccolto tutte le informazioni necessarie!",
           sender: 'assistant',
           timestamp: new Date()
         };
         setMessages(prev => [...prev, completionMsg]);
         
-        // Avvia timer visuale IMMEDIATAMENTE (ora solo 30 secondi totali)
-        setShowGenerationTimer(true);
-        setIsGeneratingReport(true);
         setIsGenerateFunctionCalled(true); // Previene chiamate duplicate
         
-        // Chiama la funzione generate (ora senza analisi intermedia)
-        console.log('📤 Chiamata DIRETTA a generate (senza ri-analisi)', data);
+        // 🚪 GATE: Controlla autenticazione QUI
+        const { data: { session } } = await supabase.auth.getSession();
+        const isAuthenticated = !!session?.access_token;
+        
+        if (!isAuthenticated) {
+          console.log('🔐 Utente non loggato → mostro auth dialog');
+          
+          // Traccia InitiateCheckout
+          trackEvent('InitiateCheckout', {
+            custom_data: {
+              job_id: data.job_id,
+              source: 'case_submission',
+              user_authenticated: false,
+              questions_answered: allQuestions.length
+            }
+          });
+          
+          // Mostra messaggio che chiede il login
+          const authPromptMsg: Message = {
+            id: Date.now().toString() + '-auth-prompt',
+            text: "Per generare il tuo report legale completo, accedi o crea un account gratuito. Tutti i tuoi dati sono al sicuro! 🔒",
+            sender: 'assistant',
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, authPromptMsg]);
+          
+          // Salva i dati per dopo il login
+          setPendingGenerationData(data);
+          
+          // Mostra dialog di autenticazione
+          setShowAuthDialog(true);
+          return; // ⚠️ STOP QUI - NON avvia generazione
+        }
+        
+        // ✅ Utente loggato → Avvia generazione SUBITO
+        console.log('✅ Utente già loggato → avvio generazione');
+        setShowGenerationTimer(true);
+        setIsGeneratingReport(true);
         callGenerateFunction(data);
       }
 
@@ -423,42 +456,12 @@ export default function NewCase() {
     }
   };
 
-  const callGenerateFunction = async (analysisData: any, skipAuthCheck: boolean = false) => {
+  const callGenerateFunction = async (analysisData: any) => {
     console.log('=== CHIAMATA FUNZIONE GENERATE ===');
     console.log('analysisData:', analysisData);
     
     try {
-      // Controlla se l'utente è autenticato SOLO se non saltiamo il controllo
-      if (!skipAuthCheck) {
-        const { data: { session } } = await supabase.auth.getSession();
-        const isAuthenticated = !!session?.access_token;
-        
-        // Se non è autenticato, mostra dialog di auth invece di redirect
-        if (!isAuthenticated) {
-          console.log('Utente non autenticato, mostro dialog di login');
-          
-          // 1. PRIMA traccia l'evento Meta Pixel InitiateCheckout
-          trackEvent('InitiateCheckout', {
-            custom_data: {
-              job_id: analysisData.job_id,
-              source: 'case_submission',
-              user_authenticated: false
-            }
-          });
-          
-          // 2. Salva i dati per dopo il login (in memoria, non localStorage)
-          setPendingGenerationData(analysisData);
-          
-          // 3. Mostra il dialog di autenticazione
-          setShowAuthDialog(true);
-          return;
-        }
-      }
-
-      // L'utente è autenticato (o abbiamo saltato il controllo), procedi con la generazione
-      console.log('Procedo con generazione (skipAuthCheck:', skipAuthCheck, ')');
-      
-      // Ottieni la sessione per il token
+      // A questo punto l'utente è SEMPRE autenticato
       const { data: { session } } = await supabase.auth.getSession();
       
       // Track CompleteFreeTrial quando inizia la generazione con autenticazione
@@ -656,12 +659,25 @@ export default function NewCase() {
 
   // Callback per dopo il login tramite dialog
   const handleAuthSuccess = async () => {
-    console.log('Autenticazione completata, riprendo generazione');
+    console.log('✅ Autenticazione completata → riprendo generazione');
     setShowAuthDialog(false);
     
     if (pendingGenerationData) {
-      // Ora che l'utente è loggato, chiama la generazione con skipAuthCheck=true
-      await callGenerateFunction(pendingGenerationData, true);
+      // Mostra messaggio di conferma
+      const resumeMsg: Message = {
+        id: Date.now().toString() + '-resume',
+        text: "Perfetto! Ora sto generando il tuo report legale completo...",
+        sender: 'assistant',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, resumeMsg]);
+      
+      // Avvia timer e generazione
+      setShowGenerationTimer(true);
+      setIsGeneratingReport(true);
+      
+      // Chiama generazione (ora senza controllo auth)
+      await callGenerateFunction(pendingGenerationData);
       setPendingGenerationData(null);
     }
   };
