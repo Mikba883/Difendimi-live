@@ -11,7 +11,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { useMetaPixel } from "@/hooks/useMetaPixel";
 import { PrivacyBadge } from "@/components/premium/PrivacyBadge";
-import { AuthDialog } from "@/components/premium/AuthDialog";
+import { AuthDialogEnhanced } from "@/components/premium/AuthDialogEnhanced";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -901,7 +901,7 @@ export default function NewCase() {
       </AlertDialog>
 
       {/* Dialog di autenticazione */}
-      <AuthDialog
+      <AuthDialogEnhanced
         open={showAuthDialog}
         onOpenChange={setShowAuthDialog}
         onAuthSuccess={async () => {
