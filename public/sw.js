@@ -1,4 +1,4 @@
-/* SW killer – rimuove cache e si deregistra */
+/* SW killer â€“ rimuove cache e si deregistra */
 self.addEventListener("install", () => self.skipWaiting());
 
 self.addEventListener("activate", (event) => {
@@ -13,6 +13,3 @@ self.addEventListener("activate", (event) => {
     cs.forEach(c => c.postMessage({ type: "SW_UNREGISTERED" }));
   })());
 });
-
-// Non intercetta nulla
-self.addEventListener("fetch", () => {});

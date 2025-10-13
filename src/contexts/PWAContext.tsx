@@ -137,7 +137,6 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Listen for install prompt
     const handleBeforeInstallPrompt = (e: Event) => {
       console.log('beforeinstallprompt event fired');
-      e.preventDefault();
       const promptEvent = e as BeforeInstallPromptEvent;
       setInstallPrompt(promptEvent);
       setIsInstallable(true);
