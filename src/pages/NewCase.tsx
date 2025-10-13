@@ -776,20 +776,23 @@ export default function NewCase() {
               </p>
             </div>
             
-            <div className="w-full bg-card/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-            <ChatInput
-              onSendMessage={handleSendMessage}
-              onStartRecording={startRecording}
-              onStopRecording={stopRecording}
-              isRecording={isRecording}
-              isProcessingAudio={isProcessingAudio}
-              transcribedText={transcribedText}
-              onClearTranscription={() => setTranscribedText("")}
-              isDisabled={isAnalyzing || isComplete}
-              placeholder="Descrivi il tuo caso nel modo più completo possibile..."
-              audioContext={audioContextRef.current || undefined}
-              mediaStream={mediaStreamRef.current || undefined}
-            />
+            <div className="w-full bg-card/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg relative">
+              {/* Effetto gradiente ovale dietro il ChatInput */}
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-[600px] h-[400px] -z-10 opacity-30 blur-3xl bg-gradient-to-br from-orange-400 via-rose-400 to-purple-500 rounded-full" />
+              
+              <ChatInput
+                onSendMessage={handleSendMessage}
+                onStartRecording={startRecording}
+                onStopRecording={stopRecording}
+                isRecording={isRecording}
+                isProcessingAudio={isProcessingAudio}
+                transcribedText={transcribedText}
+                onClearTranscription={() => setTranscribedText("")}
+                isDisabled={isAnalyzing || isComplete}
+                placeholder="Descrivi il tuo caso nel modo più completo possibile..."
+                audioContext={audioContextRef.current || undefined}
+                mediaStream={mediaStreamRef.current || undefined}
+              />
             </div>
             
             <div className="flex justify-center gap-8 text-sm text-muted-foreground">
