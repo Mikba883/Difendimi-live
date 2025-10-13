@@ -19,6 +19,12 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [consentError, setConsentError] = useState(false);
+  
+  // Gestione returnUrl
+  const [returnUrl] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('returnUrl') || '/dashboard';
+  });
 
   useEffect(() => {
     // Check for OAuth callback parameters
@@ -74,7 +80,8 @@ const Login = () => {
           }
         }
         
-        navigate('/dashboard');
+        // Redirect a returnUrl
+        navigate(returnUrl);
       }
     });
 
@@ -88,7 +95,7 @@ const Login = () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${window.location.origin}${returnUrl}`,
       }
     });
 
@@ -158,8 +165,9 @@ const Login = () => {
       }, {
         email
       });
-      // Redirect to verify email page
-      navigate("/verify-email");
+      // Redirect to verify email page con returnUrl
+      const verifyUrl = returnUrl !== '/dashboard' ? `/verify-email?returnUrl=${encodeURIComponent(returnUrl)}` : '/verify-email';
+      navigate(verifyUrl);
     }
   };
 

@@ -11,7 +11,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { useMetaPixel } from "@/hooks/useMetaPixel";
 import { PrivacyBadgeEnhanced } from "@/components/premium/PrivacyBadgeEnhanced";
-import { AuthDialogEnhanced } from "@/components/premium/AuthDialogEnhanced";
+
 
 import {
   AlertDialog,
@@ -67,9 +67,6 @@ export default function NewCase() {
   
   const [hasTrackedStartTrial, setHasTrackedStartTrial] = useState(false);
   
-  // Stati per gestire auth dialog
-  const [showAuthDialog, setShowAuthDialog] = useState(false);
-  const [pendingGenerationData, setPendingGenerationData] = useState<any>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -78,8 +75,6 @@ export default function NewCase() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Rimuoviamo il controllo di autenticazione iniziale
-    // L'utente può accedere liberamente alla pagina
     // Add welcome message
     setMessages([{
       id: '1',
@@ -87,6 +82,51 @@ export default function NewCase() {
       sender: 'assistant',
       timestamp: new Date()
     }]);
+  }, []);
+
+  // Controlla se c'è un pending case da localStorage dopo login
+  useEffect(() => {
+    const checkPendingCase = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        const pendingCase = localStorage.getItem('pending_case_submission');
+        
+        if (pendingCase) {
+          try {
+            const { text, timestamp } = JSON.parse(pendingCase);
+            
+            // Controlla che non sia troppo vecchio (1 ora)
+            const oneHourAgo = Date.now() - (60 * 60 * 1000);
+            if (timestamp > oneHourAgo) {
+              console.log('Ripristino pending case dopo login');
+              
+              // Rimuovi da localStorage
+              localStorage.removeItem('pending_case_submission');
+              
+              // Mostra messaggio di ripristino
+              toast({
+                title: "Bentornato!",
+                description: "Riprendo l'analisi del tuo caso...",
+              });
+              
+              // Invia automaticamente il messaggio salvato
+              setTimeout(() => {
+                handleSendMessage(text);
+              }, 1000);
+            } else {
+              // Troppo vecchio, elimina
+              localStorage.removeItem('pending_case_submission');
+            }
+          } catch (error) {
+            console.error('Errore parsing pending case:', error);
+            localStorage.removeItem('pending_case_submission');
+          }
+        }
+      }
+    };
+    
+    checkPendingCase();
   }, []);
 
   // Timer visuale per la generazione del report (solo grafico)
@@ -233,7 +273,32 @@ export default function NewCase() {
     // Previeni invii multipli
     setIsSubmitting(true);
     
-    // Aggiungi il messaggio dell'utente
+    // 🔐 CONTROLLO AUTH PRIMA DI TUTTO
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      console.log('Utente non loggato, salvo caso e redirect a login');
+      
+      // Traccia InitiateCheckout
+      trackEvent('InitiateCheckout', {
+        custom_data: {
+          source: 'case_submission',
+          user_authenticated: false
+        }
+      });
+      
+      // Salva il caso in localStorage
+      localStorage.setItem('pending_case_submission', JSON.stringify({
+        text: text,
+        timestamp: Date.now()
+      }));
+      
+      // Redirect a login
+      navigate('/login?returnUrl=/case/new');
+      return;
+    }
+    
+    // ✅ Utente loggato → continua normalmente
     const userMessage: Message = {
       id: Date.now().toString(),
       text: text,
@@ -244,7 +309,7 @@ export default function NewCase() {
     setCurrentText(prev => prev + " " + text);
     
     // Track StartFreeTrial event quando l'utente invia il PRIMO messaggio
-    if (messages.length === 1 && !hasTrackedStartTrial) { // First user message after welcome
+    if (messages.length === 1 && !hasTrackedStartTrial) {
       setHasTrackedStartTrial(true);
       trackEvent('StartFreeTrial', {
         custom_data: {
@@ -395,50 +460,15 @@ export default function NewCase() {
         // Mostra messaggio "Ho raccolto tutto"
         const completionMsg: Message = {
           id: Date.now().toString() + '-completion',
-          text: "Ho raccolto tutte le informazioni necessarie!",
+          text: "Ho raccolto tutte le informazioni necessarie! Sto generando il tuo report legale completo...",
           sender: 'assistant',
           timestamp: new Date()
         };
         setMessages(prev => [...prev, completionMsg]);
         
-        setIsGenerateFunctionCalled(true); // Previene chiamate duplicate
+        setIsGenerateFunctionCalled(true);
         
-        // 🚪 GATE: Controlla autenticazione QUI
-        const { data: { session } } = await supabase.auth.getSession();
-        const isAuthenticated = !!session?.access_token;
-        
-        if (!isAuthenticated) {
-          console.log('🔐 Utente non loggato → mostro auth dialog');
-          
-          // Traccia InitiateCheckout
-          trackEvent('InitiateCheckout', {
-            custom_data: {
-              job_id: data.job_id,
-              source: 'case_submission',
-              user_authenticated: false,
-              questions_answered: allQuestions.length
-            }
-          });
-          
-          // Mostra messaggio che chiede il login
-          const authPromptMsg: Message = {
-            id: Date.now().toString() + '-auth-prompt',
-            text: "Per generare il tuo report legale completo, accedi o crea un account gratuito. Tutti i tuoi dati sono al sicuro! 🔒",
-            sender: 'assistant',
-            timestamp: new Date()
-          };
-          setMessages(prev => [...prev, authPromptMsg]);
-          
-          // Salva i dati per dopo il login
-          setPendingGenerationData(data);
-          
-          // Mostra dialog di autenticazione
-          setShowAuthDialog(true);
-          return; // ⚠️ STOP QUI - NON avvia generazione
-        }
-        
-        // ✅ Utente loggato → Avvia generazione SUBITO
-        console.log('✅ Utente già loggato → avvio generazione');
+        // ✅ A questo punto l'utente è SEMPRE loggato (controllo fatto all'inizio)
         setShowGenerationTimer(true);
         setIsGeneratingReport(true);
         callGenerateFunction(data);
@@ -657,30 +687,6 @@ export default function NewCase() {
     }
   };
 
-  // Callback per dopo il login tramite dialog
-  const handleAuthSuccess = async () => {
-    console.log('✅ Autenticazione completata → riprendo generazione');
-    setShowAuthDialog(false);
-    
-    if (pendingGenerationData) {
-      // Mostra messaggio di conferma
-      const resumeMsg: Message = {
-        id: Date.now().toString() + '-resume',
-        text: "Perfetto! Ora sto generando il tuo report legale completo...",
-        sender: 'assistant',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, resumeMsg]);
-      
-      // Avvia timer e generazione
-      setShowGenerationTimer(true);
-      setIsGeneratingReport(true);
-      
-      // Chiama generazione (ora senza controllo auth)
-      await callGenerateFunction(pendingGenerationData);
-      setPendingGenerationData(null);
-    }
-  };
 
   const hasMessages = messages.filter(m => m.sender === 'user').length > 0;
 
@@ -830,13 +836,6 @@ export default function NewCase() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Dialog di autenticazione */}
-      <AuthDialogEnhanced
-        open={showAuthDialog}
-        onOpenChange={setShowAuthDialog}
-        onAuthSuccess={handleAuthSuccess}
-      />
 
     </div>
   );
