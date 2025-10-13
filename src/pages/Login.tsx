@@ -21,10 +21,6 @@ const Login = () => {
   const [consentError, setConsentError] = useState(false);
 
   useEffect(() => {
-    // Check for pending case generation
-    const searchParams = new URLSearchParams(window.location.search);
-    const fromCaseGeneration = searchParams.get('from') === 'case-generation';
-    
     // Check for OAuth callback parameters
     const checkOAuthCallback = async () => {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -37,12 +33,8 @@ const Login = () => {
             if (session) {
               console.log('Session established after OAuth callback');
               
-              // Se c'è un pending case, eseguilo
-              if (fromCaseGeneration) {
-                handlePendingCaseGeneration(session);
-              } else {
-                navigate("/dashboard");
-              }
+              // Controlla SEMPRE se c'è un pending case
+              handlePendingCaseGeneration(session);
             }
           });
         }, 100);
@@ -55,12 +47,8 @@ const Login = () => {
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        // Se c'è un pending case, eseguilo
-        if (fromCaseGeneration) {
-          handlePendingCaseGeneration(session);
-        } else {
-          navigate("/dashboard");
-        }
+        // Controlla SEMPRE se c'è un pending case
+        handlePendingCaseGeneration(session);
       }
     });
 
@@ -89,12 +77,8 @@ const Login = () => {
           }
         }
         
-        // Se c'è un pending case, eseguilo
-        if (fromCaseGeneration) {
-          handlePendingCaseGeneration(session);
-        } else {
-          navigate("/dashboard");
-        }
+        // Controlla SEMPRE se c'è un pending case
+        handlePendingCaseGeneration(session);
       }
     });
 
@@ -192,12 +176,8 @@ const Login = () => {
     setLoading(true);
     console.log('Starting Google OAuth flow...');
     
-    // Use dynamic redirect URL that works in both development and production
-    const searchParams = new URLSearchParams(window.location.search);
-    const fromCaseGeneration = searchParams.get('from') === 'case-generation';
-    const redirectUrl = fromCaseGeneration 
-      ? `${window.location.origin}/login?from=case-generation`
-      : `${window.location.origin}/dashboard`;
+    // Usa sempre il redirect di base, il localStorage farà il resto
+    const redirectUrl = `${window.location.origin}/dashboard`;
     console.log('OAuth redirect URL:', redirectUrl);
     
     const { error } = await supabase.auth.signInWithOAuth({
@@ -234,12 +214,8 @@ const Login = () => {
 
     setLoading(true);
     
-    // Use dynamic redirect URL that works in both development and production
-    const searchParams = new URLSearchParams(window.location.search);
-    const fromCaseGeneration = searchParams.get('from') === 'case-generation';
-    const redirectUrl = fromCaseGeneration 
-      ? `${window.location.origin}/login?from=case-generation`
-      : `${window.location.origin}/dashboard`;
+    // Usa sempre il redirect di base, il localStorage farà il resto
+    const redirectUrl = `${window.location.origin}/dashboard`;
     
     const { error, data } = await supabase.auth.signInWithOtp({
       email,
