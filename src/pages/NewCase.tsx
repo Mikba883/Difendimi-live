@@ -11,7 +11,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { useMetaPixel } from "@/hooks/useMetaPixel";
 import { PrivacyBadge } from "@/components/premium/PrivacyBadge";
-import { AuthDialogEnhanced } from "@/components/premium/AuthDialogEnhanced";
+
 import {
   AlertDialog,
   AlertDialogContent,
@@ -63,7 +63,7 @@ export default function NewCase() {
   const [showGenerationTimer, setShowGenerationTimer] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [isGenerateFunctionCalled, setIsGenerateFunctionCalled] = useState(false);
-  const [showAuthDialog, setShowAuthDialog] = useState(false);
+  
   const [hasTrackedStartTrial, setHasTrackedStartTrial] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -425,9 +425,9 @@ export default function NewCase() {
       const { data: { session } } = await supabase.auth.getSession();
       const isAuthenticated = !!session?.access_token;
       
-      // Se non è autenticato, salva i dati e mostra il dialog BLOCCANTE
+      // Se non è autenticato, salva i dati e redirect a /login
       if (!isAuthenticated) {
-        console.log('Utente non autenticato, salvo dati e mostro dialog bloccante');
+        console.log('Utente non autenticato, salvo dati e redirect a /login');
         
         // Salva tutti i dati necessari in localStorage
         const pendingCase = {
@@ -441,10 +441,10 @@ export default function NewCase() {
         };
         
         localStorage.setItem('pending_case_generation', JSON.stringify(pendingCase));
-        console.log('Dati salvati in localStorage:', pendingCase);
+        console.log('Dati salvati in localStorage, redirect a /login');
         
-        // Mostra il dialog e blocca qui - la generazione riprenderà dopo il login
-        setShowAuthDialog(true);
+        // Redirect alla pagina login con parametro per indicare che c'è un pending case
+        navigate('/login?from=case-generation');
         return;
       }
 
@@ -525,116 +525,6 @@ export default function NewCase() {
     }
   };
 
-  // Nuova funzione per eseguire la generazione dopo il login
-  const executePendingGeneration = async () => {
-    console.log('=== ESECUZIONE GENERAZIONE PENDING ===');
-    
-    try {
-      // Recupera i dati dal localStorage
-      const pendingCaseStr = localStorage.getItem('pending_case_generation');
-      if (!pendingCaseStr) {
-        console.error('Nessun caso pending trovato in localStorage');
-        return;
-      }
-
-      const pendingCase = JSON.parse(pendingCaseStr);
-      console.log('Dati recuperati da localStorage:', pendingCase);
-
-      // Ripristina lo stato se necessario
-      if (pendingCase.messages) setMessages(pendingCase.messages);
-      if (pendingCase.currentText) setCurrentText(pendingCase.currentText);
-      if (pendingCase.allQuestions) setAllQuestions(pendingCase.allQuestions);
-
-      // Ottieni la sessione corrente
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        console.error('Sessione non trovata dopo il login');
-        toast({
-          title: "Errore",
-          description: "Sessione non valida, riprova",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('Sessione valida, procedo con generazione');
-      
-      // Track CompleteFreeTrial
-      trackEvent('CompleteFreeTrial', {
-        custom_data: {
-          job_id: pendingCase.job_id,
-          source: 'post_login'
-        }
-      });
-      
-      setShowGenerationTimer(true);
-
-      // Prepara i parametri per generate
-      const requestBody = {
-        job_id: pendingCase.job_id,
-        caseType: pendingCase.caseType,
-        caseData: {
-          previousContext: pendingCase.messages.map((m: Message) => 
-            `${m.sender === 'user' ? 'Utente' : 'Assistente'}: ${m.text}`
-          ).join('\n'),
-          caseText: pendingCase.currentText,
-        },
-        meta: {
-          authToken: `Bearer ${session.access_token}`,
-          source: 'post_login',
-          requestedAt: new Date().toISOString()
-        }
-      };
-
-      console.log('Chiamata generate post-login con parametri:', requestBody);
-
-      const { data: generateData, error: generateError } = await supabase.functions.invoke('generate', {
-        body: requestBody,
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        }
-      });
-
-      if (generateError) throw generateError;
-
-      console.log('Generazione completata:', generateData);
-      
-      // Track Lead event
-      trackEvent('Lead', {
-        custom_data: {
-          case_id: generateData?.case_id,
-          case_type: generateData?.case_type || 'general',
-          source: 'post_login'
-        }
-      });
-
-      // Pulisci il localStorage
-      localStorage.removeItem('pending_case_generation');
-      console.log('localStorage pulito');
-
-      // Naviga al caso completato
-      if (generateData?.case_id) {
-        console.log('Navigazione diretta al caso:', generateData.case_id);
-        setIsComplete(true);
-        setShowGenerationTimer(false);
-        navigate(`/case/${generateData.case_id}`);
-      } else {
-        console.error('Nessun case_id ricevuto dalla funzione generate');
-        throw new Error('Case ID non ricevuto');
-      }
-
-    } catch (error) {
-      console.error('Errore durante la generazione post-login:', error);
-      setShowGenerationTimer(false);
-      localStorage.removeItem('pending_case_generation');
-      
-      toast({
-        title: "Errore generazione report",
-        description: "Si è verificato un errore durante la generazione del report.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const saveCase = async (analysisData: any) => {
     // Previeni salvataggi multipli
@@ -900,16 +790,6 @@ export default function NewCase() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Dialog di autenticazione */}
-      <AuthDialogEnhanced
-        open={showAuthDialog}
-        onOpenChange={setShowAuthDialog}
-        onAuthSuccess={async () => {
-          console.log('Login completato, eseguo generazione pending');
-          // Dopo il login, esegui la generazione con i dati salvati
-          await executePendingGeneration();
-        }}
-      />
     </div>
   );
 }

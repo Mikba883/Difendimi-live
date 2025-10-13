@@ -21,21 +21,28 @@ const Login = () => {
   const [consentError, setConsentError] = useState(false);
 
   useEffect(() => {
+    // Check for pending case generation
+    const searchParams = new URLSearchParams(window.location.search);
+    const fromCaseGeneration = searchParams.get('from') === 'case-generation';
+    
     // Check for OAuth callback parameters
     const checkOAuthCallback = async () => {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const searchParams = new URLSearchParams(window.location.search);
       
-      // Check if there are OAuth tokens in the URL
       if (hashParams.get('access_token') || searchParams.get('code')) {
         console.log('OAuth callback detected, processing authentication...');
-        // Supabase will handle the OAuth callback automatically
-        // Wait a moment for Supabase to process
         setTimeout(() => {
           supabase.auth.getSession().then(({ data: { session } }) => {
             if (session) {
               console.log('Session established after OAuth callback');
-              navigate("/case/new");
+              
+              // Se c'è un pending case, eseguilo
+              if (fromCaseGeneration) {
+                handlePendingCaseGeneration(session);
+              } else {
+                navigate("/dashboard");
+              }
             }
           });
         }, 100);
@@ -48,7 +55,12 @@ const Login = () => {
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate("/case/new");
+        // Se c'è un pending case, eseguilo
+        if (fromCaseGeneration) {
+          handlePendingCaseGeneration(session);
+        } else {
+          navigate("/dashboard");
+        }
       }
     });
 
@@ -59,13 +71,11 @@ const Login = () => {
       if (session) {
         // Track CompleteRegistration for Google OAuth sign-ups
         if (event === 'SIGNED_IN' && session.user?.app_metadata?.provider === 'google') {
-          // Check if this is a new user (created recently)
           const createdAt = new Date(session.user.created_at);
           const now = new Date();
           const timeDiff = now.getTime() - createdAt.getTime();
           const minutesDiff = timeDiff / (1000 * 60);
           
-          // If user was created less than 5 minutes ago, consider it a new registration
           if (minutesDiff < 5) {
             trackEvent('CompleteRegistration', {
               custom_data: {
@@ -78,19 +88,116 @@ const Login = () => {
             });
           }
         }
-        navigate("/case/new");
+        
+        // Se c'è un pending case, eseguilo
+        if (fromCaseGeneration) {
+          handlePendingCaseGeneration(session);
+        } else {
+          navigate("/dashboard");
+        }
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate, trackEvent]);
 
+  const handlePendingCaseGeneration = async (session: any) => {
+    console.log('Checking for pending case generation...');
+    
+    const pendingCaseStr = localStorage.getItem('pending_case_generation');
+    if (!pendingCaseStr) {
+      console.log('No pending case found, redirecting to dashboard');
+      navigate('/dashboard');
+      return;
+    }
+
+    try {
+      const pendingCase = JSON.parse(pendingCaseStr);
+      console.log('Found pending case, starting generation:', pendingCase);
+      
+      // Rimuovi il pending case dal localStorage
+      localStorage.removeItem('pending_case_generation');
+      
+      // Mostra un toast per informare l'utente
+      toast({
+        title: "Generazione in corso",
+        description: "Stiamo generando il tuo report legale...",
+      });
+      
+      // Chiama la funzione generate
+      const requestBody = {
+        job_id: pendingCase.job_id,
+        caseType: pendingCase.caseType || "general",
+        caseData: {
+          previousContext: pendingCase.messages?.map((m: any) => 
+            `${m.sender === 'user' ? 'Utente' : 'Assistente'}: ${m.text}`
+          ).join('\n') || '',
+          caseText: pendingCase.currentText || '',
+        },
+        meta: {
+          authToken: `Bearer ${session.access_token}`,
+          source: 'pending_case_generation',
+          requestedAt: new Date().toISOString()
+        }
+      };
+
+      const { data: generateData, error: generateError } = await supabase.functions.invoke('generate', {
+        body: requestBody,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        }
+      });
+
+      if (generateError) {
+        console.error('Generation error:', generateError);
+        toast({
+          title: "Errore durante la generazione",
+          description: generateError.message || "Si è verificato un errore",
+          variant: "destructive",
+        });
+        navigate('/dashboard');
+        return;
+      }
+
+      console.log('Generation completed:', generateData);
+      
+      // Track Lead event
+      trackEvent('Lead', {
+        custom_data: {
+          case_id: generateData?.case_id,
+          case_type: generateData?.case_type || 'general',
+          source: 'pending_case_generation'
+        }
+      });
+      
+      // Naviga al caso generato
+      if (generateData?.case_id) {
+        navigate(`/case/${generateData.case_id}`);
+      } else {
+        navigate('/dashboard');
+      }
+      
+    } catch (error) {
+      console.error('Error processing pending case:', error);
+      toast({
+        title: "Errore",
+        description: "Impossibile completare la generazione",
+        variant: "destructive",
+      });
+      navigate('/dashboard');
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     setLoading(true);
     console.log('Starting Google OAuth flow...');
     
     // Use dynamic redirect URL that works in both development and production
-    const redirectUrl = `${window.location.origin}/dashboard`;
+    const searchParams = new URLSearchParams(window.location.search);
+    const fromCaseGeneration = searchParams.get('from') === 'case-generation';
+    const redirectUrl = fromCaseGeneration 
+      ? `${window.location.origin}/login?from=case-generation`
+      : `${window.location.origin}/dashboard`;
     console.log('OAuth redirect URL:', redirectUrl);
     
     const { error } = await supabase.auth.signInWithOAuth({
@@ -128,7 +235,11 @@ const Login = () => {
     setLoading(true);
     
     // Use dynamic redirect URL that works in both development and production
-    const redirectUrl = `${window.location.origin}/dashboard`;
+    const searchParams = new URLSearchParams(window.location.search);
+    const fromCaseGeneration = searchParams.get('from') === 'case-generation';
+    const redirectUrl = fromCaseGeneration 
+      ? `${window.location.origin}/login?from=case-generation`
+      : `${window.location.origin}/dashboard`;
     
     const { error, data } = await supabase.auth.signInWithOtp({
       email,
