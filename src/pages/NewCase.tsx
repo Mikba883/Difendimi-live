@@ -10,6 +10,8 @@ import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { useMetaPixel } from "@/hooks/useMetaPixel";
+import { PrivacyBadge } from "@/components/premium/PrivacyBadge";
+import { AuthDialog } from "@/components/premium/AuthDialog";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -61,6 +63,8 @@ export default function NewCase() {
   const [showGenerationTimer, setShowGenerationTimer] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [isGenerateFunctionCalled, setIsGenerateFunctionCalled] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [hasTrackedStartTrial, setHasTrackedStartTrial] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -69,7 +73,8 @@ export default function NewCase() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    checkAuth();
+    // Rimuoviamo il controllo di autenticazione iniziale
+    // L'utente può accedere liberamente alla pagina
     // Add welcome message
     setMessages([{
       id: '1',
@@ -114,9 +119,7 @@ export default function NewCase() {
 
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate('/login');
-    }
+    return !!user;
   };
 
   const startRecording = async () => {
@@ -233,8 +236,9 @@ export default function NewCase() {
     setMessages(prev => [...prev, userMessage]);
     setCurrentText(prev => prev + " " + text);
     
-    // Track lead event when user starts a case (StartFreeTrial)
-    if (messages.length === 1) { // First user message after welcome
+    // Track StartFreeTrial event quando l'utente invia il PRIMO messaggio
+    if (messages.length === 1 && !hasTrackedStartTrial) { // First user message after welcome
+      setHasTrackedStartTrial(true);
       trackEvent('StartFreeTrial', {
         custom_data: {
           source: 'new_case_chat',
@@ -411,8 +415,16 @@ export default function NewCase() {
     console.log('analysisData:', analysisData);
     
     try {
+      // Controlla se l'utente è autenticato
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No session');
+      
+      if (!session) {
+        // L'utente non è loggato, mostra il dialog di autenticazione
+        console.log('Utente non autenticato, mostro dialog di login');
+        setShowAuthDialog(true);
+        // La generazione continuerà dopo il login tramite onAuthSuccess
+        return;
+      }
 
       // Prepara i parametri corretti per la funzione generate (senza analysis)
       const requestBody = {
@@ -672,6 +684,9 @@ export default function NewCase() {
                 <span>Report completo</span>
               </div>
             </div>
+            
+            {/* Privacy Badge */}
+            <PrivacyBadge />
           </div>
         </div>
       ) : (
@@ -738,6 +753,21 @@ export default function NewCase() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog di autenticazione */}
+      <AuthDialog 
+        open={showAuthDialog} 
+        onOpenChange={setShowAuthDialog}
+        onAuthSuccess={async () => {
+          // Dopo il login, riprendi la generazione
+          const analysisDataToUse = {
+            job_id: savedCaseId || Date.now().toString(),
+            caseAnalysis: caseAnalysis,
+            questions: allQuestions
+          };
+          await callGenerateFunction(analysisDataToUse);
+        }}
+      />
     </div>
   );
 }
