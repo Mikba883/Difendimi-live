@@ -415,15 +415,14 @@ export default function NewCase() {
     console.log('analysisData:', analysisData);
     
     try {
-      // Controlla se l'utente è autenticato
+      // Controlla se l'utente è autenticato ma NON bloccare la generazione
       const { data: { session } } = await supabase.auth.getSession();
+      const isAuthenticated = !!session?.access_token;
       
-      if (!session) {
-        // L'utente non è loggato, mostra il dialog di autenticazione
-        console.log('Utente non autenticato, mostro dialog di login');
+      // Se non è autenticato, mostra il dialog ma continua con la generazione
+      if (!isAuthenticated) {
+        console.log('Utente non autenticato, mostro dialog e continuo con generazione');
         setShowAuthDialog(true);
-        // La generazione continuerà dopo il login tramite onAuthSuccess
-        return;
       }
 
       // Prepara i parametri corretti per la funzione generate (senza analysis)
@@ -436,7 +435,7 @@ export default function NewCase() {
           // Non c'è più fromPrecheck.analysis, i dati sono già nel backend
         },
         meta: {
-          authToken: `Bearer ${session.access_token}`,
+          authToken: session?.access_token ? `Bearer ${session.access_token}` : undefined,
           source: 'precheck',
           requestedAt: new Date().toISOString()
         }
@@ -444,9 +443,18 @@ export default function NewCase() {
 
       console.log('Chiamata generate con parametri:', requestBody);
 
-      const { data: generateData, error: generateError } = await supabase.functions.invoke('generate', {
+      // Chiama generate con o senza autenticazione
+      const invokeOptions: any = {
         body: requestBody
-      });
+      };
+      
+      if (session?.access_token) {
+        invokeOptions.headers = {
+          Authorization: `Bearer ${session.access_token}`,
+        };
+      }
+
+      const { data: generateData, error: generateError } = await supabase.functions.invoke('generate', invokeOptions);
 
       if (generateError) throw generateError;
 

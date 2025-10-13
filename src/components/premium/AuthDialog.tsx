@@ -43,11 +43,16 @@ export function AuthDialog({ open, onOpenChange, onAuthSuccess }: AuthDialogProp
 
         toast({
           title: "Login effettuato",
-          description: "Accesso completato con successo",
+          description: "Il tuo report verrà salvato tra poco",
         });
         
         onAuthSuccess();
         onOpenChange(false);
+        
+        // Reload to ensure the case gets saved with the user
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       } else {
         const { error } = await supabase.auth.signUp({
           email,
@@ -61,11 +66,16 @@ export function AuthDialog({ open, onOpenChange, onAuthSuccess }: AuthDialogProp
 
         toast({
           title: "Registrazione completata",
-          description: "Controlla la tua email per confermare l'account",
+          description: "Controlla la tua email. Il tuo report verrà salvato automaticamente.",
         });
         
         onAuthSuccess();
         onOpenChange(false);
+        
+        // Reload to ensure the case gets saved with the user
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       }
     } catch (error: any) {
       toast({
