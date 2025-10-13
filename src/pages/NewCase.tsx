@@ -285,13 +285,19 @@ export default function NewCase() {
       console.log('Current questions:', allQuestions.length);
       console.log('Current question index:', currentQuestionIndex);
 
+      // Get session token if user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+
       const { data, error } = await supabase.functions.invoke('precheck', {
         body: { 
           latestResponse,
           previousContext: previousMessages,
           currentQuestions: allQuestions,
           allQuestionsAnswered: false
-        }
+        },
+        headers: session?.access_token ? {
+          Authorization: `Bearer ${session.access_token}`
+        } : undefined
       });
 
       if (error) throw error;

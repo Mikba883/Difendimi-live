@@ -61,12 +61,13 @@ async function callOpenAI(openAIApiKey: string, systemPrompt: string, userPrompt
   return JSON.parse(content);
 }
 
-async function handoffToGenerate(projectRef: string, serviceRoleKey: string, payload: unknown) {
+async function handoffToGenerate(projectRef: string, serviceRoleKey: string, payload: unknown, authToken?: string) {
   const url = `https://${projectRef}.supabase.co/functions/v1/generate`;
   const res = await fetch(url, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${serviceRoleKey}`,
+      // Use authToken if available, otherwise use service role key
+      Authorization: authToken || `Bearer ${serviceRoleKey}`,
       "Content-Type": "application/json",
       "X-Source": "precheck",
     },
@@ -321,7 +322,8 @@ IMPORTANTE:
         console.log("📤 Calling generate DIRETTAMENTE con dati grezzi:", JSON.stringify(generatePayload));
         
         try {
-          await handoffToGenerate(projectRef, serviceRoleKey, generatePayload);
+          // Pass the original auth header to generate
+          await handoffToGenerate(projectRef, serviceRoleKey, generatePayload, authHeader);
           console.log("✅ Generate function chiamata con successo (risparmio ~20 secondi)");
         } catch (handoffError) {
           console.error("❌ Error calling generate function:", handoffError);
