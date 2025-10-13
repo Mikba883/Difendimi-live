@@ -768,11 +768,14 @@ export default function NewCase() {
         <div className="flex-1 flex flex-col items-center justify-center px-4 animate-fade-in">
           <div className="max-w-2xl w-full text-center space-y-12">
             <div className="space-y-6">
-              <h1 className="text-6xl font-bold text-foreground">
+              <h1 className="text-6xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                 Lexy AI Assistant
               </h1>
-              <p className="text-xl text-muted-foreground leading-relaxed mt-4 mb-2">
-                Racconta in modo semplice e completo la situazione che vuoi risolvere. La prima intelligenza artificiale che conosce il diritto italiano.
+              <p className="text-xl text-foreground leading-relaxed mt-4 mb-2 font-semibold">
+                La prima intelligenza artificiale che conosce il diritto italiano.
+              </p>
+              <p className="text-base text-muted-foreground leading-relaxed">
+                Racconta in modo semplice e completo la situazione che vuoi risolvere
               </p>
             </div>
             
