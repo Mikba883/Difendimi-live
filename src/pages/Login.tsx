@@ -90,8 +90,19 @@ const Login = () => {
     
     const pendingCaseStr = localStorage.getItem('pending_case_generation');
     if (!pendingCaseStr) {
-      console.log('No pending case found, redirecting to dashboard');
-      navigate('/dashboard');
+      console.log('No pending case found');
+      
+      // Controlla se c'è un returnUrl nei parametri URL
+      const searchParams = new URLSearchParams(window.location.search);
+      const returnUrl = searchParams.get('returnUrl');
+      
+      if (returnUrl) {
+        console.log('Redirecting to returnUrl:', returnUrl);
+        navigate(returnUrl);
+      } else {
+        console.log('No returnUrl, redirecting to dashboard');
+        navigate('/dashboard');
+      }
       return;
     }
 
