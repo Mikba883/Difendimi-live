@@ -32,9 +32,7 @@ const Login = () => {
           supabase.auth.getSession().then(({ data: { session } }) => {
             if (session) {
               console.log('Session established after OAuth callback');
-              
-              // Controlla SEMPRE se c'è un pending case
-              handlePendingCaseGeneration(session);
+              navigate('/dashboard');
             }
           });
         }, 100);
@@ -47,8 +45,7 @@ const Login = () => {
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        // Controlla SEMPRE se c'è un pending case
-        handlePendingCaseGeneration(session);
+        navigate('/dashboard');
       }
     });
 
@@ -77,86 +74,21 @@ const Login = () => {
           }
         }
         
-        // Controlla SEMPRE se c'è un pending case
-        handlePendingCaseGeneration(session);
+        navigate('/dashboard');
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate, trackEvent]);
 
-  const handlePendingCaseGeneration = async (session: any) => {
-    console.log('[Login] Checking for pending case generation...');
-    console.log('[Login] Current pathname:', window.location.pathname);
-    
-    const pendingCaseStr = localStorage.getItem('pending_case_generation');
-    console.log('[Login] Pending case in localStorage:', pendingCaseStr ? 'YES' : 'NO');
-    
-    // Se c'è un pending case, vai SEMPRE a /case/new (o alla sua returnUrl)
-    if (pendingCaseStr) {
-      try {
-        const pendingCase = JSON.parse(pendingCaseStr);
-        const returnUrl = pendingCase.returnUrl || '/case/new';
-        
-        // Se siamo già sulla pagina di destinazione, non fare redirect
-        if (window.location.pathname === returnUrl) {
-          console.log('[Login] Already on target page:', returnUrl, '- letting it handle pending case');
-          return;
-        }
-        
-        console.log('[Login] Pending case found, redirecting to:', returnUrl);
-        toast({
-          title: "Generazione in corso",
-          description: "Stiamo riprendendo la generazione del tuo report...",
-        });
-        
-        navigate(returnUrl);
-        return;
-      } catch (e) {
-        console.error('[Login] Error parsing pending case:', e);
-        localStorage.removeItem('pending_case_generation');
-      }
-    }
-    
-    // Se NON c'è pending case, controlla returnUrl nei parametri URL
-    console.log('[Login] No pending case found');
-    
-    // Se siamo già su /case/new, NON fare redirect
-    if (window.location.pathname === '/case/new') {
-      console.log('[Login] Already on /case/new, skipping redirect');
-      return;
-    }
-    
-    // Controlla se c'è un returnUrl nei parametri URL
-    const searchParams = new URLSearchParams(window.location.search);
-    const returnUrl = searchParams.get('returnUrl');
-    
-    if (returnUrl) {
-      console.log('[Login] Redirecting to returnUrl from URL params:', returnUrl);
-      navigate(returnUrl);
-    } else {
-      console.log('[Login] No returnUrl, redirecting to dashboard');
-      navigate('/dashboard');
-    }
-  };
-
   const handleGoogleSignIn = async () => {
     setLoading(true);
     console.log('Starting Google OAuth flow...');
     
-    // Controlla se c'è un pending case - se sì, redirect a /case/new, altrimenti /dashboard
-    const pendingCaseStr = localStorage.getItem('pending_case_generation');
-    const redirectUrl = pendingCaseStr 
-      ? `${window.location.origin}/case/new`
-      : `${window.location.origin}/dashboard`;
-    
-    console.log('Pending case found:', !!pendingCaseStr);
-    console.log('OAuth redirect URL:', redirectUrl);
-    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: redirectUrl,
+        redirectTo: `${window.location.origin}/dashboard`,
       }
     });
 
@@ -187,19 +119,10 @@ const Login = () => {
 
     setLoading(true);
     
-    // Controlla se c'è un pending case - se sì, redirect a /case/new, altrimenti /dashboard
-    const pendingCaseStr = localStorage.getItem('pending_case_generation');
-    const redirectUrl = pendingCaseStr 
-      ? `${window.location.origin}/case/new`
-      : `${window.location.origin}/dashboard`;
-    
-    console.log('Pending case found:', !!pendingCaseStr);
-    console.log('Email signup redirect URL:', redirectUrl);
-    
     const { error, data } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: redirectUrl,
+        emailRedirectTo: `${window.location.origin}/dashboard`,
         shouldCreateUser: true,
         data: {
           privacy_consent: true,

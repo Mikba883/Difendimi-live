@@ -11,6 +11,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { useMetaPixel } from "@/hooks/useMetaPixel";
 import { PrivacyBadgeEnhanced } from "@/components/premium/PrivacyBadgeEnhanced";
+import { AuthDialogEnhanced } from "@/components/premium/AuthDialogEnhanced";
 
 import {
   AlertDialog,
@@ -66,6 +67,10 @@ export default function NewCase() {
   
   const [hasTrackedStartTrial, setHasTrackedStartTrial] = useState(false);
   
+  // Stati per gestire auth dialog
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [pendingGenerationData, setPendingGenerationData] = useState<any>(null);
+  
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -117,86 +122,7 @@ export default function NewCase() {
     }
   }, [messages]);
 
-  // Nuovo useEffect per gestire pending case dopo login
-  useEffect(() => {
-    console.log('[NewCase] Component mounted, checking pending case');
-    
-    const checkPendingCase = async () => {
-      // Prima controlla se c'è un pending case
-      const pendingCaseStr = localStorage.getItem('pending_case_generation');
-      console.log('[NewCase] Pending case in localStorage:', pendingCaseStr ? 'YES' : 'NO');
-      
-      // Se NON c'è pending case, non fare nulla
-      if (!pendingCaseStr) {
-        console.log('[NewCase] No pending case found, normal flow - PAGE SHOULD LOAD NORMALLY');
-        return;
-      }
-      
-      // Se c'è un pending case, controlla se l'utente è loggato
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('[NewCase] User session:', session ? 'LOGGED IN' : 'NOT LOGGED IN');
-      
-      // Se NON è loggato, non fare nulla (permettigli di compilare)
-      if (!session) {
-        console.log('[NewCase] Pending case found but user not logged in - PAGE SHOULD LOAD NORMALLY');
-        return;
-      }
-      
-      // Se è loggato E c'è un pending case → riprendi la generazione
-      console.log('[NewCase] User logged in WITH pending case - RESUMING GENERATION');
-      try {
-        const pendingCase = JSON.parse(pendingCaseStr);
-        console.log('[NewCase] Parsed pending case data:', pendingCase);
-        
-        // Ripristina lo stato del caso
-        if (pendingCase.messages && Array.isArray(pendingCase.messages)) {
-          setMessages(pendingCase.messages);
-        }
-        if (pendingCase.currentText) {
-          setCurrentText(pendingCase.currentText);
-        }
-        if (pendingCase.allQuestions) {
-          setAllQuestions(pendingCase.allQuestions);
-        }
-        if (pendingCase.caseAnalysis) {
-          setCaseAnalysis(pendingCase.caseAnalysis);
-        }
-        
-        // Rimuovi il pending case dal localStorage
-        localStorage.removeItem('pending_case_generation');
-        
-        // Mostra messaggio di ripresa
-        const resumeMsg: Message = {
-          id: Date.now().toString() + '-resume',
-          text: "Riprendo la generazione del tuo report legale...",
-          sender: 'assistant',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, resumeMsg]);
-        
-        // Avvia la generazione del report
-        setShowGenerationTimer(true);
-        setIsGeneratingReport(true);
-        setIsGenerateFunctionCalled(true);
-        
-        await callGenerateFunction({
-          job_id: pendingCase.job_id,
-          caseAnalysis: pendingCase.caseAnalysis
-        }, true); // Salta il controllo auth perché l'abbiamo già fatto nel useEffect
-        
-      } catch (error) {
-        console.error('Error resuming pending case:', error);
-        toast({
-          title: "Errore",
-          description: "Impossibile riprendere la generazione del caso",
-          variant: "destructive",
-        });
-        localStorage.removeItem('pending_case_generation');
-      }
-    };
-    
-    checkPendingCase();
-  }, []);
+  // Rimosso useEffect per pending case - non serve più con auth dialog
 
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -507,27 +433,24 @@ export default function NewCase() {
         const { data: { session } } = await supabase.auth.getSession();
         const isAuthenticated = !!session?.access_token;
         
-        // Se non è autenticato, salva i dati e redirect a /login
+        // Se non è autenticato, mostra dialog di auth invece di redirect
         if (!isAuthenticated) {
-          console.log('Utente non autenticato, salvo dati e redirect a /login');
+          console.log('Utente non autenticato, mostro dialog di login');
           
-          // Salva tutti i dati necessari in localStorage
-          const pendingCase = {
-            job_id: analysisData.job_id,
-            caseType: "general",
-            messages: messages,
-            currentText: currentText,
-            allQuestions: allQuestions,
-            caseAnalysis: analysisData.caseAnalysis,
-            timestamp: Date.now(),
-            returnUrl: '/case/new'  // Specifica esplicitamente dove tornare
-          };
+          // 1. PRIMA traccia l'evento Meta Pixel InitiateCheckout
+          trackEvent('InitiateCheckout', {
+            custom_data: {
+              job_id: analysisData.job_id,
+              source: 'case_submission',
+              user_authenticated: false
+            }
+          });
           
-          localStorage.setItem('pending_case_generation', JSON.stringify(pendingCase));
-          console.log('Dati salvati in localStorage con returnUrl=/case/new, redirect a /login');
+          // 2. Salva i dati per dopo il login (in memoria, non localStorage)
+          setPendingGenerationData(analysisData);
           
-          // Redirect alla pagina login con returnUrl come parametro di backup
-          navigate('/login?returnUrl=/case/new');
+          // 3. Mostra il dialog di autenticazione
+          setShowAuthDialog(true);
           return;
         }
       }
@@ -731,6 +654,18 @@ export default function NewCase() {
     }
   };
 
+  // Callback per dopo il login tramite dialog
+  const handleAuthSuccess = async () => {
+    console.log('Autenticazione completata, riprendo generazione');
+    setShowAuthDialog(false);
+    
+    if (pendingGenerationData) {
+      // Ora che l'utente è loggato, chiama la generazione con skipAuthCheck=true
+      await callGenerateFunction(pendingGenerationData, true);
+      setPendingGenerationData(null);
+    }
+  };
+
   const hasMessages = messages.filter(m => m.sender === 'user').length > 0;
 
   return (
@@ -879,6 +814,13 @@ export default function NewCase() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog di autenticazione */}
+      <AuthDialogEnhanced
+        open={showAuthDialog}
+        onOpenChange={setShowAuthDialog}
+        onAuthSuccess={handleAuthSuccess}
+      />
 
     </div>
   );
