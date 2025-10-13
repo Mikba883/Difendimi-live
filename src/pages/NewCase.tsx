@@ -273,42 +273,8 @@ export default function NewCase() {
     // Previeni invii multipli
     setIsSubmitting(true);
     
-    // 🔐 CONTROLLO AUTH PRIMA DI TUTTO
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      console.log('Utente non loggato, salvo caso e redirect a login');
-      
-      // Traccia InitiateCheckout
-      trackEvent('InitiateCheckout', {
-        custom_data: {
-          source: 'case_submission',
-          user_authenticated: false
-        }
-      });
-      
-      // Salva il caso in localStorage
-      localStorage.setItem('pending_case_submission', JSON.stringify({
-        text: text,
-        timestamp: Date.now()
-      }));
-      
-      // Redirect a login
-      navigate('/login?returnUrl=/case/new');
-      return;
-    }
-    
-    // ✅ Utente loggato → continua normalmente
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: text,
-      sender: 'user',
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, userMessage]);
-    setCurrentText(prev => prev + " " + text);
-    
-    // Track StartFreeTrial event quando l'utente invia il PRIMO messaggio
+    // 🎯 Track StartFreeTrial SUBITO quando l'utente invia il PRIMO messaggio
+    // (indipendentemente dal fatto che sia loggato o meno)
     if (messages.length === 1 && !hasTrackedStartTrial) {
       setHasTrackedStartTrial(true);
       trackEvent('StartFreeTrial', {
@@ -318,7 +284,6 @@ export default function NewCase() {
         }
       });
       
-      // Also track as Lead for Meta Pixel standard event
       trackEvent('Lead', {
         custom_data: {
           source: 'new_case_chat'
@@ -326,7 +291,39 @@ export default function NewCase() {
       });
     }
     
-    // Analizza il caso
+    // Aggiungi il messaggio utente alla UI
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: text,
+      sender: 'user',
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setCurrentText(prev => prev + " " + text);
+    
+    // 🔐 Controlla autenticazione
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      console.log('Utente non loggato, salvo caso e redirect a login');
+      
+      trackEvent('InitiateCheckout', {
+        custom_data: {
+          source: 'case_submission',
+          user_authenticated: false
+        }
+      });
+      
+      localStorage.setItem('pending_case_submission', JSON.stringify({
+        text: text,
+        timestamp: Date.now()
+      }));
+      
+      navigate('/login?returnUrl=/case/new');
+      return;
+    }
+    
+    // ✅ Utente loggato → continua con l'analisi
     await analyzeCase(text);
     setIsSubmitting(false);
   };
