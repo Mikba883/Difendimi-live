@@ -86,21 +86,23 @@ const Login = () => {
   }, [navigate, trackEvent]);
 
   const handlePendingCaseGeneration = async (session: any) => {
-    console.log('Checking for pending case generation...');
+    console.log('[Login] Checking for pending case generation...');
     
     const pendingCaseStr = localStorage.getItem('pending_case_generation');
+    console.log('[Login] Pending case in localStorage:', pendingCaseStr ? 'YES' : 'NO');
+    
     if (!pendingCaseStr) {
-      console.log('No pending case found');
+      console.log('[Login] No pending case found');
       
       // Controlla se c'è un returnUrl nei parametri URL
       const searchParams = new URLSearchParams(window.location.search);
       const returnUrl = searchParams.get('returnUrl');
       
       if (returnUrl) {
-        console.log('Redirecting to returnUrl:', returnUrl);
+        console.log('[Login] Redirecting to returnUrl:', returnUrl);
         navigate(returnUrl);
       } else {
-        console.log('No returnUrl, redirecting to dashboard');
+        console.log('[Login] No returnUrl, redirecting to dashboard');
         navigate('/dashboard');
       }
       return;
@@ -108,7 +110,7 @@ const Login = () => {
 
     // Se c'è un pending case, torna a /case/new
     // NewCase si occuperà di rilevarlo e avviare la generazione
-    console.log('Found pending case, redirecting to /case/new');
+    console.log('[Login] Found pending case, redirecting to /case/new');
     toast({
       title: "Generazione in corso",
       description: "Stiamo riprendendo la generazione del tuo report...",
@@ -121,8 +123,13 @@ const Login = () => {
     setLoading(true);
     console.log('Starting Google OAuth flow...');
     
-    // Usa sempre il redirect di base, il localStorage farà il resto
-    const redirectUrl = `${window.location.origin}/dashboard`;
+    // Controlla se c'è un pending case - se sì, redirect a /case/new, altrimenti /dashboard
+    const pendingCaseStr = localStorage.getItem('pending_case_generation');
+    const redirectUrl = pendingCaseStr 
+      ? `${window.location.origin}/case/new`
+      : `${window.location.origin}/dashboard`;
+    
+    console.log('Pending case found:', !!pendingCaseStr);
     console.log('OAuth redirect URL:', redirectUrl);
     
     const { error } = await supabase.auth.signInWithOAuth({
@@ -159,8 +166,14 @@ const Login = () => {
 
     setLoading(true);
     
-    // Usa sempre il redirect di base, il localStorage farà il resto
-    const redirectUrl = `${window.location.origin}/dashboard`;
+    // Controlla se c'è un pending case - se sì, redirect a /case/new, altrimenti /dashboard
+    const pendingCaseStr = localStorage.getItem('pending_case_generation');
+    const redirectUrl = pendingCaseStr 
+      ? `${window.location.origin}/case/new`
+      : `${window.location.origin}/dashboard`;
+    
+    console.log('Pending case found:', !!pendingCaseStr);
+    console.log('Email signup redirect URL:', redirectUrl);
     
     const { error, data } = await supabase.auth.signInWithOtp({
       email,
