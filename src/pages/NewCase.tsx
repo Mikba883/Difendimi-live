@@ -415,27 +415,56 @@ export default function NewCase() {
     console.log('analysisData:', analysisData);
     
     try {
-      // Controlla se l'utente è autenticato ma NON bloccare la generazione
+      // Controlla se l'utente è autenticato
       const { data: { session } } = await supabase.auth.getSession();
       const isAuthenticated = !!session?.access_token;
       
-      // Se non è autenticato, mostra il dialog ma continua con la generazione
+      // Se non è autenticato, salva i dati e mostra il dialog BLOCCANTE
       if (!isAuthenticated) {
-        console.log('Utente non autenticato, mostro dialog e continuo con generazione');
+        console.log('Utente non autenticato, salvo dati e mostro dialog bloccante');
+        
+        // Salva tutti i dati necessari in localStorage
+        const pendingCase = {
+          job_id: analysisData.job_id,
+          caseType: "general",
+          messages: messages,
+          currentText: currentText,
+          allQuestions: allQuestions,
+          caseAnalysis: analysisData.caseAnalysis,
+          timestamp: Date.now()
+        };
+        
+        localStorage.setItem('pending_case_generation', JSON.stringify(pendingCase));
+        console.log('Dati salvati in localStorage:', pendingCase);
+        
+        // Mostra il dialog e blocca qui - la generazione riprenderà dopo il login
         setShowAuthDialog(true);
+        return;
       }
 
-      // Prepara i parametri corretti per la funzione generate (senza analysis)
+      // L'utente è autenticato, procedi con la generazione
+      console.log('Utente autenticato, procedo con generazione');
+      
+      // Track CompleteFreeTrial quando inizia la generazione con autenticazione
+      trackEvent('CompleteFreeTrial', {
+        custom_data: {
+          job_id: analysisData.job_id,
+          source: 'case_generation'
+        }
+      });
+      
+      setShowGenerationTimer(true);
+
+      // Prepara i parametri corretti per la funzione generate
       const requestBody = {
         job_id: analysisData.job_id,
-        caseType: "general", // Fissiamo a general, sarà generate a determinarlo
+        caseType: "general",
         caseData: {
           previousContext: messages.map(m => `${m.sender === 'user' ? 'Utente' : 'Assistente'}: ${m.text}`).join('\n'),
           caseText: currentText,
-          // Non c'è più fromPrecheck.analysis, i dati sono già nel backend
         },
         meta: {
-          authToken: session?.access_token ? `Bearer ${session.access_token}` : undefined,
+          authToken: `Bearer ${session.access_token}`,
           source: 'precheck',
           requestedAt: new Date().toISOString()
         }
@@ -443,37 +472,29 @@ export default function NewCase() {
 
       console.log('Chiamata generate con parametri:', requestBody);
 
-      // Chiama generate con o senza autenticazione
-      const invokeOptions: any = {
-        body: requestBody
-      };
-      
-      if (session?.access_token) {
-        invokeOptions.headers = {
+      const { data: generateData, error: generateError } = await supabase.functions.invoke('generate', {
+        body: requestBody,
+        headers: {
           Authorization: `Bearer ${session.access_token}`,
-        };
-      }
-
-      const { data: generateData, error: generateError } = await supabase.functions.invoke('generate', invokeOptions);
+        }
+      });
 
       if (generateError) throw generateError;
 
       console.log('Generazione completata:', generateData);
       
-      // Il caso è già stato salvato dalla funzione generate nel backend
-      // Naviga direttamente usando il case_id restituito
+      // Track Lead event
+      trackEvent('Lead', {
+        custom_data: {
+          case_id: generateData?.case_id,
+          case_type: generateData?.case_type || 'general',
+          source: 'ai_generation'
+        }
+      });
+      
+      // Naviga al caso completato
       if (generateData?.case_id) {
         console.log('Navigazione diretta al caso:', generateData.case_id);
-        
-        // Track GenerateCase event
-        trackEvent('GenerateCase', {
-          custom_data: {
-            case_id: generateData.case_id,
-            case_type: generateData.case_type || 'general',
-            source: 'ai_generation'
-          }
-        });
-        
         setIsComplete(true);
         setShowGenerationTimer(false);
         navigate(`/case/${generateData.case_id}`);
@@ -495,6 +516,117 @@ export default function NewCase() {
       setTimeout(() => {
         navigate('/dashboard');
       }, 3000);
+    }
+  };
+
+  // Nuova funzione per eseguire la generazione dopo il login
+  const executePendingGeneration = async () => {
+    console.log('=== ESECUZIONE GENERAZIONE PENDING ===');
+    
+    try {
+      // Recupera i dati dal localStorage
+      const pendingCaseStr = localStorage.getItem('pending_case_generation');
+      if (!pendingCaseStr) {
+        console.error('Nessun caso pending trovato in localStorage');
+        return;
+      }
+
+      const pendingCase = JSON.parse(pendingCaseStr);
+      console.log('Dati recuperati da localStorage:', pendingCase);
+
+      // Ripristina lo stato se necessario
+      if (pendingCase.messages) setMessages(pendingCase.messages);
+      if (pendingCase.currentText) setCurrentText(pendingCase.currentText);
+      if (pendingCase.allQuestions) setAllQuestions(pendingCase.allQuestions);
+
+      // Ottieni la sessione corrente
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.error('Sessione non trovata dopo il login');
+        toast({
+          title: "Errore",
+          description: "Sessione non valida, riprova",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Sessione valida, procedo con generazione');
+      
+      // Track CompleteFreeTrial
+      trackEvent('CompleteFreeTrial', {
+        custom_data: {
+          job_id: pendingCase.job_id,
+          source: 'post_login'
+        }
+      });
+      
+      setShowGenerationTimer(true);
+
+      // Prepara i parametri per generate
+      const requestBody = {
+        job_id: pendingCase.job_id,
+        caseType: pendingCase.caseType,
+        caseData: {
+          previousContext: pendingCase.messages.map((m: Message) => 
+            `${m.sender === 'user' ? 'Utente' : 'Assistente'}: ${m.text}`
+          ).join('\n'),
+          caseText: pendingCase.currentText,
+        },
+        meta: {
+          authToken: `Bearer ${session.access_token}`,
+          source: 'post_login',
+          requestedAt: new Date().toISOString()
+        }
+      };
+
+      console.log('Chiamata generate post-login con parametri:', requestBody);
+
+      const { data: generateData, error: generateError } = await supabase.functions.invoke('generate', {
+        body: requestBody,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        }
+      });
+
+      if (generateError) throw generateError;
+
+      console.log('Generazione completata:', generateData);
+      
+      // Track Lead event
+      trackEvent('Lead', {
+        custom_data: {
+          case_id: generateData?.case_id,
+          case_type: generateData?.case_type || 'general',
+          source: 'post_login'
+        }
+      });
+
+      // Pulisci il localStorage
+      localStorage.removeItem('pending_case_generation');
+      console.log('localStorage pulito');
+
+      // Naviga al caso completato
+      if (generateData?.case_id) {
+        console.log('Navigazione diretta al caso:', generateData.case_id);
+        setIsComplete(true);
+        setShowGenerationTimer(false);
+        navigate(`/case/${generateData.case_id}`);
+      } else {
+        console.error('Nessun case_id ricevuto dalla funzione generate');
+        throw new Error('Case ID non ricevuto');
+      }
+
+    } catch (error) {
+      console.error('Errore durante la generazione post-login:', error);
+      setShowGenerationTimer(false);
+      localStorage.removeItem('pending_case_generation');
+      
+      toast({
+        title: "Errore generazione report",
+        description: "Si è verificato un errore durante la generazione del report.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -763,17 +895,13 @@ export default function NewCase() {
       </AlertDialog>
 
       {/* Dialog di autenticazione */}
-      <AuthDialog 
-        open={showAuthDialog} 
+      <AuthDialog
+        open={showAuthDialog}
         onOpenChange={setShowAuthDialog}
         onAuthSuccess={async () => {
-          // Dopo il login, riprendi la generazione
-          const analysisDataToUse = {
-            job_id: savedCaseId || Date.now().toString(),
-            caseAnalysis: caseAnalysis,
-            questions: allQuestions
-          };
-          await callGenerateFunction(analysisDataToUse);
+          console.log('Login completato, eseguo generazione pending');
+          // Dopo il login, esegui la generazione con i dati salvati
+          await executePendingGeneration();
         }}
       />
     </div>
