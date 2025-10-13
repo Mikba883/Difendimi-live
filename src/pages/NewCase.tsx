@@ -117,6 +117,71 @@ export default function NewCase() {
     }
   }, [messages]);
 
+  // Nuovo useEffect per gestire pending case dopo login
+  useEffect(() => {
+    const checkPendingCase = async () => {
+      // Controlla se c'è un utente loggato
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      // Controlla se c'è un pending case
+      const pendingCaseStr = localStorage.getItem('pending_case_generation');
+      if (!pendingCaseStr) return;
+      
+      try {
+        const pendingCase = JSON.parse(pendingCaseStr);
+        console.log('Found pending case after login, resuming generation:', pendingCase);
+        
+        // Ripristina lo stato del caso
+        if (pendingCase.messages && Array.isArray(pendingCase.messages)) {
+          setMessages(pendingCase.messages);
+        }
+        if (pendingCase.currentText) {
+          setCurrentText(pendingCase.currentText);
+        }
+        if (pendingCase.allQuestions) {
+          setAllQuestions(pendingCase.allQuestions);
+        }
+        if (pendingCase.caseAnalysis) {
+          setCaseAnalysis(pendingCase.caseAnalysis);
+        }
+        
+        // Rimuovi il pending case dal localStorage
+        localStorage.removeItem('pending_case_generation');
+        
+        // Mostra messaggio di ripresa
+        const resumeMsg: Message = {
+          id: Date.now().toString() + '-resume',
+          text: "Riprendo la generazione del tuo report legale...",
+          sender: 'assistant',
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, resumeMsg]);
+        
+        // Avvia la generazione del report
+        setShowGenerationTimer(true);
+        setIsGeneratingReport(true);
+        setIsGenerateFunctionCalled(true);
+        
+        await callGenerateFunction({
+          job_id: pendingCase.job_id,
+          caseAnalysis: pendingCase.caseAnalysis
+        });
+        
+      } catch (error) {
+        console.error('Error resuming pending case:', error);
+        toast({
+          title: "Errore",
+          description: "Impossibile riprendere la generazione del caso",
+          variant: "destructive",
+        });
+        localStorage.removeItem('pending_case_generation');
+      }
+    };
+    
+    checkPendingCase();
+  }, []); // Esegui solo al mount del componente
+
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     return !!user;

@@ -106,81 +106,15 @@ const Login = () => {
       return;
     }
 
-    try {
-      const pendingCase = JSON.parse(pendingCaseStr);
-      console.log('Found pending case, starting generation:', pendingCase);
-      
-      // Rimuovi il pending case dal localStorage
-      localStorage.removeItem('pending_case_generation');
-      
-      // Mostra un toast per informare l'utente
-      toast({
-        title: "Generazione in corso",
-        description: "Stiamo generando il tuo report legale...",
-      });
-      
-      // Chiama la funzione generate
-      const requestBody = {
-        job_id: pendingCase.job_id,
-        caseType: pendingCase.caseType || "general",
-        caseData: {
-          previousContext: pendingCase.messages?.map((m: any) => 
-            `${m.sender === 'user' ? 'Utente' : 'Assistente'}: ${m.text}`
-          ).join('\n') || '',
-          caseText: pendingCase.currentText || '',
-        },
-        meta: {
-          authToken: `Bearer ${session.access_token}`,
-          source: 'pending_case_generation',
-          requestedAt: new Date().toISOString()
-        }
-      };
-
-      const { data: generateData, error: generateError } = await supabase.functions.invoke('generate', {
-        body: requestBody,
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        }
-      });
-
-      if (generateError) {
-        console.error('Generation error:', generateError);
-        toast({
-          title: "Errore durante la generazione",
-          description: generateError.message || "Si è verificato un errore",
-          variant: "destructive",
-        });
-        navigate('/dashboard');
-        return;
-      }
-
-      console.log('Generation completed:', generateData);
-      
-      // Track Lead event
-      trackEvent('Lead', {
-        custom_data: {
-          case_id: generateData?.case_id,
-          case_type: generateData?.case_type || 'general',
-          source: 'pending_case_generation'
-        }
-      });
-      
-      // Naviga al caso generato
-      if (generateData?.case_id) {
-        navigate(`/case/${generateData.case_id}`);
-      } else {
-        navigate('/dashboard');
-      }
-      
-    } catch (error) {
-      console.error('Error processing pending case:', error);
-      toast({
-        title: "Errore",
-        description: "Impossibile completare la generazione",
-        variant: "destructive",
-      });
-      navigate('/dashboard');
-    }
+    // Se c'è un pending case, torna a /case/new
+    // NewCase si occuperà di rilevarlo e avviare la generazione
+    console.log('Found pending case, redirecting to /case/new');
+    toast({
+      title: "Generazione in corso",
+      description: "Stiamo riprendendo la generazione del tuo report...",
+    });
+    
+    navigate('/case/new');
   };
 
   const handleGoogleSignIn = async () => {
