@@ -443,8 +443,8 @@ export default function NewCase() {
         localStorage.setItem('pending_case_generation', JSON.stringify(pendingCase));
         console.log('Dati salvati in localStorage, redirect a /login');
         
-        // Redirect alla pagina login con parametro per indicare che c'è un pending case
-        navigate('/login?from=case-generation');
+        // Redirect alla pagina login - localStorage gestisce il pending case
+        navigate('/login');
         return;
       }
 
