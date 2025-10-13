@@ -120,14 +120,25 @@ export default function NewCase() {
   // Nuovo useEffect per gestire pending case dopo login
   useEffect(() => {
     const checkPendingCase = async () => {
-      // Controlla se c'è un utente loggato
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      
-      // Controlla se c'è un pending case
+      // Prima controlla se c'è un pending case
       const pendingCaseStr = localStorage.getItem('pending_case_generation');
-      if (!pendingCaseStr) return;
       
+      // Se NON c'è pending case, non fare nulla
+      if (!pendingCaseStr) {
+        console.log('No pending case found, normal flow');
+        return;
+      }
+      
+      // Se c'è un pending case, controlla se l'utente è loggato
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Se NON è loggato, non fare nulla (permettigli di compilare)
+      if (!session) {
+        console.log('Pending case found but user not logged in, normal flow');
+        return;
+      }
+      
+      // Se è loggato E c'è un pending case → riprendi la generazione
       try {
         const pendingCase = JSON.parse(pendingCaseStr);
         console.log('Found pending case after login, resuming generation:', pendingCase);
@@ -180,7 +191,7 @@ export default function NewCase() {
     };
     
     checkPendingCase();
-  }, []); // Esegui solo al mount del componente
+  }, []);
 
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
