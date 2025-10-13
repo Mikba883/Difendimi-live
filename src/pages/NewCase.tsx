@@ -182,7 +182,7 @@ export default function NewCase() {
         await callGenerateFunction({
           job_id: pendingCase.job_id,
           caseAnalysis: pendingCase.caseAnalysis
-        });
+        }, true); // Salta il controllo auth perché l'abbiamo già fatto nel useEffect
         
       } catch (error) {
         console.error('Error resuming pending case:', error);
@@ -497,40 +497,45 @@ export default function NewCase() {
     }
   };
 
-  const callGenerateFunction = async (analysisData: any) => {
+  const callGenerateFunction = async (analysisData: any, skipAuthCheck: boolean = false) => {
     console.log('=== CHIAMATA FUNZIONE GENERATE ===');
     console.log('analysisData:', analysisData);
     
     try {
-      // Controlla se l'utente è autenticato
-      const { data: { session } } = await supabase.auth.getSession();
-      const isAuthenticated = !!session?.access_token;
-      
-      // Se non è autenticato, salva i dati e redirect a /login
-      if (!isAuthenticated) {
-        console.log('Utente non autenticato, salvo dati e redirect a /login');
+      // Controlla se l'utente è autenticato SOLO se non saltiamo il controllo
+      if (!skipAuthCheck) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const isAuthenticated = !!session?.access_token;
         
-        // Salva tutti i dati necessari in localStorage
-        const pendingCase = {
-          job_id: analysisData.job_id,
-          caseType: "general",
-          messages: messages,
-          currentText: currentText,
-          allQuestions: allQuestions,
-          caseAnalysis: analysisData.caseAnalysis,
-          timestamp: Date.now()
-        };
-        
-        localStorage.setItem('pending_case_generation', JSON.stringify(pendingCase));
-        console.log('Dati salvati in localStorage, redirect a /login');
-        
-        // Redirect alla pagina login - localStorage gestisce il pending case
-        navigate('/login');
-        return;
+        // Se non è autenticato, salva i dati e redirect a /login
+        if (!isAuthenticated) {
+          console.log('Utente non autenticato, salvo dati e redirect a /login');
+          
+          // Salva tutti i dati necessari in localStorage
+          const pendingCase = {
+            job_id: analysisData.job_id,
+            caseType: "general",
+            messages: messages,
+            currentText: currentText,
+            allQuestions: allQuestions,
+            caseAnalysis: analysisData.caseAnalysis,
+            timestamp: Date.now()
+          };
+          
+          localStorage.setItem('pending_case_generation', JSON.stringify(pendingCase));
+          console.log('Dati salvati in localStorage, redirect a /login');
+          
+          // Redirect alla pagina login - localStorage gestisce il pending case
+          navigate('/login');
+          return;
+        }
       }
 
-      // L'utente è autenticato, procedi con la generazione
-      console.log('Utente autenticato, procedo con generazione');
+      // L'utente è autenticato (o abbiamo saltato il controllo), procedi con la generazione
+      console.log('Procedo con generazione (skipAuthCheck:', skipAuthCheck, ')');
+      
+      // Ottieni la sessione per il token
+      const { data: { session } } = await supabase.auth.getSession();
       
       // Track CompleteFreeTrial quando inizia la generazione con autenticazione
       trackEvent('CompleteFreeTrial', {
