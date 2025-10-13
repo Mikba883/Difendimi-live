@@ -519,14 +519,15 @@ export default function NewCase() {
             currentText: currentText,
             allQuestions: allQuestions,
             caseAnalysis: analysisData.caseAnalysis,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            returnUrl: '/case/new'  // Specifica esplicitamente dove tornare
           };
           
           localStorage.setItem('pending_case_generation', JSON.stringify(pendingCase));
-          console.log('Dati salvati in localStorage, redirect a /login');
+          console.log('Dati salvati in localStorage con returnUrl=/case/new, redirect a /login');
           
-          // Redirect alla pagina login - localStorage gestisce il pending case
-          navigate('/login');
+          // Redirect alla pagina login con returnUrl come parametro di backup
+          navigate('/login?returnUrl=/case/new');
           return;
         }
       }

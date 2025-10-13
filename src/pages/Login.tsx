@@ -92,43 +92,52 @@ const Login = () => {
     const pendingCaseStr = localStorage.getItem('pending_case_generation');
     console.log('[Login] Pending case in localStorage:', pendingCaseStr ? 'YES' : 'NO');
     
-    if (!pendingCaseStr) {
-      console.log('[Login] No pending case found');
-      
-      // Se siamo già su /case/new, NON fare redirect
-      if (window.location.pathname === '/case/new') {
-        console.log('[Login] Already on /case/new, skipping redirect');
-        return;
-      }
-      
-      // Controlla se c'è un returnUrl nei parametri URL
-      const searchParams = new URLSearchParams(window.location.search);
-      const returnUrl = searchParams.get('returnUrl');
-      
-      if (returnUrl) {
-        console.log('[Login] Redirecting to returnUrl:', returnUrl);
+    // Se c'è un pending case, vai SEMPRE a /case/new (o alla sua returnUrl)
+    if (pendingCaseStr) {
+      try {
+        const pendingCase = JSON.parse(pendingCaseStr);
+        const returnUrl = pendingCase.returnUrl || '/case/new';
+        
+        // Se siamo già sulla pagina di destinazione, non fare redirect
+        if (window.location.pathname === returnUrl) {
+          console.log('[Login] Already on target page:', returnUrl, '- letting it handle pending case');
+          return;
+        }
+        
+        console.log('[Login] Pending case found, redirecting to:', returnUrl);
+        toast({
+          title: "Generazione in corso",
+          description: "Stiamo riprendendo la generazione del tuo report...",
+        });
+        
         navigate(returnUrl);
-      } else {
-        console.log('[Login] No returnUrl, redirecting to dashboard');
-        navigate('/dashboard');
+        return;
+      } catch (e) {
+        console.error('[Login] Error parsing pending case:', e);
+        localStorage.removeItem('pending_case_generation');
       }
-      return;
     }
-
-    // Se c'è un pending case, torna a /case/new
-    // MA solo se NON siamo già lì!
+    
+    // Se NON c'è pending case, controlla returnUrl nei parametri URL
+    console.log('[Login] No pending case found');
+    
+    // Se siamo già su /case/new, NON fare redirect
     if (window.location.pathname === '/case/new') {
-      console.log('[Login] Already on /case/new with pending case, letting NewCase handle it');
+      console.log('[Login] Already on /case/new, skipping redirect');
       return;
     }
     
-    console.log('[Login] Found pending case, redirecting to /case/new');
-    toast({
-      title: "Generazione in corso",
-      description: "Stiamo riprendendo la generazione del tuo report...",
-    });
+    // Controlla se c'è un returnUrl nei parametri URL
+    const searchParams = new URLSearchParams(window.location.search);
+    const returnUrl = searchParams.get('returnUrl');
     
-    navigate('/case/new');
+    if (returnUrl) {
+      console.log('[Login] Redirecting to returnUrl from URL params:', returnUrl);
+      navigate(returnUrl);
+    } else {
+      console.log('[Login] No returnUrl, redirecting to dashboard');
+      navigate('/dashboard');
+    }
   };
 
   const handleGoogleSignIn = async () => {
